@@ -9,11 +9,11 @@ path: /catalog/floating-action-button/
 
 # Floating Action Buttons
 
-`FloatingActionButton` displays the primary action in an application. It is
+A `FloatingActionButton` displays the primary action in an application. It is
 a round icon button that's elevated above other page content. **Floating action
 buttons** come in a default and mini size.
 
-Floating action buttons provide quick-access to important or common actions
+Floating action buttons provide quick access to important or common actions
 within an app. They have a variety of uses, including:
 
 -   Performing a common action, such as starting a new email in a mail app.
@@ -21,29 +21,25 @@ within an app. They have a variety of uses, including:
 -   Update or transforming into other UI elements on the screen.
 
 Floating action buttons adjust their position and visibility in response to
-other UI elements on the screen. For example, if a [Snackbar](Snackbar.md)
-appears, the floating action button shifts its position to stay fully visible.
-Or if a [bottom sheet](BottomSheetBehavior.md) partially covers the floating
-action button, it may hide itself.
+other UI elements on the screen.
 
 ## Design & API Documentation
 
--   [Material Design
-    guidelines: Floating Action Buttons](https://material.io/guidelines/components/buttons-floating-action-button.html)
+-   [Material Design guidelines: Floating Action
+    Buttons](https://material.io/go/design-fab)
     <!--{: .icon-list-item.icon-list-item--spec }-->
 -   [Class
-    definition](https://github.com/material-components/material-components-android/tree/master/lib/src/android/support/design/widget/FloatingActionButton.java)
+    definition](https://github.com/material-components/material-components-android/tree/master/lib/java/com/google/android/material/floatingactionbutton/FloatingActionButton.java)
     <!--{: .icon-list-item.icon-list-item--link }-->
 -   [Class
-    overview](https://developer.android.com/reference/android/support/design/widget/FloatingActionButton.html)
-    <!--{: .icon-list-item.icon-list-item--link }-->
-<!--{: .icon-list }-->
+    overview](https://developer.android.com/reference/com/google/android/material/floatingactionbutton/FloatingActionButton)
+    <!--{: .icon-list-item.icon-list-item--link }--> <!--{: .icon-list }-->
 
 ## Usage
 
 The `FloatingActionButton` widget provides a complete implementation of Material
-Design's floating action button component. Example code of how to include the
-widget in your layout:
+Design's floating action button component. Here's how to include the widget in
+your layout:
 
 ```xml
 <android.support.design.widget.CoordinatorLayout
@@ -54,42 +50,78 @@ widget in your layout:
 
   <!-- Main content -->
 
-  <android.support.design.widget.FloatingActionButton
+  <com.google.android.material.floatingactionbutton.FloatingActionButton
       android:id="@+id/floating_action_button"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
       android:layout_gravity="bottom|right"
-      android:layout_margin="16dp"/>
+      android:layout_margin="16dp"
+      app:srcCompat="@drawable/ic_plus_24"/>
 
 </android.support.design.widget.CoordinatorLayout>
 ```
 
-Note: If the `FloatingActionButton` is a descendant of a `CoordinatorLayout`,
-you get certain behaviors for free. It will automatically shift so that any
-displayed [Snackbars](Snackbar.md) do not cover it, and will automatially hide
-when covered by an [AppBarLayout](AppBarLayout.md) or
+Note: If the `FloatingActionButton` is a child of a `CoordinatorLayout`, you get
+certain behaviors for free. It will automatically shift so that any displayed
+[Snackbars](Snackbar.md) do not cover it, and will automatially hide when
+covered by an [AppBarLayout](AppBarLayout.md) or
 [BottomSheetBehavior](BottomSheetBehavior.md).
 
-Change the icon in the floating action button with:
+### Material Styles
 
--   `app:srcCompat` attribute
--   `setImageDrawable` method
+Using `FloatingActionButton` with an updated Material theme
+(`Theme.MaterialComponents`) will provide the correct updated Material styles to
+your floating action buttons by default. If you need to use an updated Material
+floating action button and your application theme does not inherit from an
+updated Material theme, you can apply one of the updated Material styles
+directly to your widget in XML.
 
-Change the size of the widget with:
+#### Updated Material Style
 
--   `app:fabSize` attribute
--   `setSize` method
+The updated Material `FloatingActionButton` style consists of updated elevation,
+ripple, and motion changes.
 
-Your theme's `colorAccent` provides the default background color of the widget.
-Change the background color with:
+```xml
+<com.google.android.material.floatingactionbutton.FloatingActionButton
+    android:id="@+id/floating_action_button"
+    style="@style/Widget.MaterialComponents.FloatingActionButton"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="bottom|right"
+    android:layout_margin="16dp"
+    app:srcCompat="@drawable/ic_plus_24"/>
+```
 
--   `app:backgroundTint` attribute
--   `setBackgroundTintList` method
+#### Legacy Material Style
 
-Change the elevation of the widget with:
+```xml
+<com.google.android.material.floatingactionbutton.FloatingActionButton
+    android:id="@+id/floating_action_button"
+    style="@style/Widget.Design.FloatingActionButton"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="bottom|right"
+    android:layout_margin="16dp"
+    app:srcCompat="@drawable/ic_plus_24"/>
+```
 
--   `app:elevation` attribute
--   `setCompatElevation` method
+### Attributes
+
+Feature    | Relevant attributes
+:--------- | :-------------------------------
+Icon       | `app:srcCompat`
+           | `app:tint`
+           | `app:maxImageSize`
+Size       | `app:fabSize`
+           | `app:fabCustomSize`
+Background | `app:backgroundTint`
+Ripple     | `app:rippleColor`
+Border     | `app:borderWidth`
+Elevation  | `app:elevation`
+           | `app:hoveredFocusedTranslationZ`
+           | `app:pressedTranslationZ`
+Motion     | `app:showMotionSpec`
+           | `app:hideMotionSpec`
 
 ### Handling Clicks
 
@@ -101,7 +133,7 @@ FloatingActionButton floatingActionButton =
 
 floatingActionButton.setOnClickListener(new OnClickListener() {
     @Override
-    public void onClick(View v) {
+    public void onClick(View view) {
         // Handle the click.
     }
 });
@@ -113,6 +145,35 @@ Use the `show` and `hide` methods to animate the visibility of a
 `FloatingActionButton`. The show animation grows the widget and fades it in,
 while the hide animation shrinks the widget and fades it out.
 
+### Sizing
+
+The `FloatingActionButton` can be sized either by using the discrete sizing
+modes or a totally custom size.
+
+##### Sizing Modes
+
+The supported sizing modes are as follows:
+
+* `normal` - the normal sized button, 56dp.
+* `mini` - the mini sized button, 40dp.
+* `auto` - the button size will change based on the window size. For small
+sized windows (largest screen dimension < 470dp) this will select a mini sized
+button, and for larger sized windows it will select a normal sized button.
+
+By default, the sizing mode will be `auto`, but this can be adjusted via the
+`app:fabSize` attribute or the `FloatingActionButton#setSize` method.
+
+##### Custom Size
+
+To set a custom size for your `FloatingActionButton`, you can use the
+`app:fabCustomSize` attribute or the `FloatingActionButton#setCustomSize`
+method.
+
+If you've set a custom size and would like to clear it, you can call the
+`FloatingActionButton#clearCustomSize` method. If called, custom sizing will
+not be used and the size will be calculated based on the value set using
+`FloatingActionButton#setSize` or the `app:fabSize` attribute.
+
 ## Related Concepts
 
--   [CoordinatorLayout](CoordinatorLayout.md)
+-   [CoordinatorLayout](https://developer.android.com/reference/androidx/coordinatorlayout/widget/CoordinatorLayout)

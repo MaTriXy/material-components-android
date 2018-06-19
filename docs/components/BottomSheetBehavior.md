@@ -13,7 +13,7 @@ path: /catalog/bottom-sheet-behavior/
 <!--{: .article__asset.article__asset--screenshot }-->
 
 `BottomSheetBehavior` is applied to a child of
-[CoordinatorLayout](CoordinatorLayout.md)
+[CoordinatorLayout](https://developer.android.com/reference/androidx/coordinatorlayout/widget/CoordinatorLayout)
 to make that child a **persistent bottom sheet**.
 
 Persistent bottom sheets are views that come up from the bottom of the
@@ -25,13 +25,15 @@ Note: If you want to use Bottom Sheets that are modal (dialogs), use
 
 ## Design & API Documentation
 
--   [Material Design guidelines: Bottom Sheets](https://material.io/guidelines/components/bottom-sheets.html#bottom-sheets-persistent-bottom-sheets)
+-   [Material Design guidelines: Bottom
+    Sheets](https://material.io/go/design-sheets-bottom#bottom-sheets-persistent-bottom-sheets)
     <!--{: .icon-list-item.icon-list-item--spec }-->
--   [Class definition](https://github.com/material-components/material-components-android/tree/master/lib/src/android/support/design/widget/BottomSheetBehavior.java)
+-   [Class
+    definition](https://github.com/material-components/material-components-android/tree/master/lib/java/com/google/android/material/bottomsheet/BottomSheetBehavior.java)
     <!--{: .icon-list-item.icon-list-item--link }-->
--   [Class overview](https://developer.android.com/reference/android/support/design/widget/BottomSheetBehavior.html)
-    <!--{: .icon-list-item.icon-list-item--link }-->
-<!--{: .icon-list }-->
+-   [Class
+    overview](https://developer.android.com/reference/com/google/android/material/bottomsheet/BottomSheetBehavior)
+    <!--{: .icon-list-item.icon-list-item--link }--> <!--{: .icon-list }-->
 
 ## Usage
 
@@ -59,7 +61,7 @@ sheet is trivial:
 
 1.  Add any View as a direct child of CoordinatorLayout.
 2.  Apply the behavior by adding the following xml attribute
-    `app:layout_behavior="android.support.design.widget.BottomSheetBehavior"`
+    `app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"`
 3.  Set the desired behavior flags
     -   `app:behavior_hideable` whether this bottom sheet can be hidden by
         dragging it down.
@@ -67,7 +69,7 @@ sheet is trivial:
     -   `app:behavior_skipCollapsed` if the bottom sheet is hideable, and this
         is set to true, it does not have a collapsed state.
 
-To programatically control the bottom sheet you can call the `setState` method
+To programmatically control the bottom sheet you can call the `setState` method
 on the `BottomSheetBehavior`. A common pattern is setting a peek height and
 setting the state to collapsed to make it visible to the user:
 

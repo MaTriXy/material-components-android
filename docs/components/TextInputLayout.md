@@ -13,25 +13,23 @@ path: /catalog/text-input-layout/
 <!--{: .article__asset.article__asset--screenshot }-->
 
 `TextInputLayout` provides an implementation for [Material text
-fields](https://material.io/guidelines/components/text-fields.html). Used in
-conjunction with a
-[`TextInputEditText`](https://developer.android.com/reference/android/support/design/widget/TextInputEditText.html),
+fields](https://material.io/go/design-text-fields). Used in conjunction with a
+[`TextInputEditText`](https://developer.android.com/reference/com/google/android/material/textfield/TextInputEditText),
 `TextInputLayout` makes it easy to include Material **text fields** in your
 layouts.
 
 ## Design & API Documentation
 
--   [Material Design
-    guidelines: Text Fields](https://material.io/guidelines/components/text-fields.html)
+-   [Material Design guidelines: Text
+    Fields](https://material.io/go/design-text-fields)
     <!--{: .icon-list-item.icon-list-item--spec }-->
 -   [Class
-    definition](https://github.com/material-components/material-components-android/tree/master/lib/src/android/support/design/widget/TextInputLayout.java)
+    definition](https://github.com/material-components/material-components-android/tree/master/lib/java/com/google/android/material/textfield/TextInputLayout.java)
     <!--{: .icon-list-item.icon-list-item--link }-->
     <!-- Styles for list items requiring icons instead of standard bullets. -->
 -   [Class
-    overview](https://developer.android.com/reference/android/support/design/widget/TextInputLayout.html)
-    <!--{: .icon-list-item.icon-list-item--link }-->
-<!--{: .icon-list }-->
+    overview](https://developer.android.com/reference/com/google/android/material/textfield/TextInputLayout)
+    <!--{: .icon-list-item.icon-list-item--link }--> <!--{: .icon-list }-->
 
 ## Usage
 
@@ -39,82 +37,80 @@ To create a material text field, add a `TextInputLayout` to your XML layout and
 a `TextInputEditText` as a direct child.
 
 ```xml
-<android.support.design.widget.TextInputLayout
+<com.google.android.material.textfield.TextInputLayout
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
-  <android.support.design.widget.TextInputEditText
+  <com.google.android.material.textfield.TextInputEditText
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:hint="@string/hint_text"/>
 
-</android.support.design.widget.TextInputLayout>
+</com.google.android.material.textfield.TextInputLayout>
 ```
 
-Note: You can also use an `EditText` for your input text component. However,
-using `TextInputEditText` allows `TextInputLayout` greater control over the
-visual aspects of the input text - it allows `TextInputLayout` to display hint
-in the text field when in "extract mode" (such as landscape mode).
+Note: An `EditText` may work for your input text component. However, using
+`TextInputEditText` allows `TextInputLayout` greater control over the visual
+aspects of the input text and provides accessibility support for the text field.
 
-## Box Styles
+### Material Styles
 
-`TextInputLayout` provides two box styles, **filled** and **outline**. Here's how to use
-each of them:
+Using `TextInputLayout` with an updated Material theme
+(`Theme.MaterialComponents`) will provide the correct updated Material styles to
+your text fields by default. If you need to use an updated Material text field
+and your application theme does not inherit from an updated Material theme, you
+can apply one of the updated Material styles directly to your widget in XML.
 
-#### Filled Text Fields
+#### Filled Box (Default)
 
-Filled text fields have a solid background color and draw more attention, especially
-in layouts where the field is surrounded by other elements. To use a filled text field,
-apply the following style to your `TextInputLayout`:
+Filled text fields have a solid background color and draw more attention,
+especially in layouts where the field is surrounded by other elements. To use a
+filled text field, apply the following style to your `TextInputLayout`:
 
-```
+```xml
 style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
 ```
 
-To change the background color of a filled text field, you can set the `boxBackgroundColor`
-attribute on your `TextInputLayout`.
+To change the background color of a filled text field, you can set the
+`boxBackgroundColor` attribute on your `TextInputLayout`.
 
-#### Outline Text Fields
+#### Outline Box
 
-Outline text fields have a stroked border and are less emphasized. To use an outline text
-field, apply the following style to your `TextInputLayout`:
+Outline text fields have a stroked border and are less emphasized. To use an
+outline text field, apply the following style to your `TextInputLayout`:
 
-```
-style="@style/Widget.MaterialComponents.TextInputLayout.OutlineBox"
+```xml
+style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
 ```
 
 To change the stroke color and width for an outline text field, you can set the
-`boxStrokeColor` and `boxStrokeWidth` attributes on your `TextInputLayout`, respectively.
+`boxStrokeColor` and `boxStrokeWidth` attributes on your `TextInputLayout`,
+respectively.
 
 #### Height Variations
 
-`TextInputLayout` provides two height variations for filled and outline text fields,
-**standard** and **dense**. Both box styles default to the standard height.
+`TextInputLayout` provides two height variations for filled and outline text
+fields, **standard** and **dense**. Both box styles default to the standard
+height.
 
-In order to reduce the height of a text box, you can use a dense style, which will reduce
-the vertical padding within the text box. You can achieve this by applying the appropriate
-styles to your `TextInputLayout`, depending on whether you are using a filled or outline
-text field:
+In order to reduce the height of a text box, you can use a dense style, which
+will reduce the vertical padding within the text box. You can achieve this by
+applying the appropriate styles to your `TextInputLayout` and
+`TextInputEditText`, depending on whether you are using a filled or outline text
+field:
 
-```
-style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox.Dense"
-```
+##### Dense Filled Box
 
-```
-style="@style/Widget.MaterialComponents.TextInputLayout.OutlineBox.Dense"
-```
+Apply this style to your `TextInputLayout`: `xml
+style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox.Dense"`
 
-Additionally, to change a text field's internal padding as well as other values like corner
-radii, you can apply the following attributes to your `TextInputLayout`:
+##### Dense Outline Box
 
-##### Padding
+Apply this style to your `TextInputLayout`: `xml
+style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"`
 
-* `boxPaddingLeft`
-* `boxCollapsedPaddingTop`
-* `boxExpandedPaddingTop`
-* `boxPaddingRight`
-* `boxCollapsedPaddingBottom`
-* `boxExpandedPaddingBottom`
+To change a text box's internal padding and overall dimensions, you can adjust
+the `android:padding` attributes on the `TextInputEditText`.
 
 ##### Corner Radius
 
@@ -126,22 +122,17 @@ radii, you can apply the following attributes to your `TextInputLayout`:
 ## Common features
 
 `TextInputLayout` provides functionality for a number of Material [text field
-features](https://material.io/guidelines/components/text-fields.html#text-fields-layout).
+features](https://material.io/go/design-text-fields#text-fields-layout).
 These are some commonly used properties you can update to control the look of
 your text field:
 
 Text field element                     | Relevant attributes/methods
 :------------------------------------- | :--------------------------
-Label (also called a “Floating Label”) | [`android:hint`](https://developer.android.com/reference/android/support/design/widget/TextInputLayout.html#attr_TextInputLayout_android_hint)
-                                       | [`app:hintEnabled`](https://developer.android.com/reference/android/support/design/widget/TextInputLayout.html#attr_TextInputLayout_hintEnabled)
-Error message                          | [`app:errorEnabled`](https://developer.android.com/reference/android/support/design/widget/TextInputLayout.html#attr_TextInputLayout_errorEnabled)
-                                       | [`#setError(CharSequence)`](https://developer.android.com/reference/android/support/design/widget/TextInputLayout.html#setError(java.lang.CharSequence))
-Helper text                            | [`app:helperTextEnabled`](https://developer.android.com/reference/android/support/design/widget/TextInputLayout.html#attr_TextInputLayout_helperTextEnabled)
-                                       | [`app:helperText`](https://developer.android.com/reference/android/support/design/widget/TextInputLayout.html#attr_TextInputLayout_helperText)
-Password redaction                     | [`app:passwordToggleEnabled`](https://developer.android.com/reference/android/support/design/widget/TextInputLayout.html#attr_TextInputLayout_passwordToggleEnabled)
-                                       | [`app:passwordToggleDrawable`](https://developer.android.com/reference/android/support/design/widget/TextInputLayout.html#attr_TextInputLayout_passwordToggleDrawable)
-Character counter                      | [`app:counterEnabled`](https://developer.android.com/reference/android/support/design/widget/TextInputLayout.html#attr_TextInputLayout_counterEnabled)
-                                       | [`app:counterMaxLength`](https://developer.android.com/reference/android/support/design/widget/TextInputLayout.html#attr_TextInputLayout_counterMaxLength)
+Label (also called a “Floating Label”) | [`android:hint`](https://developer.android.com/reference/com/google/android/material/textfield/TextInputLayout#attr_TextInputLayout_android_hint)<br/>[`app:hintEnabled`](https://developer.android.com/reference/com/google/android/material/textfield/TextInputLayout#attr_TextInputLayout_hintEnabled)
+Error message                          | [`app:errorEnabled`](https://developer.android.com/reference/com/google/android/material/textfield/TextInputLayout#attr_TextInputLayout_errorEnabled)<br/>[`#setError(CharSequence)`](https://developer.android.com/reference/com/google/android/material/textfield/TextInputLayout#setError(java.lang.CharSequence))
+Helper text                            | [`app:helperTextEnabled`](https://developer.android.com/reference/com/google/android/material/textfield/TextInputLayout#attr_TextInputLayout_helperTextEnabled)<br/>[`app:helperText`](https://developer.android.com/reference/com/google/android/material/textfield/TextInputLayout#attr_TextInputLayout_helperText)
+Password redaction                     | [`app:passwordToggleEnabled`](https://developer.android.com/reference/com/google/android/material/textfield/TextInputLayout#attr_TextInputLayout_passwordToggleEnabled)<br/>[`app:passwordToggleDrawable`](https://developer.android.com/reference/com/google/android/material/textfield/TextInputLayout#attr_TextInputLayout_passwordToggleDrawable)
+Character counter                      | [`app:counterEnabled`](https://developer.android.com/reference/com/google/android/material/textfield/TextInputLayout#attr_TextInputLayout_counterEnabled)<br/>[`app:counterMaxLength`](https://developer.android.com/reference/com/google/android/material/textfield/TextInputLayout#attr_TextInputLayout_counterMaxLength)
 
 ## Notes about setting the hint
 
@@ -149,6 +140,16 @@ If a hint is specified on the child `EditText` in XML, then the
 `TextInputLayout` will use the `EditText`'s hint as its floating label. To
 specify or change the hint programmatically, make sure to call the `setHint()`
 method on `TextInputLayout`, instead of on the `EditText`.
+
+## Notes about using `TextInputLayout` and `TextInputEditText` programmatically
+
+If you construct a `TextInputEditText` programmatically, you should use
+`TextInputLayout's` context to create the view. This will allow TextInputLayout
+to pass along the appropriate styling to the `TextInputEditText`.
+
+```java
+TextInputEditText editText = new TextInputEditText(textInputLayout.getContext());
+```
 
 ## Related concepts
 

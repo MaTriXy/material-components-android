@@ -20,14 +20,16 @@ navigate to.
 
 ## Design & API Documentation
 
--   [Material Design guidelines: Bottom Navigation](https://material.io/guidelines/components/bottom-navigation.html)
+-   [Material Design guidelines: Bottom
+    Navigation](https://material.io/go/design-bottom-navigation)
     <!--{: .icon-list-item.icon-list-item--spec }-->
--   [Class definition](https://github.com/material-components/material-components-android/tree/master/lib/src/android/support/design/widget/BottomNavigationView.java)
+-   [Class
+    definition](https://github.com/material-components/material-components-android/tree/master/lib/java/com/google/android/material/bottomnavigation/BottomNavigationView.java)
     <!--{: .icon-list-item.icon-list-item--link }-->
     <!-- Styles for list items requiring icons instead of standard bullets. -->
--   [Class overview](https://developer.android.com/reference/android/support/design/widget/BottomNavigationView.html)
-    <!--{: .icon-list-item.icon-list-item--link }-->
-<!--{: .icon-list }-->
+-   [Class
+    overview](https://developer.android.com/reference/com/google/android/material/bottomnavigation/BottomNavigationView)
+    <!--{: .icon-list-item.icon-list-item--link }--> <!--{: .icon-list }-->
 
 ## Usage
 
@@ -40,7 +42,7 @@ with up to 5 navigation targets (`BottomNavigationView` does not support more th
 resource.
 4. Listen for selection events using `setOnNavigationItemSelectedListener(...)`.
 
-A typical layout file would look like this:
+A typical layout file would look something like this:
 
 ```xml
 <FrameLayout
@@ -51,56 +53,95 @@ A typical layout file would look like this:
 
   <!-- Main content -->
 
-  <android.support.design.widget.BottomNavigationView
+  <com.google.android.material.bottomnavigation.BottomNavigationView
       android:id="@+id/bottom_navigation"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_gravity="bottom"
-      app:itemBackground="@color/colorPrimary"
+      android:background="@color/colorPrimary"
       app:itemIconTint="@color/white"
       app:itemTextColor="@color/white"
-      app:menu="@menu/navigation_menu" />
+      app:menu="@menu/bottom_navigation_menu" />
 
 </FrameLayout>
 ```
 
-### Handling Enabled/States
+### Handling States
 
 The `app:itemIconTint` and `app:itemTextColor` take a
 [ColorStateList](https://developer.android.com/reference/android/content/res/ColorStateList.html)
-instead of a simple color, this means that you can write a selector for these
-colors that accounts for enabled/disabled status.
+instead of a simple color. This means that you can write a `selector` for these
+colors that responds to the items' state changes.
 
-For example, you could have a `navigation_colors.xml` that contains:
+For example, you could have a `bottom_navigation_colors.xml` `ColorStateList`
+that contains:
 
 ```xml
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
   <item
-      android:state_enabled="true"
-      android:color="@color/white" />
+      android:state_checked="true"
+      android:color="@color/colorPrimary" />
   <item
-      android:state_enabled="false"
-      android:color="@color/colorPrimaryDark" />
+      android:state_checked="false"
+      android:color="@color/grey" />
  </selector>
 ```
 
 And you would use it like this on your `BottomNavigationView`:
 
 ```xml
-<android.support.design.widget.BottomNavigationView
+<com.google.android.material.bottomnavigation.BottomNavigationView
     android:id="@+id/bottom_navigation"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_alignParentBottom="true"
-    app:itemBackground="@color/colorPrimary"
-    app:itemIconTint="@drawable/navigation_colors"
-    app:itemTextColor="@drawable/navigation_colors"
-    app:menu="@menu/navigation_menu" />
+    android:background="@color/white"
+    app:itemIconTint="@drawable/bottom_navigation_colors"
+    app:itemTextColor="@drawable/bottom_navigation_colors"
+    app:menu="@menu/bottom_navigation_menu" />
+```
+
+#### Material Styles
+
+Using `BottomNavigationView` with an updated Material theme
+(`Theme.MaterialComponents`) will provide the correct updated Material styles to
+your `BottomNavigationView`s by default. If you need to use an updated
+`BottomNavigationView` and your application theme does not inherit from an
+updated Material theme, or if you'd like to use a variant style, you can apply
+one of the updated Material styles directly to your widget in XML:
+
+#### Updated Material Style (Default)
+
+The default Material `BottomNavigationView` style consists of updated colors,
+text sizing, and behavior. The default BottomNavigationView has white background
+and icons and text colored with `colorPrimary`.
+
+```
+style="@style/Widget.MaterialComponents.BottomNavigationView"
+```
+
+##### Colored Material Style
+
+This style inherits from the default style but sets the colors to different
+mappings. Use the colored style to get a bottom navigation bar with a
+`colorPrimary` background and shades of white for the icon and text colors.
+
+```
+style="@style/Widget.MaterialComponents.BottomNavigationView.Colored"
+```
+
+### Legacy Style
+
+You can set this style on your `BottomNavigationView` if you'd like a bottom
+navigation bar with the old behavior. However, we recommend you use the updated
+Material style where possible.
+
+```
+style="@style/Widget.Design.BottomNavigationView"
 ```
 
 ## Related Concepts
 
-There are other navigation patterns you should be aware of
+There are other navigation patterns you should be aware of:
 
 -   [Hierarchical navigation](https://developer.android.com/training/implementing-navigation/index.html).
     *See also [Navigation with Back and
