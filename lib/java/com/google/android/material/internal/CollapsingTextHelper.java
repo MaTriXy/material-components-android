@@ -16,11 +16,10 @@
 
 package com.google.android.material.internal;
 
-import static android.support.annotation.RestrictTo.Scope.LIBRARY_GROUP;
+import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
 
 import android.animation.TimeInterpolator;
 import android.content.res.ColorStateList;
-import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -29,15 +28,17 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.os.Build;
-import android.support.annotation.ColorInt;
-import android.support.annotation.RestrictTo;
-import android.support.annotation.VisibleForTesting;
+import androidx.annotation.ColorInt;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 import com.google.android.material.animation.AnimationUtils;
-import android.support.v4.math.MathUtils;
-import android.support.v4.text.TextDirectionHeuristicsCompat;
-import android.support.v4.view.GravityCompat;
-import android.support.v4.view.ViewCompat;
-import android.support.v7.widget.TintTypedArray;
+import com.google.android.material.resources.CancelableFontCallback;
+import com.google.android.material.resources.CancelableFontCallback.ApplyFont;
+import com.google.android.material.resources.TextAppearance;
+import androidx.core.math.MathUtils;
+import androidx.core.text.TextDirectionHeuristicsCompat;
+import androidx.core.view.GravityCompat;
+import androidx.core.view.ViewCompat;
 import android.text.TextPaint;
 import android.text.TextUtils;
 import android.view.Gravity;
@@ -86,6 +87,8 @@ public final class CollapsingTextHelper {
   private Typeface collapsedTypeface;
   private Typeface expandedTypeface;
   private Typeface currentTypeface;
+  private CancelableFontCallback expandedFontCallback;
+  private CancelableFontCallback collapsedFontCallback;
 
   private CharSequence text;
   private CharSequence textToDraw;
@@ -113,12 +116,12 @@ public final class CollapsingTextHelper {
   private float collapsedShadowRadius;
   private float collapsedShadowDx;
   private float collapsedShadowDy;
-  private int collapsedShadowColor;
+  private ColorStateList collapsedShadowColor;
 
   private float expandedShadowRadius;
   private float expandedShadowDx;
   private float expandedShadowDy;
-  private int expandedShadowColor;
+  private ColorStateList expandedShadowColor;
 
   public CollapsingTextHelper(View view) {
     this.view = view;
@@ -177,12 +180,20 @@ public final class CollapsingTextHelper {
     }
   }
 
+  public void setExpandedBounds(Rect bounds) {
+    setExpandedBounds(bounds.left, bounds.top, bounds.right, bounds.bottom);
+  }
+
   public void setCollapsedBounds(int left, int top, int right, int bottom) {
     if (!rectEquals(collapsedBounds, left, top, right, bottom)) {
       collapsedBounds.set(left, top, right, bottom);
       boundsChanged = true;
       onBoundsChanged();
     }
+  }
+
+  public void setCollapsedBounds(Rect bounds) {
+    setCollapsedBounds(bounds.left, bounds.top, bounds.right, bounds.bottom);
   }
 
   public float calculateCollapsedTextWidth() {
@@ -245,102 +256,118 @@ public final class CollapsingTextHelper {
   }
 
   public void setCollapsedTextAppearance(int resId) {
-    TintTypedArray a =
-        TintTypedArray.obtainStyledAttributes(
-            view.getContext(), resId, android.support.v7.appcompat.R.styleable.TextAppearance);
-    if (a.hasValue(android.support.v7.appcompat.R.styleable.TextAppearance_android_textColor)) {
-      collapsedTextColor =
-          a.getColorStateList(
-              android.support.v7.appcompat.R.styleable.TextAppearance_android_textColor);
-    }
-    if (a.hasValue(android.support.v7.appcompat.R.styleable.TextAppearance_android_textSize)) {
-      collapsedTextSize =
-          a.getDimensionPixelSize(
-              android.support.v7.appcompat.R.styleable.TextAppearance_android_textSize,
-              (int) collapsedTextSize);
-    }
-    collapsedShadowColor =
-        a.getInt(android.support.v7.appcompat.R.styleable.TextAppearance_android_shadowColor, 0);
-    collapsedShadowDx =
-        a.getFloat(android.support.v7.appcompat.R.styleable.TextAppearance_android_shadowDx, 0);
-    collapsedShadowDy =
-        a.getFloat(android.support.v7.appcompat.R.styleable.TextAppearance_android_shadowDy, 0);
-    collapsedShadowRadius =
-        a.getFloat(android.support.v7.appcompat.R.styleable.TextAppearance_android_shadowRadius, 0);
-    a.recycle();
+    TextAppearance textAppearance = new TextAppearance(view.getContext(), resId);
 
-    if (Build.VERSION.SDK_INT >= 16) {
-      collapsedTypeface = readFontFamilyTypeface(resId);
+    if (textAppearance.textColor != null) {
+      collapsedTextColor = textAppearance.textColor;
     }
+    if (textAppearance.textSize != 0) {
+      collapsedTextSize = textAppearance.textSize;
+    }
+    if (textAppearance.shadowColor != null) {
+      collapsedShadowColor = textAppearance.shadowColor;
+    }
+    collapsedShadowDx = textAppearance.shadowDx;
+    collapsedShadowDy = textAppearance.shadowDy;
+    collapsedShadowRadius = textAppearance.shadowRadius;
+
+    // Cancel pending async fetch, if any, and replace with a new one.
+    if (collapsedFontCallback != null) {
+      collapsedFontCallback.cancel();
+    }
+    collapsedFontCallback =
+        new CancelableFontCallback(
+            new ApplyFont() {
+              @Override
+              public void apply(Typeface font) {
+                setCollapsedTypeface(font);
+              }
+            },
+            textAppearance.getFallbackFont());
+    textAppearance.getFontAsync(view.getContext(), collapsedFontCallback);
 
     recalculate();
   }
 
   public void setExpandedTextAppearance(int resId) {
-    TintTypedArray a =
-        TintTypedArray.obtainStyledAttributes(
-            view.getContext(), resId, android.support.v7.appcompat.R.styleable.TextAppearance);
-    if (a.hasValue(android.support.v7.appcompat.R.styleable.TextAppearance_android_textColor)) {
-      expandedTextColor =
-          a.getColorStateList(
-              android.support.v7.appcompat.R.styleable.TextAppearance_android_textColor);
+    TextAppearance textAppearance = new TextAppearance(view.getContext(), resId);
+    if (textAppearance.textColor != null) {
+      expandedTextColor = textAppearance.textColor;
     }
-    if (a.hasValue(android.support.v7.appcompat.R.styleable.TextAppearance_android_textSize)) {
-      expandedTextSize =
-          a.getDimensionPixelSize(
-              android.support.v7.appcompat.R.styleable.TextAppearance_android_textSize,
-              (int) expandedTextSize);
+    if (textAppearance.textSize != 0) {
+      expandedTextSize = textAppearance.textSize;
     }
-    expandedShadowColor =
-        a.getInt(android.support.v7.appcompat.R.styleable.TextAppearance_android_shadowColor, 0);
-    expandedShadowDx =
-        a.getFloat(android.support.v7.appcompat.R.styleable.TextAppearance_android_shadowDx, 0);
-    expandedShadowDy =
-        a.getFloat(android.support.v7.appcompat.R.styleable.TextAppearance_android_shadowDy, 0);
-    expandedShadowRadius =
-        a.getFloat(android.support.v7.appcompat.R.styleable.TextAppearance_android_shadowRadius, 0);
-    a.recycle();
+    if (textAppearance.shadowColor != null) {
+      expandedShadowColor = textAppearance.shadowColor;
+    }
+    expandedShadowDx = textAppearance.shadowDx;
+    expandedShadowDy = textAppearance.shadowDy;
+    expandedShadowRadius = textAppearance.shadowRadius;
 
-    if (Build.VERSION.SDK_INT >= 16) {
-      expandedTypeface = readFontFamilyTypeface(resId);
+    // Cancel pending async fetch, if any, and replace with a new one.
+    if (expandedFontCallback != null) {
+      expandedFontCallback.cancel();
     }
+    expandedFontCallback =
+        new CancelableFontCallback(
+            new ApplyFont() {
+              @Override
+              public void apply(Typeface font) {
+                setExpandedTypeface(font);
+              }
+            },
+            textAppearance.getFallbackFont());
+    textAppearance.getFontAsync(view.getContext(), expandedFontCallback);
 
     recalculate();
   }
 
-  private Typeface readFontFamilyTypeface(int resId) {
-    final TypedArray a =
-        view.getContext().obtainStyledAttributes(resId, new int[] {android.R.attr.fontFamily});
-    try {
-      final String family = a.getString(0);
-      if (family != null) {
-        return Typeface.create(family, Typeface.NORMAL);
-      }
-    } finally {
-      a.recycle();
-    }
-    return null;
-  }
-
-  @SuppressWarnings("ReferenceEquality") // Matches the Typeface comparison in TextView
   public void setCollapsedTypeface(Typeface typeface) {
-    if (collapsedTypeface != typeface) {
-      collapsedTypeface = typeface;
+    if (setCollapsedTypefaceInternal(typeface)) {
       recalculate();
     }
   }
 
-  @SuppressWarnings("ReferenceEquality") // Matches the Typeface comparison in TextView
   public void setExpandedTypeface(Typeface typeface) {
-    if (expandedTypeface != typeface) {
-      expandedTypeface = typeface;
+    if (setExpandedTypefaceInternal(typeface)) {
       recalculate();
     }
   }
 
   public void setTypefaces(Typeface typeface) {
-    collapsedTypeface = expandedTypeface = typeface;
-    recalculate();
+    boolean collapsedFontChanged = setCollapsedTypefaceInternal(typeface);
+    boolean expandedFontChanged = setExpandedTypefaceInternal(typeface);
+    if (collapsedFontChanged || expandedFontChanged) {
+      recalculate();
+    }
+  }
+
+  @SuppressWarnings("ReferenceEquality") // Matches the Typeface comparison in TextView
+  private boolean setCollapsedTypefaceInternal(Typeface typeface) {
+    // Explicit Typeface setting cancels pending async fetch, if any, to avoid old font overriding
+    // already updated one when async op comes back after a while.
+    if (collapsedFontCallback != null) {
+      collapsedFontCallback.cancel();
+    }
+    if (collapsedTypeface != typeface) {
+      collapsedTypeface = typeface;
+      return true;
+    }
+    return false;
+  }
+
+  @SuppressWarnings("ReferenceEquality") // Matches the Typeface comparison in TextView
+  private boolean setExpandedTypefaceInternal(Typeface typeface) {
+    // Explicit Typeface setting cancels pending async fetch, if any, to avoid old font overriding
+    // already updated one when async op comes back after a while.
+    if (expandedFontCallback != null) {
+      expandedFontCallback.cancel();
+    }
+    if (expandedTypeface != typeface) {
+      expandedTypeface = typeface;
+      return true;
+    }
+    return false;
   }
 
   public Typeface getCollapsedTypeface() {
@@ -420,28 +447,31 @@ public final class CollapsingTextHelper {
         lerp(expandedShadowRadius, collapsedShadowRadius, fraction, null),
         lerp(expandedShadowDx, collapsedShadowDx, fraction, null),
         lerp(expandedShadowDy, collapsedShadowDy, fraction, null),
-        blendColors(expandedShadowColor, collapsedShadowColor, fraction));
+        blendColors(
+            getCurrentColor(expandedShadowColor), getCurrentColor(collapsedShadowColor), fraction));
 
     ViewCompat.postInvalidateOnAnimation(view);
   }
 
   @ColorInt
   private int getCurrentExpandedTextColor() {
-    if (state != null) {
-      return expandedTextColor.getColorForState(state, 0);
-    } else {
-      return expandedTextColor.getDefaultColor();
-    }
+    return getCurrentColor(expandedTextColor);
   }
 
   @ColorInt
-  @VisibleForTesting
   public int getCurrentCollapsedTextColor() {
-    if (state != null) {
-      return collapsedTextColor.getColorForState(state, 0);
-    } else {
-      return collapsedTextColor.getDefaultColor();
+    return getCurrentColor(collapsedTextColor);
+  }
+
+  @ColorInt
+  private int getCurrentColor(@Nullable ColorStateList colorStateList) {
+    if (colorStateList == null) {
+      return 0;
     }
+    if (state != null) {
+      return colorStateList.getColorForState(state, 0);
+    }
+    return colorStateList.getDefaultColor();
   }
 
   private void calculateBaseOffsets() {
@@ -713,7 +743,7 @@ public final class CollapsingTextHelper {
    * @param text
    */
   public void setText(CharSequence text) {
-    if (text == null || !text.equals(this.text)) {
+    if (text == null || !TextUtils.equals(this.text, text)) {
       this.text = text;
       textToDraw = null;
       clearTexture();

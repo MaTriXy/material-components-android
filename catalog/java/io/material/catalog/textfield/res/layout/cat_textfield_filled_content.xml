@@ -22,7 +22,6 @@
     android:layout_height="wrap_content"
     android:orientation="vertical">
   <com.google.android.material.textfield.TextInputLayout
-      style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_margin="4dp"
@@ -68,5 +67,24 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:inputType="textPassword"/>
+  </com.google.android.material.textfield.TextInputLayout>
+
+  <com.google.android.material.textfield.TextInputLayout
+      android:id="@+id/text_input_demo_box_filled_start_icon"
+      style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_margin="4dp"
+      android:hint="@string/cat_textfield_label"
+      app:counterEnabled="true"
+      app:counterMaxLength="10"
+      app:errorEnabled="true"
+      app:helperText="@string/cat_textfield_filled_start_icon_helper_text"
+      app:helperTextEnabled="true">
+    <com.google.android.material.textfield.TextInputEditText
+        android:id="@+id/edit_text_start_icon"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:drawablePadding="8dp"/>
   </com.google.android.material.textfield.TextInputLayout>
 </LinearLayout>

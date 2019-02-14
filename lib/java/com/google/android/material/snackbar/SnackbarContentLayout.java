@@ -17,12 +17,13 @@ package com.google.android.material.snackbar;
 
 import com.google.android.material.R;
 
-import static android.support.annotation.RestrictTo.Scope.LIBRARY_GROUP;
+import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
 
 import android.content.Context;
 import android.content.res.TypedArray;
-import android.support.annotation.RestrictTo;
-import android.support.v4.view.ViewCompat;
+import androidx.annotation.RestrictTo;
+import com.google.android.material.color.MaterialColors;
+import androidx.core.view.ViewCompat;
 import android.util.AttributeSet;
 import android.view.View;
 import android.widget.Button;
@@ -64,6 +65,16 @@ public class SnackbarContentLayout extends LinearLayout implements ContentViewCa
 
   public Button getActionView() {
     return actionView;
+  }
+
+  void updateActionTextColorAlphaIfNeeded(float actionTextColorAlpha) {
+    if (actionTextColorAlpha != 1) {
+      int originalActionTextColor = actionView.getCurrentTextColor();
+      int colorSurface = MaterialColors.getColor(this, R.attr.colorSurface);
+      int actionTextColor =
+          MaterialColors.layer(colorSurface, originalActionTextColor, actionTextColorAlpha);
+      actionView.setTextColor(actionTextColor);
+    }
   }
 
   @Override

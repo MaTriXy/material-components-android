@@ -39,19 +39,20 @@ a `TextInputEditText` as a direct child.
 ```xml
 <com.google.android.material.textfield.TextInputLayout
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:hint="@string/hint_text">
 
   <com.google.android.material.textfield.TextInputEditText
       android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:hint="@string/hint_text"/>
+      android:layout_height="wrap_content"/>
 
 </com.google.android.material.textfield.TextInputLayout>
 ```
 
-Note: An `EditText` may work for your input text component. However, using
-`TextInputEditText` allows `TextInputLayout` greater control over the visual
-aspects of the input text and provides accessibility support for the text field.
+Note: A `TextInputEditText` should be used instead of an `EditText` as your
+input text component. An `EditText` might work, but `TextInputEditText` provides
+accessibility support for the text field and allows `TextInputLayout` greater
+control over the visual aspects of the input text.
 
 ### Material Styles
 
@@ -74,10 +75,15 @@ style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
 To change the background color of a filled text field, you can set the
 `boxBackgroundColor` attribute on your `TextInputLayout`.
 
-#### Outline Box
+Note: When using a filled text field with an `EditText` child that is not a
+`TextInputEditText`, make sure to set the `EditText`'s `android:background` to
+`@null`. This allows `TextInputLayout` to set a filled background on the
+`EditText`.
 
-Outline text fields have a stroked border and are less emphasized. To use an
-outline text field, apply the following style to your `TextInputLayout`:
+#### Outlined Box
+
+Outlined text fields have a stroked border and are less emphasized. To use an
+outlined text field, apply the following style to your `TextInputLayout`:
 
 ```xml
 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -86,6 +92,11 @@ style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
 To change the stroke color and width for an outline text field, you can set the
 `boxStrokeColor` and `boxStrokeWidth` attributes on your `TextInputLayout`,
 respectively.
+
+Note: When using an outlined text field with an `EditText` child that is not a
+`TextInputEditText`, make sure to set the `EditText`'s `android:background` to
+`@null`. This allows `TextInputLayout` to set an outline background on the
+`EditText`.
 
 #### Height Variations
 
@@ -136,16 +147,19 @@ Character counter                      | [`app:counterEnabled`](https://develope
 
 ## Notes about setting the hint
 
-If a hint is specified on the child `EditText` in XML, then the
-`TextInputLayout` will use the `EditText`'s hint as its floating label. To
-specify or change the hint programmatically, make sure to call the `setHint()`
-method on `TextInputLayout`, instead of on the `EditText`.
+The hint should be set on `TextInputLayout`, rather than the `TextInputEditText`
+or `EditText`. If a hint is specified on the child `EditText` in XML, the
+`TextInputLayout` might still work correctly; `TextInputLayout` will use the
+`EditText`'s hint as its floating label. However, future calls to modify the
+hint will not update `TextInputLayout`'s hint. To avoid unintended behavior,
+call `setHint()` and `getHint()` on `TextInputLayout`, instead of on `EditText`.
 
-## Notes about using `TextInputLayout` and `TextInputEditText` programmatically
+## Notes about using `TextInputLayout` programmatically
 
-If you construct a `TextInputEditText` programmatically, you should use
-`TextInputLayout's` context to create the view. This will allow TextInputLayout
-to pass along the appropriate styling to the `TextInputEditText`.
+If you construct the `EditText` child of a `TextInputLayout` programmatically,
+you should use `TextInputLayout's` context to create the view. This will allow
+`TextInputLayout` to pass along the appropriate styling to the
+`TextInputEditText` or `EditText`.
 
 ```java
 TextInputEditText editText = new TextInputEditText(textInputLayout.getContext());

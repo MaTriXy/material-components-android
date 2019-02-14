@@ -16,29 +16,28 @@
 
 package com.google.android.material.floatingactionbutton;
 
+import com.google.android.material.R;
+
 import android.animation.Animator;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.animation.StateListAnimator;
+import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
-import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.InsetDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.os.Build;
 import android.os.Build.VERSION_CODES;
-import android.support.annotation.NonNull;
-import android.support.annotation.RequiresApi;
-import com.google.android.material.internal.CircularBorderDrawable;
-import com.google.android.material.internal.CircularBorderDrawableLollipop;
-import com.google.android.material.internal.VisibilityAwareImageButton;
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import com.google.android.material.ripple.RippleUtils;
-import com.google.android.material.shadow.ShadowDrawableWrapper;
 import com.google.android.material.shadow.ShadowViewDelegate;
-import android.support.v4.graphics.drawable.DrawableCompat;
+import com.google.android.material.shape.MaterialShapeDrawable;
+import com.google.android.material.shape.ShapeAppearanceModel;
+import androidx.core.content.ContextCompat;
 import android.view.View;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,10 +45,8 @@ import java.util.List;
 @RequiresApi(21)
 class FloatingActionButtonImplLollipop extends FloatingActionButtonImpl {
 
-  private InsetDrawable insetDrawable;
-
   FloatingActionButtonImplLollipop(
-      VisibilityAwareImageButton view, ShadowViewDelegate shadowViewDelegate) {
+      FloatingActionButton view, ShadowViewDelegate shadowViewDelegate) {
     super(view, shadowViewDelegate);
   }
 
@@ -60,10 +57,10 @@ class FloatingActionButtonImplLollipop extends FloatingActionButtonImpl {
       ColorStateList rippleColor,
       int borderWidth) {
     // Now we need to tint the shape background with the tint
-    shapeDrawable = DrawableCompat.wrap(createShapeDrawable());
-    DrawableCompat.setTintList(shapeDrawable, backgroundTint);
+    shapeDrawable = createShapeDrawable();
+    shapeDrawable.setTintList(backgroundTint);
     if (backgroundTintMode != null) {
-      DrawableCompat.setTintMode(shapeDrawable, backgroundTintMode);
+      shapeDrawable.setTintMode(backgroundTintMode);
     }
 
     final Drawable rippleContent;
@@ -80,8 +77,7 @@ class FloatingActionButtonImplLollipop extends FloatingActionButtonImpl {
             RippleUtils.convertToRippleDrawableColor(rippleColor), rippleContent, null);
 
     contentBackground = rippleDrawable;
-
-    shadowViewDelegate.setBackgroundDrawable(rippleDrawable);
+    shadowViewDelegate.setBackgroundDrawable(contentBackground);
   }
 
   @Override
@@ -145,7 +141,7 @@ class FloatingActionButtonImplLollipop extends FloatingActionButtonImpl {
       view.setStateListAnimator(stateListAnimator);
     }
 
-    if (shadowViewDelegate.isCompatPaddingEnabled()) {
+    if (shouldAddPadding()) {
       updatePadding();
     }
   }
@@ -172,15 +168,8 @@ class FloatingActionButtonImplLollipop extends FloatingActionButtonImpl {
   }
 
   @Override
-  void onPaddingUpdated(Rect padding) {
-    if (shadowViewDelegate.isCompatPaddingEnabled()) {
-      insetDrawable =
-          new InsetDrawable(
-              rippleDrawable, padding.left, padding.top, padding.right, padding.bottom);
-      shadowViewDelegate.setBackgroundDrawable(insetDrawable);
-    } else {
-      shadowViewDelegate.setBackgroundDrawable(rippleDrawable);
-    }
+  boolean shouldAddPadding() {
+    return shadowViewDelegate.isCompatPaddingEnabled() || !isAccessible();
   }
 
   @Override
@@ -200,7 +189,6 @@ class FloatingActionButtonImplLollipop extends FloatingActionButtonImpl {
         view.setTranslationZ(0);
       }
     }
-    ;
   }
 
   @Override
@@ -209,34 +197,43 @@ class FloatingActionButtonImplLollipop extends FloatingActionButtonImpl {
   }
 
   @Override
+  void updateFromViewRotation() {
+    // no-op
+  }
+
+  @Override
   boolean requirePreDrawListener() {
     return false;
   }
 
-  @Override
-  CircularBorderDrawable newCircularDrawable() {
-    return new CircularBorderDrawableLollipop();
+  BorderDrawable createBorderDrawable(int borderWidth, ColorStateList backgroundTint) {
+    final Context context = view.getContext();
+    BorderDrawable borderDrawable =  new BorderDrawable(shapeAppearance);
+    borderDrawable.setGradientColors(
+        ContextCompat.getColor(context, R.color.design_fab_stroke_top_outer_color),
+        ContextCompat.getColor(context, R.color.design_fab_stroke_top_inner_color),
+        ContextCompat.getColor(context, R.color.design_fab_stroke_end_inner_color),
+        ContextCompat.getColor(context, R.color.design_fab_stroke_end_outer_color));
+    borderDrawable.setBorderWidth(borderWidth);
+    borderDrawable.setBorderTint(backgroundTint);
+    return borderDrawable;
   }
 
   @Override
-  GradientDrawable newGradientDrawableForShape() {
-    return new AlwaysStatefulGradientDrawable();
+  MaterialShapeDrawable createShapeDrawable() {
+    if (usingDefaultCorner) {
+      shapeAppearance.setCornerRadius(view.getSizeDimension() / 2);
+    }
+    return new AlwaysStatefulMaterialShapeDrawable(shapeAppearance);
   }
 
   @Override
   void getPadding(Rect rect) {
     if (shadowViewDelegate.isCompatPaddingEnabled()) {
-      final float radius = shadowViewDelegate.getRadius();
-      final float maxShadowSize = getElevation() + pressedTranslationZ;
-      final int hPadding =
-          (int)
-              Math.ceil(
-                  ShadowDrawableWrapper.calculateHorizontalPadding(maxShadowSize, radius, false));
-      final int vPadding =
-          (int)
-              Math.ceil(
-                  ShadowDrawableWrapper.calculateVerticalPadding(maxShadowSize, radius, false));
-      rect.set(hPadding, vPadding, hPadding, vPadding);
+      super.getPadding(rect);
+    } else if (!isAccessible()) {
+      int minPadding = (minTouchTargetSize - view.getSizeDimension()) / 2;
+      rect.set(minPadding, minPadding, minPadding, minPadding);
     } else {
       rect.set(0, 0, 0, 0);
     }
@@ -248,7 +245,12 @@ class FloatingActionButtonImplLollipop extends FloatingActionButtonImpl {
    * work for state changes. We workaround it by saying that we are always stateful. If we don't
    * have a stateful tint, the change is ignored anyway.
    */
-  static class AlwaysStatefulGradientDrawable extends GradientDrawable {
+  static class AlwaysStatefulMaterialShapeDrawable extends MaterialShapeDrawable {
+
+    AlwaysStatefulMaterialShapeDrawable(ShapeAppearanceModel shapeAppearanceModel) {
+      super(shapeAppearanceModel);
+    }
+
     @Override
     public boolean isStateful() {
       return true;

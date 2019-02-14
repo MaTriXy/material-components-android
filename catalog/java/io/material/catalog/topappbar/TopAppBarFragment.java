@@ -18,7 +18,8 @@ package io.material.catalog.topappbar;
 
 import io.material.catalog.R;
 
-import android.support.v4.app.Fragment;
+import android.content.Intent;
+import androidx.fragment.app.Fragment;
 import dagger.Provides;
 import dagger.android.ContributesAndroidInjector;
 import dagger.multibindings.IntoSet;
@@ -70,7 +71,27 @@ public class TopAppBarFragment extends DemoLandingFragment {
             return new TopAppBarCollapsingDemoFragment();
           }
         });
+    additionalDemos.addAll(getActionBarDemos());
     return additionalDemos;
+  }
+
+  public List<Demo> getActionBarDemos() {
+    List<Demo> demos = new ArrayList<>();
+    demos.add(
+        new Demo(R.string.cat_topappbar_action_bar_title) {
+          @Override
+          public Intent createActivityIntent() {
+            return new Intent(getContext(), TopAppBarActionBarDemoActivity.class);
+          }
+        });
+    demos.add(
+        new Demo(R.string.cat_topappbar_dark_action_bar_title) {
+          @Override
+          public Intent createActivityIntent() {
+            return new Intent(getContext(), TopAppBarDarkActionBarDemoActivity.class);
+          }
+        });
+    return demos;
   }
 
   /** The Dagger module for {@link TopAppBarFragment} dependencies. */
@@ -85,7 +106,7 @@ public class TopAppBarFragment extends DemoLandingFragment {
     @Provides
     @ActivityScope
     static FeatureDemo provideFeatureDemo() {
-      return new FeatureDemo(R.string.cat_topappbar_title, R.drawable.ic_topappbar_24px) {
+      return new FeatureDemo(R.string.cat_topappbar_title, R.drawable.ic_topappbar) {
         @Override
         public Fragment createFragment() {
           return new TopAppBarFragment();

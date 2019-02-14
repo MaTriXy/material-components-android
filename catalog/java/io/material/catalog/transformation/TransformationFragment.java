@@ -18,7 +18,7 @@ package io.material.catalog.transformation;
 
 import io.material.catalog.R;
 
-import android.support.v4.app.Fragment;
+import androidx.fragment.app.Fragment;
 import dagger.Provides;
 import dagger.android.ContributesAndroidInjector;
 import dagger.multibindings.IntoSet;
@@ -65,7 +65,7 @@ public class TransformationFragment extends DemoLandingFragment {
     static FeatureDemo provideFeatureDemo() {
       return new FeatureDemo(
           R.string.cat_transformation_title,
-          R.drawable.ic_animation_24px) {
+          R.drawable.ic_transformation) {
         @Override
         public Fragment createFragment() {
           return new TransformationFragment();

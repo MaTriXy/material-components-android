@@ -18,10 +18,10 @@ package com.google.android.material.tabs;
 
 import com.google.android.material.R;
 
-import static android.support.annotation.RestrictTo.Scope.LIBRARY_GROUP;
-import static android.support.v4.view.ViewPager.SCROLL_STATE_DRAGGING;
-import static android.support.v4.view.ViewPager.SCROLL_STATE_IDLE;
-import static android.support.v4.view.ViewPager.SCROLL_STATE_SETTLING;
+import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
+import static androidx.viewpager.widget.ViewPager.SCROLL_STATE_DRAGGING;
+import static androidx.viewpager.widget.ViewPager.SCROLL_STATE_IDLE;
+import static androidx.viewpager.widget.ViewPager.SCROLL_STATE_SETTLING;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -44,34 +44,34 @@ import android.graphics.drawable.RippleDrawable;
 import android.os.Build;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
-import android.support.annotation.BoolRes;
-import android.support.annotation.ColorInt;
-import android.support.annotation.ColorRes;
-import android.support.annotation.Dimension;
-import android.support.annotation.DrawableRes;
-import android.support.annotation.IntDef;
-import android.support.annotation.LayoutRes;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.annotation.RestrictTo;
-import android.support.annotation.StringRes;
+import androidx.annotation.BoolRes;
+import androidx.annotation.ColorInt;
+import androidx.annotation.ColorRes;
+import androidx.annotation.Dimension;
+import androidx.annotation.DrawableRes;
+import androidx.annotation.IntDef;
+import androidx.annotation.LayoutRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.StringRes;
 import com.google.android.material.animation.AnimationUtils;
 import com.google.android.material.internal.ThemeEnforcement;
 import com.google.android.material.internal.ViewUtils;
 import com.google.android.material.resources.MaterialResources;
 import com.google.android.material.ripple.RippleUtils;
-import android.support.v4.graphics.drawable.DrawableCompat;
-import android.support.v4.util.Pools;
-import android.support.v4.view.GravityCompat;
-import android.support.v4.view.MarginLayoutParamsCompat;
-import android.support.v4.view.PagerAdapter;
-import android.support.v4.view.PointerIconCompat;
-import android.support.v4.view.ViewCompat;
-import android.support.v4.view.ViewPager;
-import android.support.v4.widget.TextViewCompat;
-import android.support.v7.app.ActionBar;
-import android.support.v7.content.res.AppCompatResources;
-import android.support.v7.widget.TooltipCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
+import androidx.core.util.Pools;
+import androidx.core.view.GravityCompat;
+import androidx.core.view.MarginLayoutParamsCompat;
+import androidx.viewpager.widget.PagerAdapter;
+import androidx.core.view.PointerIconCompat;
+import androidx.core.view.ViewCompat;
+import androidx.viewpager.widget.ViewPager;
+import androidx.core.widget.TextViewCompat;
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.content.res.AppCompatResources;
+import androidx.appcompat.widget.TooltipCompat;
 import android.text.Layout;
 import android.text.TextUtils;
 import android.util.AttributeSet;
@@ -92,6 +92,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 
 /**
@@ -131,7 +132,7 @@ import java.util.Iterator;
  *
  * <h3>ViewPager integration</h3>
  *
- * <p>If you're using a {@link android.support.v4.view.ViewPager} together with this layout, you can
+ * <p>If you're using a {@link androidx.viewpager.widget.ViewPager} together with this layout, you can
  * call {@link #setupWithViewPager(ViewPager)} to link the two together. This layout will be
  * automatically populated from the {@link PagerAdapter}'s page titles.
  *
@@ -139,7 +140,7 @@ import java.util.Iterator;
  * to the ViewPager in a layout resource file like so:
  *
  * <pre>
- * &lt;android.support.v4.view.ViewPager
+ * &lt;androidx.viewpager.widget.ViewPager
  *     android:layout_width=&quot;match_parent&quot;
  *     android:layout_height=&quot;match_parent&quot;&gt;
  *
@@ -148,7 +149,7 @@ import java.util.Iterator;
  *         android:layout_height=&quot;wrap_content&quot;
  *         android:layout_gravity=&quot;top&quot; /&gt;
  *
- * &lt;/android.support.v4.view.ViewPager&gt;
+ * &lt;/androidx.viewpager.widget.ViewPager&gt;
  * </pre>
  *
  * @see <a href="http://www.google.com/design/spec/components/tabs.html">Tabs</a>
@@ -217,8 +218,29 @@ public class TabLayout extends HorizontalScrollView {
   public @interface Mode {}
 
   /**
+   * If a tab is instantiated with {@link TabLayout#setText(CharSequence)}, and this mode is set,
+   * the text will be saved and utilized for the content description, but no visible labels will be
+   * created.
+   *
+   * @see #setTabLabelVisibility(int)
+   */
+  public static final int TAB_LABEL_VISIBILITY_UNLABELED = 0;
+
+  /**
+   * This mode is set by default. If a tab is instantiated with {@link
+   * TabLayout#setText(CharSequence)}, a visible label will be created.
+   *
+   * @see #setTabLabelVisibility(int)
+   */
+  public static final int TAB_LABEL_VISIBILITY_LABELED = 1;
+
+  /** @hide */
+  @IntDef(value = {TAB_LABEL_VISIBILITY_UNLABELED, TAB_LABEL_VISIBILITY_LABELED})
+  public @interface LabelVisibility {}
+
+  /**
    * Gravity used to fill the {@link TabLayout} as much as possible. This option only takes effect
-   * when used with {@link #MODE_FIXED}.
+   * when used with {@link #MODE_FIXED} on non-landscape screens less than 600dp wide.
    *
    * @see #setTabGravity(int)
    * @see #getTabGravity()
@@ -295,7 +317,7 @@ public class TabLayout extends HorizontalScrollView {
   /** @hide */
   @RestrictTo(LIBRARY_GROUP)
   @IntDef(
-      value = {
+    value = {
       INDICATOR_GRAVITY_BOTTOM,
       INDICATOR_GRAVITY_CENTER,
       INDICATOR_GRAVITY_TOP,
@@ -306,7 +328,32 @@ public class TabLayout extends HorizontalScrollView {
   public @interface TabIndicatorGravity {}
 
   /** Callback interface invoked when a tab's selection state changes. */
-  //TODO: Remove this base listener when the widget migration is finished.
+  public interface OnTabSelectedListener {
+    /**
+     * Called when a tab enters the selected state.
+     *
+     * @param tab The tab that was selected
+     */
+    public void onTabSelected(Tab tab);
+
+    /**
+     * Called when a tab exits the selected state.
+     *
+     * @param tab The tab that was unselected
+     */
+    public void onTabUnselected(Tab tab);
+
+    /**
+     * Called when a tab that is already selected is chosen again by the user. Some applications may
+     * use this action to return to the top level of a category.
+     *
+     * @param tab The tab that was reselected.
+     */
+    public void onTabReselected(Tab tab);
+  }
+
+  /** Callback interface invoked when a tab's selection state changes. */
+  @Deprecated
   public interface BaseOnTabSelectedListener<T extends Tab> {
     /**
      * Called when a tab enters the selected state.
@@ -329,11 +376,6 @@ public class TabLayout extends HorizontalScrollView {
      * @param tab The tab that was reselected.
      */
     public void onTabReselected(T tab);
-  }
-
-  /** Callback interface invoked when a tab's selection state changes. */
-  public interface OnTabSelectedListener extends BaseOnTabSelectedListener<Tab> {
-
   }
 
   private final ArrayList<Tab> tabs = new ArrayList<>();
@@ -375,9 +417,11 @@ public class TabLayout extends HorizontalScrollView {
   boolean tabIndicatorFullWidth;
   boolean unboundedRipple;
 
-  private BaseOnTabSelectedListener selectedListener;
-  private final ArrayList<BaseOnTabSelectedListener> selectedListeners = new ArrayList<>();
-  private BaseOnTabSelectedListener currentVpSelectedListener;
+  private OnTabSelectedListener selectedListener;
+  private final ArrayList<OnTabSelectedListener> selectedListeners = new ArrayList<>();
+  private OnTabSelectedListener currentVpSelectedListener;
+  private final HashMap<BaseOnTabSelectedListener<? extends Tab>, OnTabSelectedListener>
+      selectedListenerMap = new HashMap<>();
 
   private ValueAnimator scrollAnimator;
 
@@ -415,7 +459,12 @@ public class TabLayout extends HorizontalScrollView {
 
     TypedArray a =
         ThemeEnforcement.obtainStyledAttributes(
-            context, attrs, R.styleable.TabLayout, defStyleAttr, R.style.Widget_Design_TabLayout);
+            context,
+            attrs,
+            R.styleable.TabLayout,
+            defStyleAttr,
+            R.style.Widget_Design_TabLayout,
+            R.styleable.TabLayout_tabTextAppearance);
 
     slidingTabIndicator.setSelectedIndicatorHeight(
         a.getDimensionPixelSize(R.styleable.TabLayout_tabIndicatorHeight, -1));
@@ -444,16 +493,16 @@ public class TabLayout extends HorizontalScrollView {
     // Text colors/sizes come from the text appearance first
     final TypedArray ta =
         context.obtainStyledAttributes(
-            tabTextAppearance, android.support.v7.appcompat.R.styleable.TextAppearance);
+            tabTextAppearance, androidx.appcompat.R.styleable.TextAppearance);
     try {
       tabTextSize =
           ta.getDimensionPixelSize(
-              android.support.v7.appcompat.R.styleable.TextAppearance_android_textSize, 0);
+              androidx.appcompat.R.styleable.TextAppearance_android_textSize, 0);
       tabTextColors =
           MaterialResources.getColorStateList(
               context,
               ta,
-              android.support.v7.appcompat.R.styleable.TextAppearance_android_textColor);
+              androidx.appcompat.R.styleable.TextAppearance_android_textColor);
     } finally {
       ta.recycle();
     }
@@ -530,19 +579,32 @@ public class TabLayout extends HorizontalScrollView {
 
   /**
    * Set the scroll position of the tabs. This is useful for when the tabs are being displayed as
-   * part of a scrolling container such as {@link android.support.v4.view.ViewPager}.
+   * part of a scrolling container such as {@link androidx.viewpager.widget.ViewPager}.
    *
    * <p>Calling this method does not update the selected tab, it is only used for drawing purposes.
    *
    * @param position current scroll position
    * @param positionOffset Value from [0, 1) indicating the offset from {@code position}.
    * @param updateSelectedText Whether to update the text's selected state.
+   * @see #setScrollPosition(int, float, boolean, boolean)
    */
   public void setScrollPosition(int position, float positionOffset, boolean updateSelectedText) {
     setScrollPosition(position, positionOffset, updateSelectedText, true);
   }
 
-  void setScrollPosition(
+  /**
+   * Set the scroll position of the tabs. This is useful for when the tabs are being displayed as
+   * part of a scrolling container such as {@link androidx.viewpager.widget.ViewPager}.
+   *
+   * <p>Calling this method does not update the selected tab, it is only used for drawing purposes.
+   *
+   * @param position current scroll position
+   * @param positionOffset Value from [0, 1) indicating the offset from {@code position}.
+   * @param updateSelectedText Whether to update the text's selected state.
+   * @param updateIndicatorPosition Whether to set the indicator to the given position and offset.
+   * @see #setScrollPosition(int, float, boolean)
+   */
+  public void setScrollPosition(
       int position,
       float positionOffset,
       boolean updateSelectedText,
@@ -641,7 +703,7 @@ public class TabLayout extends HorizontalScrollView {
    *     #removeOnTabSelectedListener(OnTabSelectedListener)}.
    */
   @Deprecated
-  public void setOnTabSelectedListener(@Nullable BaseOnTabSelectedListener listener) {
+  public void setOnTabSelectedListener(@Nullable OnTabSelectedListener listener) {
     // The logic in this method emulates what we had before support for multiple
     // registered listeners.
     if (selectedListener != null) {
@@ -656,6 +718,15 @@ public class TabLayout extends HorizontalScrollView {
   }
 
   /**
+   * @deprecated Use {@link #addOnTabSelectedListener(OnTabSelectedListener)} and {@link
+   *     #removeOnTabSelectedListener(OnTabSelectedListener)}.
+   */
+  @Deprecated
+  public void setOnTabSelectedListener(@Nullable BaseOnTabSelectedListener listener) {
+    setOnTabSelectedListener(wrapOnTabSelectedListener(listener));
+  }
+
+  /**
    * Add a {@link TabLayout.OnTabSelectedListener} that will be invoked when tab selection changes.
    *
    * <p>Components that add a listener should take care to remove it when finished via {@link
@@ -663,10 +734,25 @@ public class TabLayout extends HorizontalScrollView {
    *
    * @param listener listener to add
    */
-  public void addOnTabSelectedListener(@NonNull BaseOnTabSelectedListener listener) {
+  public void addOnTabSelectedListener(@NonNull OnTabSelectedListener listener) {
     if (!selectedListeners.contains(listener)) {
       selectedListeners.add(listener);
     }
+  }
+
+  /**
+   * Add a {@link TabLayout.BaseOnTabSelectedListener} that will be invoked when tab selection
+   * changes.
+   *
+   * <p>Components that add a listener should take care to remove it when finished via {@link
+   * #removeOnTabSelectedListener(BaseOnTabSelectedListener)}.
+   *
+   * @param listener listener to add
+   * @deprecated use {@link #addOnTabSelectedListener(OnTabSelectedListener)}
+   */
+  @Deprecated
+  public void addOnTabSelectedListener(@Nullable BaseOnTabSelectedListener listener) {
+    addOnTabSelectedListener(wrapOnTabSelectedListener(listener));
   }
 
   /**
@@ -675,13 +761,60 @@ public class TabLayout extends HorizontalScrollView {
    *
    * @param listener listener to remove
    */
-  public void removeOnTabSelectedListener(@NonNull BaseOnTabSelectedListener listener) {
+  public void removeOnTabSelectedListener(@NonNull OnTabSelectedListener listener) {
     selectedListeners.remove(listener);
+  }
+
+  /**
+   * Remove the given {@link TabLayout.BaseOnTabSelectedListener} that was previously added via
+   * {@link #addOnTabSelectedListener(BaseOnTabSelectedListener)}.
+   *
+   * @param listener listener to remove
+   * @deprecated use {@link #removeOnTabSelectedListener(OnTabSelectedListener)}
+   */
+  @Deprecated
+  public void removeOnTabSelectedListener(@Nullable BaseOnTabSelectedListener listener) {
+    removeOnTabSelectedListener(wrapOnTabSelectedListener(listener));
+  }
+
+  /** @hide */
+  @RestrictTo(LIBRARY_GROUP)
+  protected OnTabSelectedListener wrapOnTabSelectedListener(
+      @Nullable final BaseOnTabSelectedListener baseListener) {
+    if (baseListener == null) {
+      return null;
+    }
+
+    if (selectedListenerMap.containsKey(baseListener)) {
+      return selectedListenerMap.get(baseListener);
+    }
+
+    OnTabSelectedListener listener =
+        new OnTabSelectedListener() {
+          @Override
+          public void onTabSelected(Tab tab) {
+            baseListener.onTabSelected(tab);
+          }
+
+          @Override
+          public void onTabUnselected(Tab tab) {
+            baseListener.onTabUnselected(tab);
+          }
+
+          @Override
+          public void onTabReselected(Tab tab) {
+            baseListener.onTabReselected(tab);
+          }
+        };
+
+    selectedListenerMap.put(baseListener, listener);
+    return listener;
   }
 
   /** Remove all previously added {@link TabLayout.OnTabSelectedListener}s. */
   public void clearOnTabSelectedListeners() {
     selectedListeners.clear();
+    selectedListenerMap.clear();
   }
 
   /**
@@ -699,7 +832,7 @@ public class TabLayout extends HorizontalScrollView {
     return tab;
   }
 
-  //TODO: remove this method and just create the final field after the widget migration
+  // TODO: remove this method and just create the final field after the widget migration
   protected Tab createTabFromPool() {
     Tab tab = tabPool.acquire();
     if (tab == null) {
@@ -708,7 +841,7 @@ public class TabLayout extends HorizontalScrollView {
     return tab;
   }
 
-  //TODO: remove this method and just create the final field after the widget migration
+  // TODO: remove this method and just create the final field after the widget migration
   protected boolean releaseFromTabPool(Tab tab) {
     return tabPool.release(tab);
   }
@@ -803,7 +936,7 @@ public class TabLayout extends HorizontalScrollView {
    *   <li>{@link #MODE_SCROLLABLE}: Scrollable tabs display a subset of tabs at any given moment,
    *       and can contain longer tab labels and a larger number of tabs. They are best used for
    *       browsing contexts in touch interfaces when users don’t need to directly compare the tab
-   *       labels. This mode is commonly used with a {@link android.support.v4.view.ViewPager}.
+   *       labels. This mode is commonly used with a {@link androidx.viewpager.widget.ViewPager}.
    * </ul>
    *
    * @param mode one of {@link #MODE_FIXED} or {@link #MODE_SCROLLABLE}.
@@ -1362,6 +1495,8 @@ public class TabLayout extends HorizontalScrollView {
 
   private void addTabView(Tab tab) {
     final TabView tabView = tab.view;
+    tabView.setSelected(false);
+    tabView.setActivated(false);
     slidingTabIndicator.addView(tabView, tab.getPosition(), createLayoutParamsForTabs());
   }
 
@@ -1549,6 +1684,11 @@ public class TabLayout extends HorizontalScrollView {
     scrollAnimator.addListener(listener);
   }
 
+  /**
+   * Called when a selected tab is added. Unselects all other tabs in the TabLayout.
+   *
+   * @param position Position of the selected tab.
+   */
   private void setSelectedTabView(int position) {
     final int tabCount = slidingTabIndicator.getChildCount();
     if (position < tabCount) {
@@ -1560,11 +1700,25 @@ public class TabLayout extends HorizontalScrollView {
     }
   }
 
-  void selectTab(Tab tab) {
+  /**
+   * Selects the given tab.
+   *
+   * @param tab The tab to select, or {@code null} to select none.
+   * @see #selectTab(Tab, boolean)
+   */
+  public void selectTab(@Nullable Tab tab) {
     selectTab(tab, true);
   }
 
-  void selectTab(final Tab tab, boolean updateIndicator) {
+  /**
+   * Selects the given tab. Will always animate to the selected tab if the current tab is
+   * reselected, regardless of the value of {@code updateIndicator}.
+   *
+   * @param tab The tab to select, or {@code null} to select none.
+   * @param updateIndicator Whether to animate to the selected tab.
+   * @see #selectTab(Tab)
+   */
+  public void selectTab(@Nullable final Tab tab, boolean updateIndicator) {
     final Tab currentTab = selectedTab;
 
     if (currentTab == tab) {
@@ -1670,7 +1824,7 @@ public class TabLayout extends HorizontalScrollView {
   }
 
   /** A tab in this layout. Instances can be created via {@link #newTab()}. */
-  //TODO: make class final after the widget migration is finished
+  // TODO: make class final after the widget migration is finished
   public static class Tab {
 
     /**
@@ -1689,13 +1843,14 @@ public class TabLayout extends HorizontalScrollView {
     private CharSequence contentDesc;
     private int position = INVALID_POSITION;
     private View customView;
+    private @LabelVisibility int labelVisibilityMode = TAB_LABEL_VISIBILITY_LABELED;
 
-    //TODO: make package private after the widget migration is finished
+    // TODO: make package private after the widget migration is finished
     public TabLayout parent;
-    //TODO: make package private after the widget migration is finished
+    // TODO: make package private after the widget migration is finished
     public TabView view;
 
-    //TODO: make package private constructor after the widget migration is finished
+    // TODO: make package private constructor after the widget migration is finished
     public Tab() {
       // Private constructor
     }
@@ -1861,6 +2016,37 @@ public class TabLayout extends HorizontalScrollView {
       return setText(parent.getResources().getText(resId));
     }
 
+    /**
+     * Sets the visibility mode for the Labels in this Tab. The valid input options are:
+     *
+     * <ul>
+     *   <li>{@link #TAB_LABEL_VISIBILITY_UNLABELED}: Tabs will appear without labels regardless of
+     *       whether text is set.
+     *   <li>{@link #TAB_LABEL_VISIBILITY_LABELED}: Tabs will appear labeled if text is set.
+     * </ul>
+     *
+     * @param mode one of {@link #TAB_LABEL_VISIBILITY_UNLABELED}
+     * or {@link #TAB_LABEL_VISIBILITY_LABELED}.
+     * @return The current instance for call chaining.
+     */
+    public Tab setTabLabelVisibility(@LabelVisibility int mode) {
+      this.labelVisibilityMode = mode;
+      this.updateView();
+      return this;
+    }
+
+    /**
+     * Gets the visibility mode for the Labels in this Tab.
+     *
+     * @return the label visibility mode, one of {@link #TAB_LABEL_VISIBILITY_UNLABELED} or
+     * {@link #TAB_LABEL_VISIBILITY_LABELED}.
+     * @see #setTabLabelVisibility(int)
+     */
+    @LabelVisibility
+    public int getTabLabelVisibility() {
+      return this.labelVisibilityMode;
+    }
+
     /** Select this tab. Only valid if the tab has been added to the action bar. */
     public void select() {
       if (parent == null) {
@@ -1982,7 +2168,7 @@ public class TabLayout extends HorizontalScrollView {
 
       if (tabRippleColorStateList != null) {
         GradientDrawable maskDrawable = new GradientDrawable();
-        // TODO: Find a non-hacky workaround for this. Currently on certain devices/versions,
+        // TODO: Find a workaround for this. Currently on certain devices/versions,
         // LayerDrawable will draw a black background underneath any layer with a non-opaque color,
         // (e.g. ripple) unless we set the shape to be something that's not a perfect rectangle.
         maskDrawable.setCornerRadius(0.00001F);
@@ -2292,7 +2478,11 @@ public class TabLayout extends HorizontalScrollView {
       if (textView != null) {
         if (hasText) {
           textView.setText(text);
-          textView.setVisibility(VISIBLE);
+          if (tab.labelVisibilityMode == TAB_LABEL_VISIBILITY_LABELED) {
+            textView.setVisibility(VISIBLE);
+          } else {
+            textView.setVisibility(GONE);
+          }
           setVisibility(VISIBLE);
         } else {
           textView.setVisibility(GONE);

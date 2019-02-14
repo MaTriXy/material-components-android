@@ -24,14 +24,14 @@ import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.support.annotation.ArrayRes;
-import android.support.annotation.ColorInt;
-import android.support.annotation.NonNull;
-import android.support.annotation.StyleRes;
-import android.support.annotation.StyleableRes;
-import android.support.v4.widget.CompoundButtonCompat;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.widget.AppCompatRadioButton;
+import androidx.annotation.ArrayRes;
+import androidx.annotation.ColorInt;
+import androidx.annotation.NonNull;
+import androidx.annotation.StyleRes;
+import androidx.annotation.StyleableRes;
+import androidx.core.widget.CompoundButtonCompat;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.AppCompatRadioButton;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.RadioGroup;
@@ -39,10 +39,31 @@ import dagger.android.support.DaggerAppCompatDialogFragment;
 import javax.inject.Inject;
 
 /**
- * Theme switcher dialog that allows the user to choose a primary or secondary palette to overlay
- * above the app theme.
+ * Theme switcher dialog that allows the user to change different theming aspects like colors and
+ * shapes. Each group in the dialog has a set of possible style values that are used as theme
+ * overlays, overriding attributes in the base theme like shape appearances or color attributes.
  */
 public class ThemeSwitcherDialogFragment extends DaggerAppCompatDialogFragment {
+
+  private static final int PRIMARY_COLOR_INDEX = 0;
+  private static final int SECONDARY_COLOR_INDEX = 1;
+  private static final int SHAPE_CORNER_FAMILY_INDEX = 2;
+
+  private enum RadioButtonType {
+    DEFAULT,
+    XML,
+  }
+
+  private enum ThemingType {
+    COLOR(RadioButtonType.DEFAULT),
+    SHAPE_CORNER_FAMILY(RadioButtonType.XML);
+
+    private final RadioButtonType radioButtonType;
+
+    ThemingType(RadioButtonType type) {
+      radioButtonType = type;
+    }
+  }
 
   @StyleableRes
   private static final int[] PRIMARY_THEME_OVERLAY_ATTRS = {
@@ -52,8 +73,9 @@ public class ThemeSwitcherDialogFragment extends DaggerAppCompatDialogFragment {
   @StyleableRes private static final int[] SECONDARY_THEME_OVERLAY_ATTRS = {R.attr.colorSecondary};
 
   @Inject ThemeSwitcherResourceProvider resourceProvider;
-  private RadioGroup primaryGroup;
-  private RadioGroup secondaryGroup;
+  private RadioGroup primaryColorGroup;
+  private RadioGroup secondaryColorGroup;
+  private RadioGroup shapeCornerFamilyGroup;
 
   @NonNull
   @Override
@@ -64,11 +86,17 @@ public class ThemeSwitcherDialogFragment extends DaggerAppCompatDialogFragment {
         .setView(onCreateDialogView(getActivity().getLayoutInflater()))
         .setPositiveButton(
             R.string.mtrl_theme_switcher_save,
-            (dialog, id) -> {
+            (dialog, which) -> {
               dialog.dismiss();
               applyThemeOverlays();
             })
-        .setNegativeButton(R.string.mtrl_theme_switcher_cancel, null);
+        .setNegativeButton(R.string.mtrl_theme_switcher_cancel, null)
+        .setNeutralButton(
+            R.string.mtrl_theme_switcher_reset,
+            (dialog, which) -> {
+              dialog.dismiss();
+              ThemeOverlayUtils.setThemeOverlays(getActivity(), 0, 0);
+            });
     return builder.create();
   }
 
@@ -77,87 +105,150 @@ public class ThemeSwitcherDialogFragment extends DaggerAppCompatDialogFragment {
 
     int[] currentThemeOverlays = ThemeOverlayUtils.getThemeOverlays();
 
-    primaryGroup = view.findViewById(R.id.primary_colors);
-    initializeColors(
-        primaryGroup,
+    primaryColorGroup = view.findViewById(R.id.primary_colors);
+    initializeThemingValues(
+        primaryColorGroup,
         resourceProvider.getPrimaryColors(),
         resourceProvider.getPrimaryColorsContentDescription(),
         PRIMARY_THEME_OVERLAY_ATTRS,
-        currentThemeOverlays.length >= 2 ? currentThemeOverlays[0] : 0);
+        currentThemeOverlays.length >= 2 ? currentThemeOverlays[PRIMARY_COLOR_INDEX] : 0,
+        ThemingType.COLOR);
 
-    secondaryGroup = view.findViewById(R.id.secondary_colors);
-    initializeColors(
-        secondaryGroup,
+    secondaryColorGroup = view.findViewById(R.id.secondary_colors);
+    initializeThemingValues(
+        secondaryColorGroup,
         resourceProvider.getSecondaryColors(),
         resourceProvider.getSecondaryColorsContentDescription(),
         SECONDARY_THEME_OVERLAY_ATTRS,
-        currentThemeOverlays.length >= 2 ? currentThemeOverlays[1] : 0);
+        currentThemeOverlays.length >= 2 ? currentThemeOverlays[SECONDARY_COLOR_INDEX] : 0,
+        ThemingType.COLOR);
+
+    shapeCornerFamilyGroup = view.findViewById(R.id.shape_families);
+    initializeThemingValues(
+        shapeCornerFamilyGroup,
+        resourceProvider.getShapes(),
+        resourceProvider.getShapesContentDescription(),
+        currentThemeOverlays.length >= 3 ? currentThemeOverlays[SHAPE_CORNER_FAMILY_INDEX] : 0,
+        ThemingType.SHAPE_CORNER_FAMILY);
 
     return view;
   }
 
   private void applyThemeOverlays() {
-    ColorPalette primaryPalette =
-        (ColorPalette) getDialog().findViewById(primaryGroup.getCheckedRadioButtonId()).getTag();
-    ColorPalette secondaryPalette =
-        (ColorPalette) getDialog().findViewById(secondaryGroup.getCheckedRadioButtonId()).getTag();
-
     ThemeOverlayUtils.setThemeOverlays(
-        getActivity(), primaryPalette.themeOverlay, secondaryPalette.themeOverlay);
+        getActivity(),
+        getThemeOverlayResId(primaryColorGroup),
+        getThemeOverlayResId(secondaryColorGroup),
+        getThemeOverlayResId(shapeCornerFamilyGroup));
   }
 
-  private void initializeColors(
+  private int getThemeOverlayResId(RadioGroup radioGroup) {
+    if (radioGroup.getCheckedRadioButtonId() == View.NO_ID) {
+      return 0;
+    } else {
+      ThemeAttributeValues overlayFeature =
+          (ThemeAttributeValues)
+              getDialog().findViewById(radioGroup.getCheckedRadioButtonId()).getTag();
+      return overlayFeature.themeOverlay;
+    }
+  }
+
+  private void initializeThemingValues(
       RadioGroup group,
-      @ArrayRes int colors,
-      @ArrayRes int colorContentDescriptions,
+      @ArrayRes int overlays,
+      @ArrayRes int contentDescriptions,
+      @StyleRes int currentThemeOverlay,
+      ThemingType themingType) {
+    initializeThemingValues(
+        group, overlays, contentDescriptions, new int[] {}, currentThemeOverlay, themingType);
+  }
+
+  private void initializeThemingValues(
+      RadioGroup group,
+      @ArrayRes int overlays,
+      @ArrayRes int contentDescriptions,
       @StyleableRes int[] themeOverlayAttrs,
-      @StyleRes int currentThemeOverlay) {
-    TypedArray colorsArray = getResources().obtainTypedArray(colors);
-    TypedArray contentDescriptionArray = getResources().obtainTypedArray(colorContentDescriptions);
-    if (colorsArray.length() != contentDescriptionArray.length()) {
+      @StyleRes int currentThemeOverlay,
+      ThemingType themingType) {
+    TypedArray themingValues = getResources().obtainTypedArray(overlays);
+    TypedArray contentDescriptionArray = getResources().obtainTypedArray(contentDescriptions);
+    if (themingValues.length() != contentDescriptionArray.length()) {
       throw new IllegalArgumentException(
-          "Color array length doesn't match its content description array length.");
+          "Feature array length doesn't match its content description array length.");
     }
 
-    for (int i = 0; i < colorsArray.length(); i++) {
-      @StyleRes int paletteThemeOverlay = colorsArray.getResourceId(i, 0);
-      ColorPalette palette = new ColorPalette(paletteThemeOverlay, themeOverlayAttrs);
+    for (int i = 0; i < themingValues.length(); i++) {
+      @StyleRes int valueThemeOverlay = themingValues.getResourceId(i, 0);
+      ThemeAttributeValues themeAttributeValues = null;
+      // Create RadioButtons for themeAttributeValues values
+      switch (themingType) {
+        case COLOR:
+          themeAttributeValues = new ColorPalette(valueThemeOverlay, themeOverlayAttrs);
+          break;
+        case SHAPE_CORNER_FAMILY:
+          themeAttributeValues = new ThemeAttributeValues(valueThemeOverlay);
+          break;
+      }
 
-      AppCompatRadioButton button = new AppCompatRadioButton(getContext());
-      CompoundButtonCompat.setButtonTintList(
-          button, ColorStateList.valueOf(convertToDisplay(palette.main)));
-      button.setTag(palette);
-      button.setContentDescription(contentDescriptionArray.getString(i));
+      // Expect the radio group to have a RadioButton as child for each themeAttributeValues value.
+      AppCompatRadioButton button =
+          themingType.radioButtonType == RadioButtonType.XML
+              ? ((AppCompatRadioButton) group.getChildAt(i))
+              : createCompatRadioButton(group, contentDescriptionArray.getString(i));
 
-      group.addView(button);
+      button.setTag(themeAttributeValues);
+      themeAttributeValues.customizeRadioButton(button);
 
-      if (palette.themeOverlay == currentThemeOverlay || (i == 0 && currentThemeOverlay == 0)) {
+      if (themeAttributeValues.themeOverlay == currentThemeOverlay) {
         group.check(button.getId());
       }
     }
 
-    colorsArray.recycle();
+    themingValues.recycle();
+    contentDescriptionArray.recycle();
   }
 
-  @ColorInt
-  private int convertToDisplay(@ColorInt int color) {
-    return color == Color.WHITE ? Color.BLACK : color;
+  @NonNull
+  private AppCompatRadioButton createCompatRadioButton(
+      RadioGroup group, String contentDescription) {
+    AppCompatRadioButton button = new AppCompatRadioButton(getContext());
+    button.setContentDescription(contentDescription);
+    group.addView(button);
+    return button;
   }
 
-  private class ColorPalette {
+  private static class ThemeAttributeValues {
     @StyleRes private final int themeOverlay;
 
+    @SuppressLint("ResourceType")
+    public ThemeAttributeValues(@StyleRes int themeOverlay) {
+      this.themeOverlay = themeOverlay;
+    }
+
+    public void customizeRadioButton(AppCompatRadioButton button) {}
+  }
+
+  private class ColorPalette extends ThemeAttributeValues {
     @ColorInt private final int main;
-    @ColorInt private final int dark;
 
     @SuppressLint("ResourceType")
     public ColorPalette(@StyleRes int themeOverlay, @StyleableRes int[] themeOverlayAttrs) {
-      this.themeOverlay = themeOverlay;
-
+      super(themeOverlay);
       TypedArray a = getContext().obtainStyledAttributes(themeOverlay, themeOverlayAttrs);
       main = a.getColor(0, Color.TRANSPARENT);
-      dark = a.getColor(1, Color.TRANSPARENT);
+
       a.recycle();
+    }
+
+    @Override
+    public void customizeRadioButton(AppCompatRadioButton button) {
+      CompoundButtonCompat.setButtonTintList(
+          button, ColorStateList.valueOf(convertToDisplay(main)));
+    }
+
+    @ColorInt
+    private int convertToDisplay(@ColorInt int color) {
+      return color == Color.WHITE ? Color.BLACK : color;
     }
   }
 }

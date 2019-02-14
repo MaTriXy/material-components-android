@@ -19,6 +19,7 @@
 
   <!-- Defines the base Material button style. -->
   <style name="Widget.MaterialComponents.Button" parent="Widget.AppCompat.Button">
+    <item name="enforceMaterialTheme">true</item>
     <item name="enforceTextAppearance">true</item>
     <item name="android:textAppearance">?attr/textAppearanceButton</item>
     <item name="android:textColor">@color/mtrl_btn_text_color_selector</item>
@@ -31,17 +32,26 @@
     <item name="android:insetTop">@dimen/mtrl_btn_inset</item>
     <item name="android:insetBottom">@dimen/mtrl_btn_inset</item>
     <item name="android:stateListAnimator" tools:ignore="NewApi">@animator/mtrl_btn_state_list_anim</item>
-    <item name="cornerRadius">@dimen/mtrl_btn_corner_radius</item>
+    <item name="cornerRadius">@null</item>
+    <item name="elevation">@dimen/mtrl_btn_elevation</item>
     <item name="iconPadding">@dimen/mtrl_btn_icon_padding</item>
     <item name="iconTint">@color/mtrl_btn_text_color_selector</item>
-    <item name="additionalPaddingStartForIcon">@dimen/mtrl_btn_additional_padding_start_for_icon</item>
-    <item name="additionalPaddingEndForIcon">@dimen/mtrl_btn_additional_padding_end_for_icon</item>
     <item name="rippleColor">@color/mtrl_btn_ripple_color</item>
     <item name="backgroundTint">@color/mtrl_btn_bg_color_selector</item>
+    <item name="shapeAppearance">?attr/shapeAppearanceSmallComponent</item>
+  </style>
+
+  <style name="Widget.MaterialComponents.Button.Icon">
+    <item name="android:paddingLeft">@dimen/mtrl_btn_icon_btn_padding_left</item>
   </style>
 
   <style name="Widget.MaterialComponents.Button.UnelevatedButton">
     <item name="android:stateListAnimator" tools:ignore="NewApi">@animator/mtrl_btn_unelevated_state_list_anim</item>
+    <item name="elevation">0dp</item>
+  </style>
+
+  <style name="Widget.MaterialComponents.Button.UnelevatedButton.Icon">
+    <item name="android:paddingLeft">@dimen/mtrl_btn_icon_btn_padding_left</item>
   </style>
 
   <style name="Widget.MaterialComponents.Button.TextButton" parent="Widget.MaterialComponents.Button.UnelevatedButton">
@@ -50,8 +60,17 @@
     <item name="android:paddingRight">@dimen/mtrl_btn_text_btn_padding_right</item>
     <item name="iconTint">@color/mtrl_text_btn_text_color_selector</item>
     <item name="iconPadding">@dimen/mtrl_btn_text_btn_icon_padding</item>
-    <item name="backgroundTint">@color/mtrl_btn_transparent_bg_color</item>
+    <item name="backgroundTint">@android:color/transparent</item>
     <item name="rippleColor">@color/mtrl_btn_text_btn_ripple_color</item>
+  </style>
+
+  <style name="Widget.MaterialComponents.Button.TextButton.Icon">
+    <!-- Icon text button has the same padding as a regular text button -->
+  </style>
+
+  <!-- Button style to show in the Snackbar component. -->
+  <style name="Widget.MaterialComponents.Button.TextButton.Snackbar">
+    <item name="android:textColor">?attr/colorPrimary</item>
   </style>
 
   <style name="Widget.MaterialComponents.Button.OutlinedButton" parent="Widget.MaterialComponents.Button.TextButton">
@@ -61,8 +80,26 @@
     <item name="strokeWidth">@dimen/mtrl_btn_stroke_size</item>
   </style>
 
+  <style name="Widget.MaterialComponents.Button.OutlinedButton.Icon">
+    <item name="android:paddingLeft">@dimen/mtrl_btn_icon_btn_padding_left</item>
+  </style>
+
   <style name="Widget.MaterialComponents.Button.TextButton.Dialog">
     <item name="android:minWidth">@dimen/mtrl_btn_dialog_btn_min_width</item>
+    <item name="android:lines">1</item>
+    <item name="android:ellipsize">end</item>
+    <item name="android:singleLine">true</item>
+    <item name="android:layout_marginStart">@dimen/mtrl_btn_text_btn_padding_left</item>
+    <item name="android:layout_marginLeft">@dimen/mtrl_btn_text_btn_padding_left</item>
+  </style>
+
+  <style name="Widget.MaterialComponents.Button.TextButton.Dialog.Flush">
+    <item name="android:layout_marginStart">0dp</item>
+    <item name="android:layout_marginLeft">0dp</item>
+  </style>
+
+  <style name="Widget.MaterialComponents.Button.TextButton.Dialog.Icon">
+    <!-- Icon text button has the same padding as a regular text button -->
   </style>
 
 </resources>

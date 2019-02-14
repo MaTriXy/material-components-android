@@ -16,6 +16,9 @@
 
 package com.google.android.material.bottomappbar;
 
+import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
+
+import androidx.annotation.RestrictTo;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.shape.EdgeTreatment;
 import com.google.android.material.shape.ShapePath;
@@ -30,7 +33,7 @@ import com.google.android.material.shape.ShapePath;
  * less than 180 degrees that does not start or finish with a vertical path. This vertical offset
  * must be positive.
  */
-public class BottomAppBarTopEdgeTreatment extends EdgeTreatment {
+public class BottomAppBarTopEdgeTreatment extends EdgeTreatment implements Cloneable {
 
   private static final int ARC_QUARTER = 90;
   private static final int ARC_HALF = 180;
@@ -65,11 +68,17 @@ public class BottomAppBarTopEdgeTreatment extends EdgeTreatment {
   }
 
   @Override
-  public void getEdgePath(float length, float interpolation, ShapePath shapePath) {
+  public void getEdgePath(float length, float center, float interpolation, ShapePath shapePath) {
+    if (fabDiameter == 0) {
+      // There is no cutout to draw.
+      shapePath.lineTo(length, 0);
+      return;
+    }
+
     float cradleDiameter = fabMargin * 2 + fabDiameter;
     float cradleRadius = cradleDiameter / 2f;
     float roundedCornerOffset = interpolation * roundedCornerRadius;
-    float middle = length / 2f + horizontalOffset;
+    float middle = center + horizontalOffset;
 
     // The center offset of the cutout tweens between the vertical offset when attached, and the
     // cradleRadius as it becomes detached.
@@ -103,7 +112,7 @@ public class BottomAppBarTopEdgeTreatment extends EdgeTreatment {
     float cutoutArcOffset = ARC_QUARTER - cornerRadiusArcLength;
 
     // Draw the starting line up to the left rounded corner.
-    shapePath.lineTo(/* x= */ leftRoundedCornerCircleX - roundedCornerOffset, /* y= */ 0);
+    shapePath.lineTo(/* x= */ leftRoundedCornerCircleX, /* y= */ 0);
 
     // Draw the arc for the left rounded corner circle. The bounding box is the area around the
     // circle's center which is at `(leftRoundedCornerCircleX, roundedCornerOffset)`.
@@ -138,13 +147,26 @@ public class BottomAppBarTopEdgeTreatment extends EdgeTreatment {
     shapePath.lineTo(/* x= */ length, /* y= */ 0);
   }
 
+  /** Returns current fab diameter in pixels. */
+  @RestrictTo(LIBRARY_GROUP)
+  public float getFabDiameter() {
+    return fabDiameter;
+  }
+
+  /** Sets the fab diameter the size of the fab in pixels. */
+  @RestrictTo(LIBRARY_GROUP)
+  public void setFabDiameter(float fabDiameter) {
+    this.fabDiameter = fabDiameter;
+  }
+
   /** Sets the horizontal offset, in pixels, of the cradle from center. */
   void setHorizontalOffset(float horizontalOffset) {
     this.horizontalOffset = horizontalOffset;
   }
 
   /** Returns the horizontal offset, in pixels, of the cradle from center. */
-  float getHorizontalOffset() {
+  @RestrictTo(LIBRARY_GROUP)
+  public float getHorizontalOffset() {
     return horizontalOffset;
   }
 
@@ -166,13 +188,6 @@ public class BottomAppBarTopEdgeTreatment extends EdgeTreatment {
     this.cradleVerticalOffset = cradleVerticalOffset;
   }
 
-  float getFabDiameter() {
-    return fabDiameter;
-  }
-
-  void setFabDiameter(float fabDiameter) {
-    this.fabDiameter = fabDiameter;
-  }
 
   float getFabCradleMargin() {
     return fabMargin;

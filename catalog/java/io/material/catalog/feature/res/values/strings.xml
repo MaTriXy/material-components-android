@@ -20,4 +20,5 @@
   <string name="cat_demo_landing_links_header">Resources</string>
   <string name="cat_demo_landing_additional_demos_header">Additional Examples</string>
   <string name="cat_demo_landing_row_demo_header">Demo</string>
+  <string name="cat_demo_landing_favorite">Favorite</string>
 </resources>

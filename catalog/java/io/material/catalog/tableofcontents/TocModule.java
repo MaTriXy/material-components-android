@@ -21,11 +21,18 @@ import dagger.android.ContributesAndroidInjector;
 import io.material.catalog.application.scope.FragmentScope;
 import io.material.catalog.bottomappbar.BottomAppBarFragment;
 import io.material.catalog.bottomnav.BottomNavigationFragment;
+import io.material.catalog.bottomsheet.BottomSheetFragment;
 import io.material.catalog.button.ButtonsFragment;
 import io.material.catalog.card.CardFragment;
+import io.material.catalog.checkbox.CheckBoxFragment;
 import io.material.catalog.chip.ChipFragment;
+import io.material.catalog.dialog.DialogDemoLandingFragment;
 import io.material.catalog.fab.FabFragment;
 import io.material.catalog.font.FontFragment;
+import io.material.catalog.menu.MenuFragment;
+import io.material.catalog.radiobutton.RadioButtonFragment;
+import io.material.catalog.shapetheming.ShapeThemingFragment;
+import io.material.catalog.switchmaterial.SwitchFragment;
 import io.material.catalog.tabs.TabsFragment;
 import io.material.catalog.textfield.TextFieldFragment;
 import io.material.catalog.themeswitcher.ThemeSwitcherDialogFragment;
@@ -38,20 +45,26 @@ import io.material.catalog.transformation.TransformationFragment;
  *
  */
 @dagger.Module(
-  includes = {
-    BottomAppBarFragment.Module.class,
-    ButtonsFragment.Module.class,
-    BottomNavigationFragment.Module.class,
-    CardFragment.Module.class,
-    ChipFragment.Module.class,
-    FabFragment.Module.class,
-    FontFragment.Module.class,
-    TabsFragment.Module.class,
-    TextFieldFragment.Module.class,
-    TopAppBarFragment.Module.class,
-    TransformationFragment.Module.class,
-  }
-)
+    includes = {
+      BottomAppBarFragment.Module.class,
+      ButtonsFragment.Module.class,
+      BottomNavigationFragment.Module.class,
+      BottomSheetFragment.Module.class,
+      CardFragment.Module.class,
+      CheckBoxFragment.Module.class,
+      ChipFragment.Module.class,
+      DialogDemoLandingFragment.Module.class,
+      FabFragment.Module.class,
+      FontFragment.Module.class,
+      MenuFragment.Module.class,
+      RadioButtonFragment.Module.class,
+      ShapeThemingFragment.Module.class,
+      SwitchFragment.Module.class,
+      TabsFragment.Module.class,
+      TextFieldFragment.Module.class,
+      TopAppBarFragment.Module.class,
+      TransformationFragment.Module.class,
+    })
 public abstract class TocModule {
   @FragmentScope
   @ContributesAndroidInjector

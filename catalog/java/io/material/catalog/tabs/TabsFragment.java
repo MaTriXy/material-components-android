@@ -18,7 +18,7 @@ package io.material.catalog.tabs;
 
 import io.material.catalog.R;
 
-import android.support.v4.app.Fragment;
+import androidx.fragment.app.Fragment;
 import dagger.Provides;
 import dagger.android.ContributesAndroidInjector;
 import dagger.multibindings.IntoSet;
@@ -85,7 +85,7 @@ public class TabsFragment extends DemoLandingFragment {
     @Provides
     @ActivityScope
     static FeatureDemo provideFeatureDemo() {
-      return new FeatureDemo(R.string.cat_tabs_title, R.drawable.ic_tabs_24px) {
+      return new FeatureDemo(R.string.cat_tabs_title, R.drawable.ic_tabs) {
         @Override
         public Fragment createFragment() {
           return new TabsFragment();

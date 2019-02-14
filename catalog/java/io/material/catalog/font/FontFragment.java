@@ -18,7 +18,7 @@ package io.material.catalog.font;
 
 import io.material.catalog.R;
 
-import android.support.v4.app.Fragment;
+import androidx.fragment.app.Fragment;
 import dagger.Provides;
 import dagger.android.ContributesAndroidInjector;
 import dagger.multibindings.IntoSet;
@@ -63,7 +63,7 @@ public class FontFragment extends DemoLandingFragment {
     @Provides
     @ActivityScope
     static FeatureDemo provideFeatureDemo() {
-      return new FeatureDemo(R.string.cat_font_title, R.drawable.ic_text_field_24px) {
+      return new FeatureDemo(R.string.cat_font_title, R.drawable.ic_fonts) {
         @Override
         public Fragment createFragment() {
           return new FontFragment();

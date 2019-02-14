@@ -12,40 +12,38 @@ path: /docs/getting-started/
 Material Components for Android is available through Google's Maven repository.
 To use it:
 
-1. Open the `build.gradle` file for your application.
-2. Make sure that the `repositories` section includes a maven section with the
-`"https://maven.google.com"` endpoint. For example:
+1.  Open the `build.gradle` file for your application.
+2.  Make sure that the `repositories` section includes Google's Maven repository `google()`. For example:
 
     ```groovy
       allprojects {
         repositories {
+          google()
           jcenter()
-          maven {
-            url "https://maven.google.com"
-          }
         }
       }
     ```
-3. Add the library to the `dependencies` section:
+
+3.  Add the library to the `dependencies` section:
 
     ```groovy
       dependencies {
         // ...
-        compile 'com.google.android.material:material:1.0.0-alpha1'
+        implementation 'com.google.android.material:material:1.0.0'
         // ...
       }
     ```
 
-If your app currently depends on the original Design Support Library, you
-can make use of the [`Refactor to
-AndroidX…`](https://developer.android.com/studio/preview/features/#androidx_refactoring)
+If your app currently depends on the original Design Support Library, you can
+make use of the
+[`Refactor to AndroidX…`](https://developer.android.com/jetpack/androidx/migrate)
 option provided by Android Studio. Doing so will update your app's dependencies
 and code to use the newly packaged `androidx` and `com.google.android.material`
 libraries.
 
 If you don't want to switch over to the new `androidx` and
 `com.google.android.material` packages yet, you can use Material Components via
-the `com.android.support:design:28.0.0-alpha1` dependency.
+the `com.android.support:design:28.0.0` dependency.
 
 Note: You should not use the `com.android.support` and
 `com.google.android.material` dependencies in your app at the same time.
@@ -54,8 +52,8 @@ Note: You should not use the `com.android.support` and
 
 In order to use Material Components for Android, and the latest versions of the
 Support Libraries, you will have to update your app's `compileSdkVersion` to
-`'android-P'` and download the Android P Preview using the SDK manager. For
-more information on Android P and its timeline, take a look at the [Program
+`28` and download the Android P Preview using the SDK manager. For more
+information on Android P and its timeline, take a look at the [Program
 Overview](https://developer.android.com/preview/overview) page.
 
 ### 3. Ensure you are using `AppCompatActivity`
@@ -72,9 +70,13 @@ Material Components theme is the recommended approach. However, be sure to
 test thoroughly afterwards, as components in existing layouts may change
 their looks and behavior.
 
-Note: If you **can't** change your theme, you can continue to inherit from an
-AppCompat theme and add some new theme attributes to your theme. See the [**App
-Compat Themes**](#app-compat-themes) section for more details.
+Note: If you **can't** change your theme, you can do one of the following:
+
+*   Inherit from one of our Material Components **Bridge** themes. See the
+    [**Bridge Themes**](#bridge-themes) section for more details.
+*   Continue to inherit from an AppCompat theme and add some new theme
+    attributes to your theme. See the
+    [**App Compat Themes**](#app-compat-themes) section for more details.
 
 #### **Material Components themes**
 
@@ -103,6 +105,30 @@ replaces default components with their Material counterparts. Currently, this
 only replaces `<Button>` XML components with
 [`<MaterialButton>`](components/MaterialButton.md).
 
+#### **Bridge Themes** {#bridge-themes}
+
+If you cannot change your theme to inherit from a Material Components theme, you
+can inherit from a Material Components **Bridge** theme.
+
+```xml
+<style name="Theme.MyApp" parent="Theme.MaterialComponents.Light.Bridge">
+    <!-- ... -->
+</style>
+```
+
+Both `Theme.MaterialComponents` and `Theme.MaterialComponents.Light` have
+`.Bridge` themes:
+
+*   `Theme.MaterialComponents.Bridge`
+*   `Theme.MaterialComponents.Light.Bridge`
+*   `Theme.MaterialComponents.NoActionBar.Bridge`
+*   `Theme.MaterialComponents.Light.NoActionBar.Bridge`
+*   `Theme.MaterialComponents.Light.DarkActionBar.Bridge`
+
+Bridge themes inherit from AppCompat themes, but also define the new Material
+Components theme attributes for you. If you use a bridge theme, you can start
+using Material Design components without changing your app theme.
+
 #### **AppCompat Themes** {#app-compat-themes}
 
 You can also incrementally test new Material components without changing
@@ -118,13 +144,33 @@ theme, or you will encounter `ThemeEnforcement` errors:
 
   <!-- Original AppCompat attributes. -->
   <item name="colorPrimary">@color/my_app_primary_color</item>
-  <item name="colorPrimaryDark">@color/my_app_primary_dark_color</item>
-  <item name="colorAccent">@color/my_app_accent_color</item>
+  <item name="colorSecondary">@color/my_app_secondary_color</item>
+  <item name="android:colorBackground">@color/my_app_background_color</item>
+  <item name="colorError">@color/my_app_error_color</item>
 
   <!-- New MaterialComponents attributes. -->
-  <item name="colorSecondary">?attr/colorPrimary</item>
+  <item name="colorPrimaryVariant">@color/my_app_primary_variant_color</item>
+  <item name="colorSecondaryVariant">@color/my_app_secondary_variant_color</item>
+  <item name="colorSurface">@color/my_app_surface_color</item>
+  <item name="colorOnPrimary">@color/my_app_color_on_primary</item>
+  <item name="colorOnSecondary">@color/my_app_color_on_secondary</item>
+  <item name="colorOnBackground">@color/my_app_color_on_background</item>
+  <item name="colorOnError">@color/my_app_color_on_error</item>
+  <item name="colorOnSurface">@color/my_app_color_on_surface</item>
   <item name="scrimBackground">@color/mtrl_scrim_color</item>
-  <item name="snackbarButtonStyle">?attr/borderlessButtonStyle</item>
+  <item name="textAppearanceHeadline1">@style/TextAppearance.MaterialComponents.Headline1</item>
+  <item name="textAppearanceHeadline2">@style/TextAppearance.MaterialComponents.Headline2</item>
+  <item name="textAppearanceHeadline3">@style/TextAppearance.MaterialComponents.Headline3</item>
+  <item name="textAppearanceHeadline4">@style/TextAppearance.MaterialComponents.Headline4</item>
+  <item name="textAppearanceHeadline5">@style/TextAppearance.MaterialComponents.Headline5</item>
+  <item name="textAppearanceHeadline6">@style/TextAppearance.MaterialComponents.Headline6</item>
+  <item name="textAppearanceSubtitle1">@style/TextAppearance.MaterialComponents.Subtitle1</item>
+  <item name="textAppearanceSubtitle2">@style/TextAppearance.MaterialComponents.Subtitle2</item>
+  <item name="textAppearanceBody1">@style/TextAppearance.MaterialComponents.Body1</item>
+  <item name="textAppearanceBody2">@style/TextAppearance.MaterialComponents.Body2</item>
+  <item name="textAppearanceCaption">@style/TextAppearance.MaterialComponents.Caption</item>
+  <item name="textAppearanceButton">@style/TextAppearance.MaterialComponents.Button</item>
+  <item name="textAppearanceOverline">@style/TextAppearance.MaterialComponents.Overline</item>
 
 </style>
 ```

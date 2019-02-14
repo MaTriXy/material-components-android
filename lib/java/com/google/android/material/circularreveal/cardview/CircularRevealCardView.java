@@ -18,12 +18,12 @@ package com.google.android.material.circularreveal.cardview;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
-import android.support.annotation.ColorInt;
-import android.support.annotation.Nullable;
+import androidx.annotation.ColorInt;
+import androidx.annotation.Nullable;
 import com.google.android.material.circularreveal.CircularRevealHelper;
 import com.google.android.material.circularreveal.CircularRevealWidget;
-import android.support.v7.widget.CardView;
 import android.util.AttributeSet;
+import androidx.cardview.widget.CardView;
 
 /**
  * A CircularRevealWidget wrapper for {@link CardView}.

@@ -18,28 +18,28 @@ package com.google.android.material.snackbar;
 
 import com.google.android.material.R;
 
-import static android.support.annotation.RestrictTo.Scope.LIBRARY_GROUP;
+import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
-import android.support.annotation.ColorInt;
-import android.support.annotation.IntDef;
-import android.support.annotation.IntRange;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.annotation.RestrictTo;
-import android.support.annotation.StringRes;
-import com.google.android.material.internal.ThemeEnforcement;
-import android.support.design.widget.CoordinatorLayout;
+import android.content.res.TypedArray;
+import androidx.annotation.ColorInt;
+import androidx.annotation.IntDef;
+import androidx.annotation.IntRange;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.StringRes;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
+import android.view.accessibility.AccessibilityManager;
 import android.widget.FrameLayout;
 import android.widget.TextView;
-
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
@@ -59,6 +59,9 @@ import java.lang.annotation.RetentionPolicy;
  * via {@link BaseTransientBottomBar#addCallback(BaseCallback)}.
  */
 public final class Snackbar extends BaseTransientBottomBar<Snackbar> {
+
+  private final AccessibilityManager accessibilityManager;
+  private boolean hasAction;
 
   /** @hide */
   @RestrictTo(LIBRARY_GROUP)
@@ -88,6 +91,8 @@ public final class Snackbar extends BaseTransientBottomBar<Snackbar> {
    * @see #setDuration
    */
   public static final int LENGTH_LONG = BaseTransientBottomBar.LENGTH_LONG;
+
+  private static final int[] SNACKBAR_BUTTON_STYLE_ATTR = new int[] {R.attr.snackbarButtonStyle};
 
   /**
    * Callback class for {@link Snackbar} instances.
@@ -127,6 +132,8 @@ public final class Snackbar extends BaseTransientBottomBar<Snackbar> {
       View content,
       com.google.android.material.snackbar.ContentViewCallback contentViewCallback) {
     super(parent, content, contentViewCallback);
+    accessibilityManager =
+        (AccessibilityManager) parent.getContext().getSystemService(Context.ACCESSIBILITY_SERVICE);
   }
 
   // TODO: Delete this once custom Robolectric shadows no longer depend on this method being present
@@ -163,8 +170,8 @@ public final class Snackbar extends BaseTransientBottomBar<Snackbar> {
    *
    * @param view The view to find a parent from.
    * @param text The text to show. Can be formatted text.
-   * @param duration How long to display the message. Either {@link #LENGTH_SHORT} or {@link
-   *     #LENGTH_LONG}
+   * @param duration How long to display the message. Can be {@link #LENGTH_SHORT}, {@link
+   *     #LENGTH_LONG}, {@link #LENGTH_INDEFINITE}, or a custom duration in milliseconds.
    */
   @NonNull
   public static Snackbar make(
@@ -176,12 +183,11 @@ public final class Snackbar extends BaseTransientBottomBar<Snackbar> {
     }
 
     final LayoutInflater inflater = LayoutInflater.from(parent.getContext());
-    final boolean isUsingMaterialTheme = ThemeEnforcement.isMaterialTheme(parent.getContext());
     final SnackbarContentLayout content =
         (SnackbarContentLayout)
             inflater.inflate(
-                isUsingMaterialTheme
-                    ? R.layout.design_layout_snackbar_include_material
+                hasSnackbarButtonStyleAttr(parent.getContext())
+                    ? R.layout.mtrl_layout_snackbar_include
                     : R.layout.design_layout_snackbar_include,
                 parent,
                 false);
@@ -189,6 +195,18 @@ public final class Snackbar extends BaseTransientBottomBar<Snackbar> {
     snackbar.setText(text);
     snackbar.setDuration(duration);
     return snackbar;
+  }
+
+  /**
+   * {@link Snackbar}s should still work with AppCompat themes, which don't specify a {@code
+   * snackbarButtonStyle}. This method helps to check if a valid {@code snackbarButtonStyle} is set
+   * within the current context, so that we know whether we can use the attribute.
+   */
+  protected static boolean hasSnackbarButtonStyleAttr(Context context) {
+    TypedArray a = context.obtainStyledAttributes(SNACKBAR_BUTTON_STYLE_ATTR);
+    int snackbarButtonStyleResId = a.getResourceId(0, -1);
+    a.recycle();
+    return snackbarButtonStyleResId != -1;
   }
 
   /**
@@ -204,8 +222,8 @@ public final class Snackbar extends BaseTransientBottomBar<Snackbar> {
    *
    * @param view The view to find a parent from.
    * @param resId The resource id of the string resource to use. Can be formatted text.
-   * @param duration How long to display the message. Either {@link #LENGTH_SHORT} or {@link
-   *     #LENGTH_LONG}
+   * @param duration How long to display the message. Can be {@link #LENGTH_SHORT}, {@link
+   *     #LENGTH_LONG}, {@link #LENGTH_INDEFINITE}, or a custom duration in milliseconds.
    */
   @NonNull
   public static Snackbar make(@NonNull View view, @StringRes int resId, @Duration int duration) {
@@ -284,11 +302,12 @@ public final class Snackbar extends BaseTransientBottomBar<Snackbar> {
   public Snackbar setAction(CharSequence text, final View.OnClickListener listener) {
     final SnackbarContentLayout contentLayout = (SnackbarContentLayout) this.view.getChildAt(0);
     final TextView tv = contentLayout.getActionView();
-
     if (TextUtils.isEmpty(text) || listener == null) {
       tv.setVisibility(View.GONE);
       tv.setOnClickListener(null);
+      hasAction = false;
     } else {
+      hasAction = true;
       tv.setVisibility(View.VISIBLE);
       tv.setText(text);
       tv.setOnClickListener(
@@ -302,6 +321,14 @@ public final class Snackbar extends BaseTransientBottomBar<Snackbar> {
           });
     }
     return this;
+  }
+
+  @Override
+  public int getDuration() {
+    // If touch exploration is enabled override duration to give people chance to interact.
+    return hasAction && accessibilityManager.isTouchExplorationEnabled()
+        ? BaseTransientBottomBar.LENGTH_INDEFINITE
+        : super.getDuration();
   }
 
   /**

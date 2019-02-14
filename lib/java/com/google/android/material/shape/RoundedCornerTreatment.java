@@ -16,13 +16,8 @@
 
 package com.google.android.material.shape;
 
-import com.google.android.material.internal.Experimental;
-
 /** A corner treatment which rounds a corner of a shape. */
-@Experimental("The shapes API is currently experimental and subject to change")
-public class RoundedCornerTreatment extends CornerTreatment {
-
-  private final float radius;
+public class RoundedCornerTreatment extends CornerTreatment implements Cloneable {
 
   /**
    * Instantiates a rounded corner treatment.
@@ -31,12 +26,13 @@ public class RoundedCornerTreatment extends CornerTreatment {
    *     circle.
    */
   public RoundedCornerTreatment(float radius) {
-    this.radius = radius;
+    super(radius);
   }
 
   @Override
   public void getCornerPath(float angle, float interpolation, ShapePath shapePath) {
-    shapePath.reset(0, radius * interpolation);
-    shapePath.addArc(0, 0, 2 * radius * interpolation, 2 * radius * interpolation, angle + 180, 90);
+    float radius = cornerSize;
+    shapePath.reset(0, radius * interpolation, ShapePath.ANGLE_LEFT, 180 - angle);
+    shapePath.addArc(0, 0, 2 * radius * interpolation, 2 * radius * interpolation, 180, angle);
   }
 }

@@ -23,23 +23,29 @@ import android.graphics.Paint.Style;
 import android.graphics.PorterDuff.Mode;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import com.google.android.material.shape.MaterialShapeDrawable;
+import com.google.android.material.shape.ShapeAppearanceModel;
 import android.view.View;
 
 /**
- * A {@link GradientDrawable} that can draw a cutout for the label in {@link TextInputLayout}'s
+ * A {@link MaterialShapeDrawable} that can draw a cutout for the label in {@link TextInputLayout}'s
  * outline mode.
  */
-class CutoutDrawable extends GradientDrawable {
+class CutoutDrawable extends MaterialShapeDrawable {
   private final Paint cutoutPaint;
   private final RectF cutoutBounds;
   private int savedLayer;
 
   CutoutDrawable() {
-    super();
+    this(null);
+  }
+
+  CutoutDrawable(@Nullable ShapeAppearanceModel shapeAppearanceModel) {
+    super(shapeAppearanceModel != null ? shapeAppearanceModel : new ShapeAppearanceModel());
     cutoutPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     setPaintStyles();
     cutoutBounds = new RectF();
@@ -92,7 +98,10 @@ class CutoutDrawable extends GradientDrawable {
 
     if (useHardwareLayer(callback)) {
       View viewCallback = (View) callback;
-      viewCallback.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+      // Make sure we're using a hardware layer.
+      if (viewCallback.getLayerType() != View.LAYER_TYPE_HARDWARE) {
+        viewCallback.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+      }
     } else {
       // If we're not using a hardware layer, save the canvas layer.
       saveCanvasLayer(canvas);

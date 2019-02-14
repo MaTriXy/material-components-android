@@ -16,11 +16,28 @@
 
 package com.google.android.material.shape;
 
-import com.google.android.material.internal.Experimental;
+/**
+ * A basic corner treatment (a single point which does not affect the shape).
+ *
+ * <p>Note: For corner treatments which result in a concave shape, the parent view must disable
+ * clipping of children by calling {@link android.view.ViewGroup#setClipChildren(boolean)}, or by
+ * setting `android:clipChildren="false"` in xml. `clipToPadding` may also need to be false if there
+ * is any padding on the parent that could intersect the shadow.
+ */
+public class CornerTreatment implements Cloneable {
 
-/** A basic corner treatment (a single point which does not affect the shape). */
-@Experimental("The shapes API is currently experimental and subject to change")
-public class CornerTreatment {
+  protected float cornerSize;
+
+  public CornerTreatment() {
+    // Default Constructor has no size. Using this treatment for all corners will draw a square
+    this.cornerSize = 0;
+  }
+
+  protected CornerTreatment(float cornerSize) {
+    // Most CornerTreatments have a concept of corner size. This constructor is exposed for
+    // extending classes.
+    this.cornerSize = cornerSize;
+  }
 
   /**
    * Generates a {@link ShapePath} for this corner treatment.
@@ -38,4 +55,22 @@ public class CornerTreatment {
    * @param shapePath the {@link ShapePath} that this treatment should write to.
    */
   public void getCornerPath(float angle, float interpolation, ShapePath shapePath) {}
+
+  public float getCornerSize() {
+    return cornerSize;
+  }
+
+  public void setCornerSize(float cornerSize) {
+    this.cornerSize = cornerSize;
+  }
+
+  @Override
+  public CornerTreatment clone() {
+    try {
+      return (CornerTreatment) super.clone();
+    } catch (CloneNotSupportedException e) {
+      throw new AssertionError(e); // This should never happen, because CornerTreatment handles the
+      // cloning, so all subclasses of CornerTreatment will support cloning.
+    }
+  }
 }

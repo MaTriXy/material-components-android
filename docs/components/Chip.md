@@ -122,38 +122,54 @@ This style usually contains an optional chip icon and is never checkable.
     android:text="@string/hello_world"/>
 ```
 
+### Chip Touch Target
+
+To ensure that a `Chip` is accessible, use a MaterialComponents.Chip style which
+uses an
+[InsetDrawable](https://developer.android.com/reference/android/graphics/drawable/InsetDrawable)
+to extend chip's touch target (when necessary) to meet Android's recommended
+[accessibility touch target size](https://support.google.com/accessibility/android/answer/7101858).
+Developers can override chip's minimum touch target size using
+`app:chipMinTouchTargetSize`.
+
 ### Chip Attributes
 
-Feature      | Relevant attributes
-:----------- | :--------------------------
-Shape        | `app:chipCornerRadius`
-Size         | `app:chipMinHeight`
-Background   | `app:chipBackgroundColor`
-Border       | `app:chipStrokeColor`
-             | `app:chipStrokeWidth`
-Ripple       | `app:rippleColor`
-Label        | `android:text`
-             | `android:textAppearance`
-Chip Icon    | `app:chipIconEnabled`
-             | `app:chipIcon`
-             | `app:chipIconSize`
-Close Icon   | `app:closeIconEnabled`
-             | `app:closeIcon`
-             | `app:closeIconSize`
-             | `app:closeIconTint`
-Checkable    | `app:checkable`
-Checked Icon | `app:checkedIconEnabled`
-             | `app:checkedIcon`
-Motion       | `app:showMotionSpec`
-             | `app:hideMotionSpec`
-Paddings     | `app:chipStartPadding`
-             | `app:iconStartPadding`
-             | `app:iconEndPadding`
-             | `app:textStartPadding`
-             | `app:textEndPadding`
-             | `app:closeIconStartPadding`
-             | `app:closeIconEndPadding`
-             | `app:chipEndPadding`
+Feature       | Relevant attributes
+--------------| -----------------------------
+Label         | `android:text` <br> `android:textAppearance`
+Shape         | `app:chipCornerRadius`
+Size          | `app:chipMinHeight`
+Background    | `app:chipBackgroundColor`
+Border        | `app:chipStrokeColor` <br> `app:chipStrokeWidth`
+Ripple        | `app:rippleColor`
+Chip Icon     | `app:chipIconVisible` <br> `app:chipIcon` <br> `app:chipIconTint` <br> `app:chipIconSize`
+Close Icon    | `app:closeIconVisible` <br> `app:closeIcon` <br> `app:closeIconSize` <br> `app:closeIconTint`
+Checkable     | `android:checkable`
+Checked Icon  | `app:checkedIconVisible` <br> `app:checkedIcon`
+Motion        | `app:showMotionSpec` <br> `app:hideMotionSpec`
+Paddings      | `app:chipStartPadding` <br> `app:iconStartPadding` <br> `app:iconEndPadding` <br> `app:textStartPadding` <br> `app:textEndPadding` <br> `app:closeIconStartPadding` <br> `app:closeIconEndPadding` <br> `app:chipEndPadding`
+TouchTarget   | `app:chipMinTouchTargetSize` <br> `app:ensureMinTouchTargetSize`
+### Theme Attribute Mapping
+
+#### Entry Chip, Filter Chip, Choice Chip, Action Chip (Default)
+
+```
+style="@style/Widget.MaterialComponents.Chip.Entry"
+style="@style/Widget.MaterialComponents.Chip.Filter"
+style="@style/Widget.MaterialComponents.Chip.Choice"
+style="@style/Widget.MaterialComponents.Chip.Action" (default)
+```
+
+Component Attribute           | Default Theme Attribute Value
+----------------------------- | -------------------------------
+`android:textAppearance`      | `textAppearanceBody2`
+`android:textColor` (enabled) | `colorOnSurface` at 87% opacity
+`android:textColor`           | `colorOnSurface` at 33% opacity
+`chipBackgroundColor`         | `colorOnSurface`
+`chipSurfaceColor`            | `colorSurface`
+`chipStrokeColor`             | `colorOnSurface`
+`rippleColor`                 | `colorOnSurface`
+`closeIconTint`               | `colorOnSurface`
 
 ### Handling Clicks
 
@@ -199,6 +215,18 @@ chip.setOnCloseIconClickListener(new OnClickListener() {
 });
 ```
 
+### RTL-friendly Chip Layout
+
+Call `setLayoutDirection(int)` with `View.LAYOUT_DIRECTION_LOCALE` to ensure
+that the Chip's ancestor `TextView` renders the text with proper paddings.
+Without this, the initial rendering may look like the text has its padding set
+according to LTR direction.
+
+```java
+Chip chip = (Chip) findViewById(R.id.chip);
+chip.setLayoutDirection(View.LAYOUT_DIRECTION_LOCALE);
+```
+
 ### ChipGroup
 
 A `ChipGroup` contains a set of `Chip`s and manages their layout and
@@ -237,6 +265,12 @@ A `ChipGroup` can also constrain its chips to a single horizontal line using the
 </HorizontalScrollView>
 ```
 
+#### Chip Spacing
+A `ChipGroup` can insert spacing between chips in a row or between rows of chips
+using the `app:chipSpacing` attribute. Different horizontal and vertical spacing
+can be set using the `app:chipSpacingHorizontal` and `app:chipSpacingVertical`
+attributes.
+
 #### Multiple Exclusion Scope
 
 A `ChipGroup` can be configured to only allow a single chip to be checked at a
@@ -273,13 +307,21 @@ chipGroup.setOnCheckedChangeListener(new OnCheckedChangeListener() {
 Or, call `getCheckedChipId()` at any time to get the checked chip. The return
 value is only valid in single selection mode.
 
+### ChipGroup Attributes
+Feature         | Relevant Attributes
+----------------| -----------------------------
+Layout          |`app:singleLine`
+Selection       | `app:singleSelection`
+Spacing         |`app:chipSpacing` <br> `app:chipSpacingHorizontal` <br> `chipSpacingVertical`
+
 ### Standalone ChipDrawable
 
 A standalone `ChipDrawable` can be used in contexts that require a `Drawable`.
 The most obvious use case is in text fields that "chipify" contacts, commonly
 found in communications apps.
 
-To use a `ChipDrawable`, first create a chip resource in `res/xml`.
+To use a `ChipDrawable`, first create a chip resource in `res/xml`. Note that
+you must use the `<chip` tag in your resource file.
 
 **res/xml/standalone_chip.xml**
 

@@ -18,7 +18,7 @@ package io.material.catalog.chip;
 
 import io.material.catalog.R;
 
-import android.support.v4.app.Fragment;
+import androidx.fragment.app.Fragment;
 import dagger.Provides;
 import dagger.android.ContributesAndroidInjector;
 import dagger.multibindings.IntoSet;
@@ -63,6 +63,13 @@ public class ChipFragment extends DemoLandingFragment {
             return new ChipGroupDemoFragment();
           }
         });
+    additionalDemos.add(
+        new Demo(R.string.cat_chip_recyclerview_demo_title) {
+          @Override
+          public Fragment createFragment() {
+            return new ChipRecyclerviewDemoFragment();
+          }
+        });
     return additionalDemos;
   }
 
@@ -78,7 +85,7 @@ public class ChipFragment extends DemoLandingFragment {
     @Provides
     @ActivityScope
     static FeatureDemo provideFeatureDemo() {
-      return new FeatureDemo(R.string.cat_chip_title, R.drawable.ic_chips_24px) {
+      return new FeatureDemo(R.string.cat_chip_title, R.drawable.ic_chips) {
         @Override
         public Fragment createFragment() {
           return new ChipFragment();

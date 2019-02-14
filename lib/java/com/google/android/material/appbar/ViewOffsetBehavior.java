@@ -17,7 +17,7 @@
 package com.google.android.material.appbar;
 
 import android.content.Context;
-import android.support.design.widget.CoordinatorLayout;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import android.util.AttributeSet;
 import android.view.View;
 
@@ -86,5 +86,25 @@ class ViewOffsetBehavior<V extends View> extends CoordinatorLayout.Behavior<V> {
 
   public int getLeftAndRightOffset() {
     return viewOffsetHelper != null ? viewOffsetHelper.getLeftAndRightOffset() : 0;
+  }
+
+  public void setVerticalOffsetEnabled(boolean verticalOffsetEnabled) {
+    if (viewOffsetHelper != null) {
+      viewOffsetHelper.setVerticalOffsetEnabled(verticalOffsetEnabled);
+    }
+  }
+
+  public boolean isVerticalOffsetEnabled() {
+    return viewOffsetHelper != null && viewOffsetHelper.isVerticalOffsetEnabled();
+  }
+
+  public void setHorizontalOffsetEnabled(boolean horizontalOffsetEnabled) {
+    if (viewOffsetHelper != null) {
+      viewOffsetHelper.setHorizontalOffsetEnabled(horizontalOffsetEnabled);
+    }
+  }
+
+  public boolean isHorizontalOffsetEnabled() {
+    return viewOffsetHelper != null && viewOffsetHelper.isHorizontalOffsetEnabled();
   }
 }

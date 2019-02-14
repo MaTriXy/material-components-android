@@ -19,10 +19,10 @@ package io.material.catalog.transformation;
 import io.material.catalog.R;
 
 import android.os.Bundle;
-import android.support.annotation.Nullable;
+import androidx.annotation.Nullable;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -44,12 +44,14 @@ public class TransformationMainDemoFragment extends DemoFragment implements OnBa
 
     Toolbar toolbar = view.findViewById(R.id.toolbar);
     fab = view.findViewById(R.id.fab);
+    View closeButton = view.findViewById(R.id.close_button);
     View sheet = view.findViewById(R.id.sheet);
     View scrim = view.findViewById(R.id.scrim);
 
     ((AppCompatActivity) getActivity()).setSupportActionBar(toolbar);
 
     fab.setOnClickListener(v -> fab.setExpanded(!fab.isExpanded()));
+    closeButton.setOnClickListener(v -> fab.setExpanded(false));
     scrim.setOnClickListener(v -> fab.setExpanded(false));
 
     DraggableCoordinatorLayout container = (DraggableCoordinatorLayout) view;

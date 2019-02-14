@@ -27,12 +27,12 @@
       android:text="\?attr/colorPrimary"/>
   <HorizontalScrollView
       android:layout_width="wrap_content"
-      android:layout_height="wrap_content">
+      android:layout_height="wrap_content"
+      android:layout_marginBottom="16dp">
     <RadioGroup
         android:id="@+id/primary_colors"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
         android:orientation="horizontal"/>
   </HorizontalScrollView>
 
@@ -42,12 +42,46 @@
       android:text="\?attr/colorSecondary"/>
   <HorizontalScrollView
       android:layout_width="wrap_content"
-      android:layout_height="wrap_content">
+      android:layout_height="wrap_content"
+      android:layout_marginBottom="16dp">
     <RadioGroup
         android:id="@+id/secondary_colors"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"/>
   </HorizontalScrollView>
+
+  <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="@string/mtrl_shapes_corner_family"/>
+
+  <RadioGroup
+      android:id="@+id/shape_families"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="horizontal">
+
+    <RadioButton
+        android:id="@+id/rounded_button"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:checked="true"
+        android:drawableLeft="@drawable/ic_rounded_corners_24px"
+        android:drawablePadding="8dp"
+        android:drawableStart="@drawable/ic_rounded_corners_24px"
+        android:text="@string/mtrl_rounded"/>
+
+    <RadioButton
+        android:id="@+id/cut_button"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:drawableLeft="@drawable/ic_cut_corners_24px"
+        android:drawablePadding="8dp"
+        android:drawableStart="@drawable/ic_cut_corners_24px"
+        android:text="@string/mtrl_cut"/>
+  </RadioGroup>
 
 </LinearLayout>

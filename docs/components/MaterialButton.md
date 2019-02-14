@@ -68,9 +68,9 @@ layout:
     android:text="@string/unelevated_button_label_enabled"/>
 ```
 
-For raised buttons, your theme's `colorAccent` provides the default background
-color of the component, and the text color is white by default. For unelevated
-buttons, your theme's `colorAccent` provides the default text color of the
+For filled buttons, your theme's `colorPrimary` provides the default background
+color of the component, and the text color is `colorOnPrimary`. For unfilled
+buttons, your theme's `colorPrimary` provides the default text color of the
 component, and the background color is transparent by default.
 
 ## Styles
@@ -107,6 +107,22 @@ background.
     android:text="@string/unelevated_button_label_enabled"/>
 ```
 
+### Outlined button
+
+The `OutlinedButton` style has a transparent background with colored text, and a
+small stroke around the button. Outlined buttons are medium-emphasis buttons.
+They contain actions that are important, but aren’t the primary action in an
+app.
+
+```
+<com.google.android.material.button.MaterialButton
+    android:id="@+id/material_text_button"
+    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="@string/outlined_button_label_enabled"/>
+```
+
 ### Text button
 
 The `TextButton` style has a transparent background with colored text. Text
@@ -122,6 +138,37 @@ options.
     android:text="@string/text_button_label_enabled"/>
 ```
 
+### Icon button
+
+Every style for Material Button has an additional `.Icon` style. This style is
+meant to be used when the `icon` attribute is set for the button. The icon
+button style has smaller start and end paddings to achieve visual balance in the
+button when an icon is present.
+
+The following shows a filled, elevated button with an icon:
+
+```xml
+<com.google.android.material.button.MaterialButton
+    android:id="@+id/material_icon_button"
+    style="@style/Widget.MaterialComponents.Button.Icon"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="@string/icon_button_label_enabled"
+    app:icon="@drawable/icon_24px"/>
+```
+
+The following shows a text button with an icon:
+
+```xml
+<com.google.android.material.button.MaterialButton
+    android:id="@+id/material_icon_button"
+    style="@style/Widget.MaterialComponents.Button.TextButton.Icon"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="@string/icon_button_label_enabled"
+    app:icon="@drawable/icon_24px"/>
+```
+
 ## Attributes
 
 The following attributes can be changed for Material Button:
@@ -131,11 +178,9 @@ Description                                                  | Relevant attribut
 Button padding                                               | `android:padding`<br/>`android:paddingLeft`<br/>`android:paddingRight`<br/>`android:paddingStart`<br/>`android:paddingEnd`<br/>`android:paddingTop`<br/>`android:paddingBottom`
 Button inset                                                 | `android:insetLeft`<br/>`android:insetRight`<br/>`android:insetTop`<br/>`android:insetBottom`
 Background color                                             | `app:backgroundTint`<br/>`app:backgroundTintMode`
-Icon drawable                                                | `app:icon`
+Icon drawable                                                | `app:icon`<br/>`app:iconSize`
 Padding between icon and button text                         | `app:iconPadding`
 Icon color                                                   | `app:iconTint`<br/>`app:iconTintMode`
-Padding at the start of a button when<br/>an icon is present | `app:additionalPaddingStartForIcon`
-Padding at the end of a button when an<br/>icon is present   | `app:additionalPaddingEndForIcon`
 Stroke                                                       | `app:strokeColor`<br/>`app:strokeWidth`
 The radius of all four corners of the<br/>button             | `app:cornerRadius`
 Ripple                                                       | `app:rippleColor`
@@ -146,12 +191,63 @@ a button:
 ```xml
 <com.google.android.material.button.MaterialButton
     android:id="@+id/material_icon_button"
+    style="@style/Widget.MaterialComponents.Button.Icon"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:text="@string/icon_button_label_enabled"
     app:icon="@drawable/icon_24px"
     app:iconPadding="8dp"/>
 ```
+
+## Theme Attribute Mapping
+
+### Filled button
+
+```
+style="@style/Widget.MaterialComponents.Button" (default)
+style="@style/Widget.MaterialComponents.Button.Icon"
+style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+style="@style/Widget.MaterialComponents.Button.UnelevatedButton.Icon"
+```
+
+Component Attribute      | Default Theme Attribute Value
+------------------------ | -----------------------------------------
+`android:textAppearance` | `textAppearanceButton`
+`android:textColor`      | `colorOnPrimary`
+`iconTint`               | `colorOnPrimary`
+`rippleColor`            | `colorOnPrimary` at 32% opacity (pressed)
+`backgroundTint`         | `colorPrimary`
+
+### Outlined button
+
+```
+style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+style="@style/Widget.MaterialComponents.Button.OutlinedButton.Icon"
+```
+
+Component Attribute      | Default Theme Attribute Value
+------------------------ | ---------------------------------------
+`android:textAppearance` | `textAppearanceButton`
+`android:textColor`      | `colorPrimary`
+`iconTint`               | `colorPrimary`
+`rippleColor`            | `colorPrimary` at 16% opacity (pressed)
+`strokeColor`            | `colorOnSurface` at 12% opacity
+`backgroundTint`         | Transparent
+
+### Text button
+
+```
+style="@style/Widget.MaterialComponents.Button.TextButton"
+style="@style/Widget.MaterialComponents.Button.TextButton.Icon"
+```
+
+Component Attribute      | Default Theme Attribute Value
+------------------------ | ---------------------------------------
+`android:textAppearance` | `textAppearanceButton`
+`android:textColor`      | `colorPrimary`
+`iconTint`               | `colorPrimary`
+`rippleColor`            | `colorPrimary` at 12% opacity (pressed)
+`backgroundTint`         | Transparent
 
 ## Related Concepts
 

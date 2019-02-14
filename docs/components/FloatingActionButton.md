@@ -42,7 +42,7 @@ Design's floating action button component. Here's how to include the widget in
 your layout:
 
 ```xml
-<android.support.design.widget.CoordinatorLayout
+<androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -58,7 +58,7 @@ your layout:
       android:layout_margin="16dp"
       app:srcCompat="@drawable/ic_plus_24"/>
 
-</android.support.design.widget.CoordinatorLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
 ```
 
 Note: If the `FloatingActionButton` is a child of a `CoordinatorLayout`, you get
@@ -109,19 +109,36 @@ ripple, and motion changes.
 
 Feature    | Relevant attributes
 :--------- | :-------------------------------
-Icon       | `app:srcCompat`
-           | `app:tint`
-           | `app:maxImageSize`
-Size       | `app:fabSize`
-           | `app:fabCustomSize`
+Icon       | `app:srcCompat` <br> `app:tint` <br> `app:maxImageSize`
+Size       | `app:fabSize` <br> `app:fabCustomSize`
 Background | `app:backgroundTint`
 Ripple     | `app:rippleColor`
 Border     | `app:borderWidth`
-Elevation  | `app:elevation`
-           | `app:hoveredFocusedTranslationZ`
-           | `app:pressedTranslationZ`
-Motion     | `app:showMotionSpec`
-           | `app:hideMotionSpec`
+Elevation  | `app:elevation` <br> `app:hoveredFocusedTranslationZ` <br> `app:pressedTranslationZ`
+Motion     | `app:showMotionSpec` <br> `app:hideMotionSpec`
+
+### Theme Attribute Mapping
+
+#### Updated Material Style
+
+```
+style="@style/Widget.MaterialComponents.FloatingActionButton"
+```
+
+Component Attribute | Default Theme Attribute Value
+------------------- | -----------------------------
+`backgroundTint`    | `colorSecondary`
+`tint`              | `colorOnSecondary`
+`rippleColor`       | `colorOnSecondary`
+
+#### Legacy Material Style
+
+```
+style="@style/Widget.Design.FloatingActionButton"
+```
+
+The legacy Material style of `FloatingActionButton` does not make use of our new
+color theming attributes.
 
 ### Handling Clicks
 

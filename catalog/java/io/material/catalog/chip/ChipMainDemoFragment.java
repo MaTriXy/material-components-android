@@ -19,15 +19,14 @@ package io.material.catalog.chip;
 import io.material.catalog.R;
 
 import android.os.Bundle;
-import android.support.annotation.LayoutRes;
-import android.support.annotation.Nullable;
+import androidx.annotation.LayoutRes;
+import androidx.annotation.Nullable;
 import com.google.android.material.chip.Chip;
-import com.google.android.material.snackbar.BaseTransientBottomBar;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.android.material.switchmaterial.SwitchMaterial;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Switch;
 import io.material.catalog.feature.DemoFragment;
 import io.material.catalog.feature.DemoUtils;
 import java.util.List;
@@ -49,16 +48,23 @@ public class ChipMainDemoFragment extends DemoFragment {
     for (Chip chip : chips) {
       chip.setOnCloseIconClickListener(
           v -> {
-            Snackbar.make(view, "Clicked close icon.", BaseTransientBottomBar.LENGTH_SHORT).show();
+            Snackbar.make(view, "Clicked close icon.", Snackbar.LENGTH_SHORT).show();
           });
+      if (chip.isEnabled() && !chip.isCheckable()) {
+        chip.setOnClickListener(
+            v -> {
+              Snackbar.make(view, "Activated chip.", Snackbar.LENGTH_SHORT)
+                  .show();
+            });
+      }
     }
-    Switch longTextSwitch = view.findViewById(R.id.cat_chip_text_length_switch);
+    SwitchMaterial longTextSwitch = view.findViewById(R.id.cat_chip_text_length_switch);
     longTextSwitch.setOnCheckedChangeListener(
         (buttonView, isChecked) -> {
+          CharSequence updatedText =
+              getText(isChecked ? R.string.cat_chip_text_to_truncate : R.string.cat_chip_text);
           for (Chip chip : chips) {
-            CharSequence updatedText =
-                getText(isChecked ? R.string.cat_chip_text_to_truncate : R.string.cat_chip_text);
-            chip.setChipText(updatedText);
+            chip.setText(updatedText);
           }
         });
 

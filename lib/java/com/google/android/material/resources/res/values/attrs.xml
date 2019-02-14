@@ -16,6 +16,8 @@
 -->
 <resources>
   <!-- Type definitions for common attributes used across component packages. -->
+  <attr name="checkedIcon" format="reference" />
   <attr name="strokeColor" format="color"/>
   <attr name="strokeWidth" format="dimension"/>
+  <attr name="minTouchTargetSize" format="dimension"/>
 </resources>

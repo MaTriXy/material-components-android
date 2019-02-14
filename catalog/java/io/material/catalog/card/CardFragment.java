@@ -18,7 +18,9 @@ package io.material.catalog.card;
 
 import io.material.catalog.R;
 
-import android.support.v4.app.Fragment;
+import android.content.Intent;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
 import dagger.Provides;
 import dagger.android.ContributesAndroidInjector;
 import dagger.multibindings.IntoSet;
@@ -27,6 +29,8 @@ import io.material.catalog.application.scope.FragmentScope;
 import io.material.catalog.feature.Demo;
 import io.material.catalog.feature.DemoLandingFragment;
 import io.material.catalog.feature.FeatureDemo;
+import java.util.Arrays;
+import java.util.List;
 
 /** A landing fragment that links to card demos for the Catalog app. */
 public class CardFragment extends DemoLandingFragment {
@@ -51,6 +55,31 @@ public class CardFragment extends DemoLandingFragment {
     };
   }
 
+  @Override
+  public List<Demo> getAdditionalDemos() {
+    return Arrays.asList(
+        new Demo(R.string.cat_card_selection_mode) {
+          @Override
+          public Intent createActivityIntent() {
+            return new Intent(getContext(), CardSelectionModeActivity.class);
+          }
+        },
+        new Demo(R.string.cat_card_draggable_card) {
+          @Nullable
+          @Override
+          public Fragment createFragment() {
+            return new DraggableCardFragment();
+          }
+        },
+        new Demo(R.string.cat_card_states) {
+          @Nullable
+          @Override
+          public Fragment createFragment() {
+            return new CardStatesFragment();
+          }
+        });
+  }
+
   /** The Dagger module for {@link CardFragment} dependencies. */
   @dagger.Module
   public abstract static class Module {
@@ -63,7 +92,7 @@ public class CardFragment extends DemoLandingFragment {
     @Provides
     @ActivityScope
     static FeatureDemo provideFeatureDemo() {
-      return new FeatureDemo(R.string.cat_card_title, R.drawable.ic_card_24px) {
+      return new FeatureDemo(R.string.cat_card_title, R.drawable.ic_card) {
         @Override
         public Fragment createFragment() {
           return new CardFragment();

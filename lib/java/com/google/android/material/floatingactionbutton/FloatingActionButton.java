@@ -18,7 +18,8 @@ package com.google.android.material.floatingactionbutton;
 
 import com.google.android.material.R;
 
-import static android.support.annotation.RestrictTo.Scope.LIBRARY_GROUP;
+import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
+import static com.google.android.material.internal.ThemeEnforcement.createThemedContext;
 
 import android.animation.Animator.AnimatorListener;
 import android.content.Context;
@@ -32,22 +33,24 @@ import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Parcelable;
-import android.support.annotation.AnimatorRes;
-import android.support.annotation.ColorInt;
-import android.support.annotation.DimenRes;
-import android.support.annotation.DrawableRes;
-import android.support.annotation.IdRes;
-import android.support.annotation.IntDef;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.annotation.Px;
-import android.support.annotation.RestrictTo;
-import android.support.annotation.VisibleForTesting;
+import androidx.annotation.AnimatorRes;
+import androidx.annotation.ColorInt;
+import androidx.annotation.DimenRes;
+import androidx.annotation.DrawableRes;
+import androidx.annotation.IdRes;
+import androidx.annotation.IntDef;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.Px;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.VisibleForTesting;
 import com.google.android.material.animation.MotionSpec;
+import com.google.android.material.animation.TransformationListener;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.expandable.ExpandableTransformationWidget;
 import com.google.android.material.expandable.ExpandableWidgetHelper;
+import com.google.android.material.floatingactionbutton.FloatingActionButtonImpl.InternalTransformationListener;
 import com.google.android.material.floatingactionbutton.FloatingActionButtonImpl.InternalVisibilityChangedListener;
 import com.google.android.material.internal.DescendantOffsetUtils;
 import com.google.android.material.internal.ThemeEnforcement;
@@ -55,14 +58,15 @@ import com.google.android.material.internal.ViewUtils;
 import com.google.android.material.internal.VisibilityAwareImageButton;
 import com.google.android.material.resources.MaterialResources;
 import com.google.android.material.shadow.ShadowViewDelegate;
+import com.google.android.material.shape.ShapeAppearanceModel;
 import com.google.android.material.stateful.ExtendableSavedState;
-import android.support.design.widget.CoordinatorLayout;
-import android.support.v4.graphics.drawable.DrawableCompat;
-import android.support.v4.view.TintableBackgroundView;
-import android.support.v4.view.ViewCompat;
-import android.support.v4.widget.TintableImageSourceView;
-import android.support.v7.widget.AppCompatDrawableManager;
-import android.support.v7.widget.AppCompatImageHelper;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.graphics.drawable.DrawableCompat;
+import androidx.core.view.TintableBackgroundView;
+import androidx.core.view.ViewCompat;
+import androidx.core.widget.TintableImageSourceView;
+import androidx.appcompat.widget.AppCompatDrawableManager;
+import androidx.appcompat.widget.AppCompatImageHelper;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Gravity;
@@ -95,6 +99,7 @@ public class FloatingActionButton extends VisibilityAwareImageButton
 
   private static final String LOG_TAG = "FloatingActionButton";
   private static final String EXPANDABLE_WIDGET_HELPER_KEY = "expandableWidgetHelper";
+  private static final int DEF_STYLE_RES = R.style.Widget_Design_FloatingActionButton;
 
   /** Callback to be invoked when the visibility of a FloatingActionButton changes. */
   public abstract static class OnVisibilityChangedListener {
@@ -189,15 +194,14 @@ public class FloatingActionButton extends VisibilityAwareImageButton
   }
 
   public FloatingActionButton(Context context, AttributeSet attrs, int defStyleAttr) {
-    super(context, attrs, defStyleAttr);
+    super(createThemedContext(context, attrs, defStyleAttr, DEF_STYLE_RES), attrs, defStyleAttr);
+    // Ensure we are using the correctly themed context rather than the context that was passed in.
+    context = getContext();
 
     TypedArray a =
         ThemeEnforcement.obtainStyledAttributes(
-            context,
-            attrs,
-            R.styleable.FloatingActionButton,
-            defStyleAttr,
-            R.style.Widget_Design_FloatingActionButton);
+            context, attrs, R.styleable.FloatingActionButton, defStyleAttr, DEF_STYLE_RES);
+
     backgroundTint =
         MaterialResources.getColorStateList(
             context, a, R.styleable.FloatingActionButton_backgroundTint);
@@ -217,13 +221,18 @@ public class FloatingActionButton extends VisibilityAwareImageButton
     final float pressedTranslationZ =
         a.getDimension(R.styleable.FloatingActionButton_pressedTranslationZ, 0f);
     compatPadding = a.getBoolean(R.styleable.FloatingActionButton_useCompatPadding, false);
+    int minTouchTargetSize =
+        getResources().getDimensionPixelSize(R.dimen.mtrl_fab_min_touch_target);
     maxImageSize = a.getDimensionPixelSize(R.styleable.FloatingActionButton_maxImageSize, 0);
 
     MotionSpec showMotionSpec =
         MotionSpec.createFromAttribute(context, a, R.styleable.FloatingActionButton_showMotionSpec);
     MotionSpec hideMotionSpec =
         MotionSpec.createFromAttribute(context, a, R.styleable.FloatingActionButton_hideMotionSpec);
+    ShapeAppearanceModel shapeAppearance =
+        new ShapeAppearanceModel(context, attrs, defStyleAttr, DEF_STYLE_RES, -1);
 
+    boolean usingDefaultCorner = isUsingDefaultCorner(shapeAppearance);
     a.recycle();
 
     imageHelper = new AppCompatImageHelper(this);
@@ -231,7 +240,9 @@ public class FloatingActionButton extends VisibilityAwareImageButton
 
     expandableWidgetHelper = new ExpandableWidgetHelper(this);
 
+    getImpl().setShapeAppearance(shapeAppearance, usingDefaultCorner);
     getImpl().setBackgroundDrawable(backgroundTint, backgroundTintMode, rippleColor, borderWidth);
+    getImpl().setMinTouchTargetSize(minTouchTargetSize);
     getImpl().setElevation(elevation);
     getImpl().setHoveredFocusedTranslationZ(hoveredFocusedTranslationZ);
     getImpl().setPressedTranslationZ(pressedTranslationZ);
@@ -476,12 +487,33 @@ public class FloatingActionButton extends VisibilityAwareImageButton
   public void setImageResource(@DrawableRes int resId) {
     // Intercept this call and instead retrieve the Drawable via the image helper
     imageHelper.setImageResource(resId);
+    onApplySupportImageTint();
   }
 
   @Override
   public void setImageDrawable(@Nullable Drawable drawable) {
-    super.setImageDrawable(drawable);
-    getImpl().updateImageMatrixScale();
+    if (getDrawable() != drawable) {
+      super.setImageDrawable(drawable);
+      getImpl().updateImageMatrixScale();
+      if (imageTint != null) {
+        onApplySupportImageTint();
+      }
+    }
+  }
+
+  /** Sets the {@link ShapeAppearanceModel} for this {@link FloatingActionButton}. */
+  public void setShapeAppearance(ShapeAppearanceModel shapeAppearance) {
+    getImpl().setShapeAppearance(shapeAppearance, isUsingDefaultCorner(shapeAppearance));
+  }
+
+  /** Returns the {@link ShapeAppearanceModel} for this {@link FloatingActionButton}. */
+  public ShapeAppearanceModel getShapeAppearance() {
+    return getImpl().getShapeAppearance();
+  }
+
+  @Override
+  public void setVisibility(int visibility) {
+    super.setVisibility(visibility);
   }
 
   /**
@@ -613,6 +645,7 @@ public class FloatingActionButton extends VisibilityAwareImageButton
     customSize = NO_CUSTOM_SIZE;
     if (size != this.size) {
       this.size = size;
+      getImpl().updateSize();
       requestLayout();
     }
   }
@@ -849,8 +882,8 @@ public class FloatingActionButton extends VisibilityAwareImageButton
 
   /**
    * Behavior designed for use with {@link FloatingActionButton} instances. Its main function is to
-   * move {@link FloatingActionButton} views so that any displayed {@link Snackbar}s do not cover
-   * them.
+   * move {@link FloatingActionButton} views so that any displayed {@link
+   * com.google.android.material.snackbar.Snackbar}s do not cover them.
    */
   // TODO: remove this generic type after the widget migration is done
   public static class Behavior extends BaseBehavior<FloatingActionButton> {
@@ -866,8 +899,8 @@ public class FloatingActionButton extends VisibilityAwareImageButton
 
   /**
    * Behavior designed for use with {@link FloatingActionButton} instances. Its main function is to
-   * move {@link FloatingActionButton} views so that any displayed {@link Snackbar}s do not cover
-   * them.
+   * move {@link FloatingActionButton} views so that any displayed {@link
+   * com.google.android.material.snackbar.Snackbar}s do not cover them.
    */
   // TODO: remove this generic type after the widget migration is done
   protected static class BaseBehavior<T extends FloatingActionButton>
@@ -1242,6 +1275,78 @@ public class FloatingActionButton extends VisibilityAwareImageButton
    */
   public void setHideMotionSpecResource(@AnimatorRes int id) {
     setHideMotionSpec(MotionSpec.createFromResource(getContext(), id));
+  }
+
+  public void addTransformationListener(TransformationListener<FloatingActionButton> listener) {
+    getImpl().addTransformationListener(new TransformationListenerWrapper(listener));
+  }
+
+  public void removeTransformationListener(TransformationListener<FloatingActionButton> listener) {
+    getImpl().removeTransformationListener(new TransformationListenerWrapper(listener));
+  }
+
+  private boolean isUsingDefaultCorner(ShapeAppearanceModel shapeAppearance) {
+    return shapeAppearance.getTopRightCorner().getCornerSize() == -1;
+  }
+
+  class TransformationListenerWrapper implements InternalTransformationListener {
+
+    @NonNull private final TransformationListener<FloatingActionButton> listener;
+
+    TransformationListenerWrapper(@NonNull TransformationListener<FloatingActionButton> listener) {
+      this.listener = listener;
+    }
+
+    @Override
+    public void onTranslationChanged() {
+      listener.onTranslationChanged(FloatingActionButton.this);
+    }
+
+    @Override
+    public void onScaleChanged() {
+      listener.onScaleChanged(FloatingActionButton.this);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return obj instanceof TransformationListenerWrapper
+          && ((TransformationListenerWrapper) obj).listener.equals(listener);
+    }
+
+    @Override
+    public int hashCode() {
+      return listener.hashCode();
+    }
+  }
+
+  @Override
+  public void setTranslationX(float translationX) {
+    super.setTranslationX(translationX);
+    getImpl().onTranslationChanged();
+  }
+
+  @Override
+  public void setTranslationY(float translationY) {
+    super.setTranslationY(translationY);
+    getImpl().onTranslationChanged();
+  }
+
+  @Override
+  public void setTranslationZ(float translationZ) {
+    super.setTranslationZ(translationZ);
+    getImpl().onTranslationChanged();
+  }
+
+  @Override
+  public void setScaleX(float scaleX) {
+    super.setScaleX(scaleX);
+    getImpl().onScaleChanged();
+  }
+
+  @Override
+  public void setScaleY(float scaleY) {
+    super.setScaleY(scaleY);
+    getImpl().onScaleChanged();
   }
 
   private FloatingActionButtonImpl getImpl() {

@@ -28,16 +28,16 @@ import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
-import android.support.annotation.ColorInt;
-import android.support.annotation.IntDef;
-import android.support.annotation.Nullable;
-import android.support.annotation.StyleRes;
+import androidx.annotation.ColorInt;
+import androidx.annotation.IntDef;
+import androidx.annotation.Nullable;
+import androidx.annotation.StyleRes;
 import com.google.android.material.animation.AnimationUtils;
 import com.google.android.material.animation.AnimatorSetCompat;
-import android.support.v4.view.ViewCompat;
-import android.support.v4.widget.Space;
-import android.support.v4.widget.TextViewCompat;
-import android.support.v7.widget.AppCompatTextView;
+import androidx.core.view.ViewCompat;
+import androidx.legacy.widget.Space;
+import androidx.core.widget.TextViewCompat;
+import androidx.appcompat.widget.AppCompatTextView;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
@@ -107,11 +107,13 @@ final class IndicatorViewController {
   private boolean errorEnabled;
   private TextView errorView;
   private int errorTextAppearance;
+  @Nullable private ColorStateList errorViewTextColor;
 
   private CharSequence helperText;
   private boolean helperTextEnabled;
   private TextView helperTextView;
   private int helperTextTextAppearance;
+  @Nullable private ColorStateList helperTextViewTextColor;
 
   private Typeface typeface;
 
@@ -233,6 +235,11 @@ final class IndicatorViewController {
                 captionViewToHide.setVisibility(View.INVISIBLE);
                 if (captionToHide == CAPTION_STATE_ERROR && errorView != null) {
                   errorView.setText(null);
+                }
+
+                if (captionViewToShow != null) {
+                  captionViewToShow.setTranslationY(0f);
+                  captionViewToShow.setAlpha(1f);
                 }
               }
             }
@@ -425,6 +432,7 @@ final class IndicatorViewController {
         errorView.setTypeface(typeface);
       }
       setErrorTextAppearance(errorTextAppearance);
+      setErrorViewTextColor(errorViewTextColor);
       errorView.setVisibility(View.INVISIBLE);
       ViewCompat.setAccessibilityLiveRegion(errorView, ViewCompat.ACCESSIBILITY_LIVE_REGION_POLITE);
       addIndicator(errorView, ERROR_INDEX);
@@ -465,6 +473,7 @@ final class IndicatorViewController {
       ViewCompat.setAccessibilityLiveRegion(
           helperTextView, ViewCompat.ACCESSIBILITY_LIVE_REGION_POLITE);
       setHelperTextAppearance(helperTextTextAppearance);
+      setHelperTextViewTextColor(helperTextViewTextColor);
       addIndicator(helperTextView, HELPER_INDEX);
     } else {
       hideHelperText();
@@ -537,19 +546,19 @@ final class IndicatorViewController {
     return errorView != null ? errorView.getTextColors() : null;
   }
 
-  void setErrorViewTextColor(@Nullable ColorStateList textColors) {
-    if (errorView != null) {
-      errorView.setTextColor(textColors);
+  void setErrorViewTextColor(ColorStateList errorViewTextColor) {
+    this.errorViewTextColor = errorViewTextColor;
+    if (errorView != null && errorViewTextColor != null) {
+      errorView.setTextColor(errorViewTextColor);
     }
   }
 
   void setErrorTextAppearance(@StyleRes int resId) {
-    errorTextAppearance = resId;
+    this.errorTextAppearance = resId;
     if (errorView != null) {
       textInputView.setTextAppearanceCompatWithErrorFallback(errorView, resId);
     }
   }
-
   @ColorInt
   int getHelperTextViewCurrentTextColor() {
     return helperTextView != null ? helperTextView.getCurrentTextColor() : -1;
@@ -560,14 +569,15 @@ final class IndicatorViewController {
     return helperTextView != null ? helperTextView.getTextColors() : null;
   }
 
-  void setHelperTextViewTextColor(@Nullable ColorStateList textColors) {
-    if (helperTextView != null) {
-      helperTextView.setTextColor(textColors);
+  void setHelperTextViewTextColor(ColorStateList helperTextViewTextColor) {
+    this.helperTextViewTextColor = helperTextViewTextColor;
+    if (helperTextView != null && helperTextViewTextColor != null) {
+      helperTextView.setTextColor(helperTextViewTextColor);
     }
   }
 
   void setHelperTextAppearance(@StyleRes int resId) {
-    helperTextTextAppearance = resId;
+    this.helperTextTextAppearance = resId;
     if (helperTextView != null) {
       TextViewCompat.setTextAppearance(helperTextView, resId);
     }

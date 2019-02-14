@@ -18,7 +18,7 @@ package io.material.catalog.button;
 
 import io.material.catalog.R;
 
-import android.support.v4.app.Fragment;
+import androidx.fragment.app.Fragment;
 import dagger.Provides;
 import dagger.android.ContributesAndroidInjector;
 import dagger.multibindings.IntoSet;
@@ -63,7 +63,7 @@ public class ButtonsFragment extends DemoLandingFragment {
     @Provides
     @ActivityScope
     static FeatureDemo provideFeatureDemo() {
-      return new FeatureDemo(R.string.cat_buttons_title, R.drawable.ic_buttons_24px) {
+      return new FeatureDemo(R.string.cat_buttons_title, R.drawable.ic_button) {
         @Override
         public Fragment createFragment() {
           return new ButtonsFragment();

@@ -21,11 +21,12 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.TimeInterpolator;
 import android.content.Context;
 import com.google.android.material.animation.AnimationUtils;
-import android.support.design.widget.CoordinatorLayout;
-import android.support.design.widget.CoordinatorLayout.Behavior;
-import android.support.v4.view.ViewCompat;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.coordinatorlayout.widget.CoordinatorLayout.Behavior;
+import androidx.core.view.ViewCompat;
 import android.util.AttributeSet;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.ViewPropertyAnimator;
 
 /**
@@ -44,22 +45,17 @@ public class HideBottomViewOnScrollBehavior<V extends View> extends CoordinatorL
   private int currentState = STATE_SCROLLED_UP;
   private ViewPropertyAnimator currentAnimator;
 
-  /** Default constructor for instantiating HideBottomViewOnScrollBehaviors. */
   public HideBottomViewOnScrollBehavior() {}
 
-  /**
-   * Default constructor for inflating HideBottomViewOnScrollBehaviors from layout.
-   *
-   * @param context The {@link Context}.
-   * @param attrs The {@link AttributeSet}.
-   */
   public HideBottomViewOnScrollBehavior(Context context, AttributeSet attrs) {
     super(context, attrs);
   }
 
   @Override
   public boolean onLayoutChild(CoordinatorLayout parent, V child, int layoutDirection) {
-    height = child.getMeasuredHeight();
+    ViewGroup.MarginLayoutParams paramsCompat =
+        (ViewGroup.MarginLayoutParams) child.getLayoutParams();
+    height = child.getMeasuredHeight() + paramsCompat.bottomMargin;
     return super.onLayoutChild(parent, child, layoutDirection);
   }
 
@@ -89,7 +85,11 @@ public class HideBottomViewOnScrollBehavior<V extends View> extends CoordinatorL
     }
   }
 
-  protected void slideUp(V child) {
+  /**
+   * Perform an animation that will slide the child from it's current position to be totally on the
+   * screen.
+   */
+  public void slideUp(V child) {
     if (currentAnimator != null) {
       currentAnimator.cancel();
       child.clearAnimation();
@@ -99,7 +99,11 @@ public class HideBottomViewOnScrollBehavior<V extends View> extends CoordinatorL
         child, 0, ENTER_ANIMATION_DURATION, AnimationUtils.LINEAR_OUT_SLOW_IN_INTERPOLATOR);
   }
 
-  protected void slideDown(V child) {
+  /**
+   * Perform an animation that will slide the child from it's current position to be totally off the
+   * screen.
+   */
+  public void slideDown(V child) {
     if (currentAnimator != null) {
       currentAnimator.cancel();
       child.clearAnimation();

@@ -19,12 +19,13 @@ package io.material.catalog.textfield;
 import io.material.catalog.R;
 
 import android.graphics.Color;
-import android.support.annotation.LayoutRes;
+import androidx.annotation.LayoutRes;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 
 /** A base class for controllable text field demos in the Catalog app. */
@@ -73,6 +74,17 @@ public abstract class TextFieldControllableDemoFragment extends TextFieldDemoFra
           }
         });
 
+    // Initialize button for updating the helper text.
+    TextInputLayout helperTextTextField = view.findViewById(R.id.text_input_helper_text);
+    view.findViewById(R.id.button_update_helper_text)
+        .setOnClickListener(
+            v -> {
+              if (!checkTextInputIsNull(helperTextTextField)) {
+                setAllTextFieldsHelperText(
+                    String.valueOf(helperTextTextField.getEditText().getText()));
+              }
+            });
+
     // Initialize button for updating the counter max.
     TextInputLayout counterMaxTextField = view.findViewById(R.id.text_input_counter_max);
     view.findViewById(R.id.button_counter_max)
@@ -101,8 +113,21 @@ public abstract class TextFieldControllableDemoFragment extends TextFieldDemoFra
   }
 
   private void setAllTextFieldsError(String error) {
+    ViewGroup parent = (ViewGroup) textfields.get(0).getParent();
+    boolean textfieldWithErrorHasFocus = false;
     for (TextInputLayout textfield : textfields) {
       textfield.setError(error);
+      textfieldWithErrorHasFocus |= textfield.hasFocus();
+    }
+    if (!textfieldWithErrorHasFocus) {
+      // Request accessibility focus on the first text field to show an error.
+      parent.getChildAt(0).requestFocus();
+    }
+  }
+
+  private void setAllTextFieldsHelperText(String helperText) {
+    for (TextInputLayout textfield : textfields) {
+      textfield.setHelperText(helperText);
     }
   }
 

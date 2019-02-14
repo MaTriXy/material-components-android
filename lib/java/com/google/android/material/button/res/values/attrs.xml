@@ -21,13 +21,6 @@
   <attr name="materialButtonStyle" format="reference"/>
 
   <declare-styleable name="MaterialButton">
-    <attr name="android:padding"/>
-    <attr name="android:paddingLeft"/>
-    <attr name="android:paddingStart"/>
-    <attr name="android:paddingRight"/>
-    <attr name="android:paddingEnd"/>
-    <attr name="android:paddingTop"/>
-    <attr name="android:paddingBottom"/>
     <attr name="android:insetLeft"/>
     <attr name="android:insetRight"/>
     <attr name="android:insetTop"/>
@@ -35,20 +28,33 @@
     <!-- Background for the MaterialButton -->
     <attr name="backgroundTint"/>
     <attr name="backgroundTintMode"/>
+    <!-- Elevation for the MaterialButton. -->
+    <attr name="elevation"/>
     <!-- Icon drawable to display at the start of this view. -->
     <attr name="icon" format="reference"/>
     <!-- Specifies the width and height to use for the icon drawable. -->
     <attr name="iconSize" format="dimension"/>
     <!-- Padding between icon and button text. -->
     <attr name="iconPadding" format="dimension"/>
+    <!-- Specifies how the icon should be positioned on the X axis. -->
+    <attr name="iconGravity">
+      <!-- Push icon to the start of the button. -->
+      <flag name="start" value="0x1"/>
+      <!-- Push the icon to the start of the text keeping a distance equal to
+           {@link R.attr#iconPadding} from the text. -->
+      <flag name="textStart" value="0x2"/>
+    </attr>
     <!-- Tint for icon drawable to display. -->
     <attr name="iconTint" format="color"/>
     <!-- Tint mode for icon drawable to display. -->
     <attr name="iconTintMode"/>
-    <!-- Padding to add/remove from the start of the button when an icon is present. -->
-    <attr name="additionalPaddingStartForIcon" format="dimension"/>
-    <!-- Padding to add/remove from the end of the button when an icon is present. -->
-    <attr name="additionalPaddingEndForIcon" format="dimension"/>
+    <!-- Shape appearance style reference for MaterialButton. Attribute declaration is in the Shape
+     package. -->
+    <attr name="shapeAppearance"/>
+    <!-- Shape appearance overlay style reference for MaterialButton. To be used to augment
+         attributes declared in the shapeAppearance. Attribute declaration is in the Shape package.
+    -->
+    <attr name="shapeAppearanceOverlay"/>
     <!-- Specifies the color used to draw the path outline of the button. Attribute type definition
          is in resources package. -->
     <attr name="strokeColor"/>

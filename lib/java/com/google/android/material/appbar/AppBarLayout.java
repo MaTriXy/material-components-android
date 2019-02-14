@@ -18,36 +18,41 @@ package com.google.android.material.appbar;
 
 import com.google.android.material.R;
 
-import static android.support.annotation.RestrictTo.Scope.LIBRARY_GROUP;
+import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
 
 import android.animation.ValueAnimator;
+import android.app.Activity;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Rect;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.support.annotation.IntDef;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.annotation.RequiresApi;
-import android.support.annotation.RestrictTo;
-import android.support.annotation.VisibleForTesting;
+import androidx.annotation.IdRes;
+import androidx.annotation.IntDef;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.VisibleForTesting;
 import com.google.android.material.animation.AnimationUtils;
+import com.google.android.material.internal.ContextUtils;
 import com.google.android.material.internal.ThemeEnforcement;
-import android.support.design.widget.CoordinatorLayout;
-import android.support.v4.math.MathUtils;
-import android.support.v4.util.ObjectsCompat;
-import android.support.v4.view.AbsSavedState;
-import android.support.v4.view.NestedScrollingChild;
-import android.support.v4.view.ViewCompat;
-import android.support.v4.view.ViewCompat.NestedScrollType;
-import android.support.v4.view.WindowInsetsCompat;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.math.MathUtils;
+import androidx.core.util.ObjectsCompat;
+import androidx.customview.view.AbsSavedState;
+import androidx.core.view.NestedScrollingChild;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.ViewCompat.NestedScrollType;
+import androidx.core.view.WindowInsetsCompat;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Interpolator;
 import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.ScrollView;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.ref.WeakReference;
@@ -72,26 +77,26 @@ import java.util.List;
  * resource containing the full class name is available.
  *
  * <pre>
- * &lt;android.support.design.widget.CoordinatorLayout
+ * &lt;androidx.coordinatorlayout.widget.CoordinatorLayout
  *         xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;
  *         xmlns:app=&quot;http://schemas.android.com/apk/res-auto&quot;
  *         android:layout_width=&quot;match_parent&quot;
  *         android:layout_height=&quot;match_parent&quot;&gt;
  *
- *     &lt;android.support.v4.widget.NestedScrollView
+ *     &lt;androidx.core.widget.NestedScrollView
  *             android:layout_width=&quot;match_parent&quot;
  *             android:layout_height=&quot;match_parent&quot;
  *             app:layout_behavior=&quot;@string/appbar_scrolling_view_behavior&quot;&gt;
  *
  *         &lt;!-- Your scrolling content --&gt;
  *
- *     &lt;/android.support.v4.widget.NestedScrollView&gt;
+ *     &lt;/androidx.core.widget.NestedScrollView&gt;
  *
  *     &lt;com.google.android.material.appbar.AppBarLayout
  *             android:layout_height=&quot;wrap_content&quot;
  *             android:layout_width=&quot;match_parent&quot;&gt;
  *
- *         &lt;android.support.v7.widget.Toolbar
+ *         &lt;androidx.appcompat.widget.Toolbar
  *                 ...
  *                 app:layout_scrollFlags=&quot;scroll|enterAlways&quot;/&gt;
  *
@@ -101,7 +106,7 @@ import java.util.List;
  *
  *     &lt;/com.google.android.material.appbar.AppBarLayout&gt;
  *
- * &lt;/android.support.design.widget.CoordinatorLayout&gt;
+ * &lt;/androidx.coordinatorlayout.widget.CoordinatorLayout&gt;
  * </pre>
  *
  * @see <a href="http://www.google.com/design/spec/layout/structure.html#structure-app-bar">
@@ -157,10 +162,13 @@ public class AppBarLayout extends LinearLayout {
 
   private List<BaseOnOffsetChangedListener> listeners;
 
+  private boolean liftableOverride;
   private boolean liftable;
   private boolean lifted;
 
   private boolean liftOnScroll;
+  @IdRes private int liftOnScrollTargetViewId;
+  @Nullable private WeakReference<View> liftOnScrollTargetView;
 
   private int[] tmpStatesArray;
 
@@ -169,7 +177,11 @@ public class AppBarLayout extends LinearLayout {
   }
 
   public AppBarLayout(Context context, AttributeSet attrs) {
-    super(context, attrs);
+    this(context, attrs, 0);
+  }
+
+  public AppBarLayout(Context context, AttributeSet attrs, int defStyleAttr) {
+    super(context, attrs, defStyleAttr);
     setOrientation(VERTICAL);
 
     if (Build.VERSION.SDK_INT >= 21) {
@@ -180,12 +192,16 @@ public class AppBarLayout extends LinearLayout {
       // If we're running on API 21+, we should reset any state list animator from our
       // default style
       ViewUtilsLollipop.setStateListAnimatorFromAttrs(
-          this, attrs, 0, R.style.Widget_Design_AppBarLayout);
+          this, attrs, defStyleAttr, R.style.Widget_Design_AppBarLayout);
     }
 
     final TypedArray a =
         ThemeEnforcement.obtainStyledAttributes(
-            context, attrs, R.styleable.AppBarLayout, 0, R.style.Widget_Design_AppBarLayout);
+            context,
+            attrs,
+            R.styleable.AppBarLayout,
+            defStyleAttr,
+            R.style.Widget_Design_AppBarLayout);
     ViewCompat.setBackground(this, a.getDrawable(R.styleable.AppBarLayout_android_background));
     if (a.hasValue(R.styleable.AppBarLayout_expanded)) {
       setExpanded(
@@ -210,11 +226,13 @@ public class AppBarLayout extends LinearLayout {
       }
     }
     liftOnScroll = a.getBoolean(R.styleable.AppBarLayout_liftOnScroll, false);
+    liftOnScrollTargetViewId =
+        a.getResourceId(R.styleable.AppBarLayout_liftOnScrollTargetViewId, View.NO_ID);
     a.recycle();
 
     ViewCompat.setOnApplyWindowInsetsListener(
         this,
-        new android.support.v4.view.OnApplyWindowInsetsListener() {
+        new androidx.core.view.OnApplyWindowInsetsListener() {
           @Override
           public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
             return onWindowInsetChanged(insets);
@@ -228,6 +246,7 @@ public class AppBarLayout extends LinearLayout {
    * @param listener The listener that will be called when the offset changes.]
    * @see #removeOnOffsetChangedListener(OnOffsetChangedListener)
    */
+  @SuppressWarnings("FunctionalInterfaceClash")
   public void addOnOffsetChangedListener(BaseOnOffsetChangedListener listener) {
     if (listeners == null) {
       listeners = new ArrayList<>();
@@ -237,6 +256,7 @@ public class AppBarLayout extends LinearLayout {
     }
   }
 
+  @SuppressWarnings("FunctionalInterfaceClash")
   public void addOnOffsetChangedListener(OnOffsetChangedListener listener) {
     addOnOffsetChangedListener((BaseOnOffsetChangedListener) listener);
   }
@@ -248,12 +268,14 @@ public class AppBarLayout extends LinearLayout {
    */
   // TODO: change back to removeOnOffsetChangedListener once the widget migration is
   // finished since the shim class needs to implement this method.
+  @SuppressWarnings("FunctionalInterfaceClash")
   public void removeOnOffsetChangedListener(BaseOnOffsetChangedListener listener) {
     if (listeners != null && listener != null) {
       listeners.remove(listener);
     }
   }
 
+  @SuppressWarnings("FunctionalInterfaceClash")
   public void removeOnOffsetChangedListener(OnOffsetChangedListener listener) {
     removeOnOffsetChangedListener((BaseOnOffsetChangedListener) listener);
   }
@@ -281,7 +303,10 @@ public class AppBarLayout extends LinearLayout {
       }
     }
 
-    setLiftableState(liftOnScroll || hasCollapsibleChild());
+    // If the user has set liftable manually, don't set liftable state automatically.
+    if (!liftableOverride) {
+      setLiftableState(liftOnScroll || hasCollapsibleChild());
+    }
   }
 
   private boolean hasCollapsibleChild() {
@@ -370,6 +395,13 @@ public class AppBarLayout extends LinearLayout {
       return new LayoutParams((MarginLayoutParams) p);
     }
     return new LayoutParams(p);
+  }
+
+  @Override
+  protected void onDetachedFromWindow() {
+    super.onDetachedFromWindow();
+
+    clearLiftOnScrollTargetView();
   }
 
   boolean hasChildWithInterpolator() {
@@ -555,6 +587,12 @@ public class AppBarLayout extends LinearLayout {
    *
    * @return true if the liftable state changed
    */
+  public boolean setLiftable(boolean liftable) {
+    this.liftableOverride = true;
+    return setLiftableState(liftable);
+  }
+
+  // Internal helper method that updates liftable state without enabling the override.
   private boolean setLiftableState(boolean liftable) {
     if (this.liftable != liftable) {
       this.liftable = liftable;
@@ -569,6 +607,11 @@ public class AppBarLayout extends LinearLayout {
    *
    * @return true if the lifted state changed
    */
+  public boolean setLifted(boolean lifted) {
+    return setLiftedState(lifted);
+  }
+
+  // Internal helper method that updates lifted state.
   boolean setLiftedState(boolean lifted) {
     if (this.lifted != lifted) {
       this.lifted = lifted;
@@ -593,6 +636,58 @@ public class AppBarLayout extends LinearLayout {
   /** Returns whether the {@link AppBarLayout} lifts on scroll or not. */
   public boolean isLiftOnScroll() {
     return liftOnScroll;
+  }
+
+  /**
+   * Sets the id of the view that the {@link AppBarLayout} should use to determine whether it should
+   * be lifted.
+   */
+  public void setLiftOnScrollTargetViewId(@IdRes int liftOnScrollTargetViewId) {
+    this.liftOnScrollTargetViewId = liftOnScrollTargetViewId;
+    // Invalidate cached target view so it will be looked up on next scroll.
+    clearLiftOnScrollTargetView();
+  }
+
+  /**
+   * Returns the id of the view that the {@link AppBarLayout} should use to determine whether it
+   * should be lifted.
+   */
+  @IdRes
+  public int getLiftOnScrollTargetViewId() {
+    return liftOnScrollTargetViewId;
+  }
+
+  boolean shouldLift(@Nullable View defaultScrollingView) {
+    View scrollingView = findLiftOnScrollTargetView();
+    if (scrollingView == null) {
+      scrollingView = defaultScrollingView;
+    }
+    return scrollingView != null
+        && (scrollingView.canScrollVertically(-1) || scrollingView.getScrollY() > 0);
+  }
+
+  @Nullable
+  private View findLiftOnScrollTargetView() {
+    if (liftOnScrollTargetView == null && liftOnScrollTargetViewId != View.NO_ID) {
+      View targetView = null;
+      Activity activity = ContextUtils.getActivity(getContext());
+      if (activity != null) {
+        targetView = activity.findViewById(liftOnScrollTargetViewId);
+      } else if (getParent() instanceof ViewGroup) {
+        targetView = ((ViewGroup) getParent()).findViewById(liftOnScrollTargetViewId);
+      }
+      if (targetView != null) {
+        liftOnScrollTargetView = new WeakReference<>(targetView);
+      }
+    }
+    return liftOnScrollTargetView != null ? liftOnScrollTargetView.get() : null;
+  }
+
+  private void clearLiftOnScrollTargetView() {
+    if (liftOnScrollTargetView != null) {
+      liftOnScrollTargetView.clear();
+    }
+    liftOnScrollTargetView = null;
   }
 
   /**
@@ -702,9 +797,9 @@ public class AppBarLayout extends LinearLayout {
 
     /**
      * Upon a scroll ending, if the view is only partially visible then it will be snapped and
-     * scrolled to it's closest edge. For example, if the view only has it's bottom 25% displayed,
-     * it will be scrolled off screen completely. Conversely, if it's bottom 75% is visible then it
-     * will be scrolled fully into view.
+     * scrolled to its closest edge. For example, if the view only has its bottom 25% displayed, it
+     * will be scrolled off screen completely. Conversely, if its bottom 75% is visible then it will
+     * be scrolled fully into view.
      */
     public static final int SCROLL_FLAG_SNAP = 0x10;
 
@@ -829,18 +924,10 @@ public class AppBarLayout extends LinearLayout {
     /** Callback to allow control over any {@link AppBarLayout} dragging. */
     public abstract static class DragCallback extends BaseBehavior.BaseDragCallback<AppBarLayout> {}
 
-    /**
-     * The default {@link Behavior} for {@link AppBarLayout}. Implements the necessary nested scroll
-     * handling with offsetting.
-     */
     public Behavior() {
       super();
     }
 
-    /**
-     * The default {@link Behavior} for {@link AppBarLayout}. Implements the necessary nested scroll
-     * handling with offsetting.
-     */
     public Behavior(Context context, AttributeSet attrs) {
       super(context, attrs);
     }
@@ -897,11 +984,10 @@ public class AppBarLayout extends LinearLayout {
         int nestedScrollAxes,
         int type) {
       // Return true if we're nested scrolling vertically, and we either have lift on scroll enabled
-      // or scrollable children, and the scrolling view is big enough to scroll
+      // or we can scroll the children.
       final boolean started =
           (nestedScrollAxes & ViewCompat.SCROLL_AXIS_VERTICAL) != 0
-              && (child.isLiftOnScroll() || child.hasScrollableChildren())
-              && parent.getHeight() - directTargetChild.getHeight() <= child.getHeight();
+              && (child.isLiftOnScroll() || canScrollChildren(parent, child, directTargetChild));
 
       if (started && offsetAnimator != null) {
         // Cancel any offset animation
@@ -915,6 +1001,12 @@ public class AppBarLayout extends LinearLayout {
       lastStartedType = type;
 
       return started;
+    }
+
+    // Return true if there are scrollable children and the scrolling view is big enough to scroll.
+    private boolean canScrollChildren(CoordinatorLayout parent, T child, View directTargetChild) {
+      return child.hasScrollableChildren()
+          && parent.getHeight() - directTargetChild.getHeight() <= child.getHeight();
     }
 
     @Override
@@ -940,8 +1032,10 @@ public class AppBarLayout extends LinearLayout {
         }
         if (min != max) {
           consumed[1] = scroll(coordinatorLayout, child, dy, min, max);
-          stopNestedScrollIfNeeded(dy, child, target, type);
         }
+      }
+      if (child.isLiftOnScroll()) {
+        child.setLiftedState(child.shouldLift(target));
       }
     }
 
@@ -954,25 +1048,13 @@ public class AppBarLayout extends LinearLayout {
         int dyConsumed,
         int dxUnconsumed,
         int dyUnconsumed,
-        int type) {
+        int type,
+        int[] consumed) {
       if (dyUnconsumed < 0) {
         // If the scrolling view is scrolling down but not consuming, it's probably be at
         // the top of it's content
-        scroll(coordinatorLayout, child, dyUnconsumed, -child.getDownNestedScrollRange(), 0);
-        stopNestedScrollIfNeeded(dyUnconsumed, child, target, type);
-      }
-      if (child.isLiftOnScroll()) {
-        child.setLiftedState(target.getScrollY() > 0);
-      }
-    }
-
-    private void stopNestedScrollIfNeeded(int dy, T child, View target, int type) {
-      if (type == ViewCompat.TYPE_NON_TOUCH) {
-        final int curOffset = getTopBottomOffsetForScrollingSibling();
-        if ((dy < 0 && curOffset == 0)
-            || (dy > 0 && curOffset == -child.getDownNestedScrollRange())) {
-          ViewCompat.stopNestedScroll(target, ViewCompat.TYPE_NON_TOUCH);
-        }
+        consumed[1] =
+            scroll(coordinatorLayout, child, dyUnconsumed, -child.getDownNestedScrollRange(), 0);
       }
     }
 
@@ -986,6 +1068,9 @@ public class AppBarLayout extends LinearLayout {
       if (lastStartedType == ViewCompat.TYPE_TOUCH || type == ViewCompat.TYPE_NON_TOUCH) {
         // If we haven't been flung, or a fling is ending
         snapToChildIfNeeded(coordinatorLayout, abl);
+        if (abl.isLiftOnScroll()) {
+          abl.setLiftedState(abl.shouldLift(target));
+        }
       }
 
       // Keep a reference to the previous nested scrolling child
@@ -1233,6 +1318,9 @@ public class AppBarLayout extends LinearLayout {
     void onFlingFinished(CoordinatorLayout parent, T layout) {
       // At the end of a manual fling, check to see if we need to snap to the edge-child
       snapToChildIfNeeded(parent, layout);
+      if (layout.isLiftOnScroll()) {
+        layout.setLiftedState(layout.shouldLift(findFirstScrollingChild(parent)));
+      }
     }
 
     @Override
@@ -1383,12 +1471,9 @@ public class AppBarLayout extends LinearLayout {
         }
 
         if (layout.isLiftOnScroll()) {
-          // Only update lifted state based on first scrolling child because it represents the
-          // content that would be scrolled beneath the app bar.
-          View scrollingChild = findFirstScrollingChild(parent);
-          if (scrollingChild != null) {
-            lifted = scrollingChild.getScrollY() > 0;
-          }
+          // Use first scrolling child as default scrolling view for updating lifted state because
+          // it represents the content that would be scrolled beneath the app bar.
+          lifted = layout.shouldLift(findFirstScrollingChild(parent));
         }
 
         final boolean changed = layout.setLiftedState(lifted);
@@ -1434,7 +1519,9 @@ public class AppBarLayout extends LinearLayout {
     private View findFirstScrollingChild(CoordinatorLayout parent) {
       for (int i = 0, z = parent.getChildCount(); i < z; i++) {
         final View child = parent.getChildAt(i);
-        if (child instanceof NestedScrollingChild) {
+        if (child instanceof NestedScrollingChild
+            || child instanceof ListView
+            || child instanceof ScrollView) {
           return child;
         }
       }
@@ -1652,7 +1739,7 @@ public class AppBarLayout extends LinearLayout {
       if (dependency instanceof AppBarLayout) {
         AppBarLayout appBarLayout = (AppBarLayout) dependency;
         if (appBarLayout.isLiftOnScroll()) {
-          appBarLayout.setLiftedState(child.getScrollY() > 0);
+          appBarLayout.setLiftedState(appBarLayout.shouldLift(child));
         }
       }
     }

@@ -16,21 +16,39 @@
 
 package com.google.android.material.shape;
 
-import com.google.android.material.internal.Experimental;
+/**
+ * A basic edge treatment (a single straight line). Sub-classed for custom edge treatments.
+ *
+ * <p>Note: For edge treatments which result in a concave shape, the parent view must disable
+ * clipping of children by calling {@link android.view.ViewGroup#setClipChildren(boolean)}, or by
+ * setting `android:clipChildren="false"` in xml. `clipToPadding` may also need to be false if there
+ * is any padding on the parent that could intersect the shadow.
+ */
+public class EdgeTreatment implements Cloneable {
 
-/** A basic edge treatment (a single straight line). Sub-classed for custom edge treatments. */
-@Experimental("The shapes API is currently experimental and subject to change")
-public class EdgeTreatment {
+  /**
+   * @deprecated Does not support interpolation. Use {@link #getEdgePath(float, float, float,
+   *     ShapePath)} instead.
+   */
+  @Deprecated
+  public void getEdgePath(float length, float interpolation, ShapePath shapePath) {
+    // Best guess at center since it could be offset by corners of different size.
+    float center = length / 2f;
+    getEdgePath(length, center,  interpolation, shapePath);
+  }
 
   /**
    * Generates a {@link ShapePath} for this edge treatment.
    *
    * <p>EdgeTreatments have an origin of (0, 0) and a destination of (0, length) (i.e. they
-   * represent the top edge), and are be automatically rotated and scaled as necessary when applied
-   * to other edges. Only the horizontal, top EdgeTreatment needs to be defined in order to apply it
-   * to all four edges.
+   * represent the top edge), and are automatically rotated and scaled as necessary when applied to
+   * other edges. Only the horizontal, top EdgeTreatment needs to be defined in order to apply it to
+   * all four edges.
    *
    * @param length the length of the edge.
+   * @param center the distance to the center of the edge. This takes into account any offset added
+   *     by the proceeding corner. Drawing anything at (center, 0) will be center aligned with the
+   *     shape. Normally you'll want to use this instead of length / 2.
    * @param interpolation the interpolation of the edge treatment. Ranges between 0 (none) and 1
    *     (fully) interpolated. Custom edge treatments can implement interpolation to support shape
    *     transition between two arbitrary states. Typically, a value of 0 indicates that the custom
@@ -39,7 +57,17 @@ public class EdgeTreatment {
    *     "heal" or "reveal" an edge treatment.
    * @param shapePath the {@link ShapePath} that this treatment should write to.
    */
-  public void getEdgePath(float length, float interpolation, ShapePath shapePath) {
+  public void getEdgePath(float length, float center, float interpolation, ShapePath shapePath) {
     shapePath.lineTo(length, 0);
+  }
+
+  @Override
+  public EdgeTreatment clone() {
+    try {
+      return (EdgeTreatment) super.clone();
+    } catch (CloneNotSupportedException e) {
+      throw new AssertionError(e); // This should never happen, because EdgeTreatment handles the
+      // cloning, so all subclasses of EdgeTreatment will support cloning.
+    }
   }
 }

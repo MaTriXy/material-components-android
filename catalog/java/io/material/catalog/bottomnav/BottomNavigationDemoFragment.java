@@ -19,9 +19,9 @@ package io.material.catalog.bottomnav;
 import io.material.catalog.R;
 
 import android.os.Bundle;
-import android.support.annotation.LayoutRes;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import androidx.annotation.LayoutRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.bottomnavigation.BottomNavigationView.OnNavigationItemSelectedListener;
 import android.view.LayoutInflater;
@@ -142,7 +142,7 @@ public abstract class BottomNavigationDemoFragment extends DemoFragment {
   }
 
   private void initBottomNavs(LayoutInflater layoutInflater, View view) {
-    inflateBottomNavs(layoutInflater, view.findViewById(R.id.content));
+    inflateBottomNavs(layoutInflater, view.findViewById(R.id.bottom_navs));
     inflateBottomNavDemoControls(layoutInflater, view.findViewById(R.id.demo_controls));
     addBottomNavsToList(view);
   }
@@ -164,7 +164,7 @@ public abstract class BottomNavigationDemoFragment extends DemoFragment {
 
   @LayoutRes
   protected int getBottomNavsContent() {
-    return R.layout.cat_bottom_nav;
+    return R.layout.cat_bottom_navs;
   }
 
   @LayoutRes

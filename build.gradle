@@ -4,8 +4,8 @@ buildscript {
     jcenter()
   }
   dependencies {
-    classpath 'com.android.tools.build:gradle:3.0.1'
-    classpath 'com.github.dcendents:android-maven-gradle-plugin:2.0'
+    classpath 'com.android.tools.build:gradle:3.2.1'
+    classpath 'com.github.dcendents:android-maven-gradle-plugin:2.1'
   }
 }
 
@@ -18,13 +18,27 @@ allprojects {
 }
 
 ext {
-  compileSdkVersion = 'android-P'
+  compileSdkVersion = 28
   minSdkVersion = 14
   targetSdkVersion = 27
-  supportVersion = '28.0.0-alpha1'
 
-  testRunnerVersion = '1.0.0'
-  espressoVersion = '3.0.0'
+  androidXVersions = [
+    annotation            : '1.0.1',
+    appCompat             : '1.1.0-alpha01',
+    cardView              : '1.0.0',
+    coordinatorlayout     : '1.1.0-alpha01',
+    core                  : '1.1.0-alpha03',
+    fragment              : '1.0.0',
+    legacySupportCoreUi   : '1.0.0',
+    legacySupportCoreUtils: '1.0.0',
+    recyclerView          : '1.1.0-alpha01',
+    recyclerViewSelection : '1.1.0-alpha01',
+    transition            : '1.0.1',
+    vectorDrawable        : '1.1.0-alpha01',
+  ]
+
+  testRunnerVersion = '1.1.0'
+  espressoVersion = '3.1.0'
 
   // Enforce the use of prebuilt dependencies in all sub-projects. This is
   // required for the doclava dependency.
@@ -35,7 +49,9 @@ ext {
 
   mavenRepoUrl = (project.hasProperty('mavenRepoUrl')
     ? project.property('mavenRepoUrl') : 'file://localhost/tmp/myRepo/')
-  mdcLibraryVersion = '1.0.0-alpha3'
+
+  // Current version of the library (could be in-development/unreleased).
+  mdcLibraryVersion = '1.1.0-alpha03'
   mdcLibraryPackage = "com.google.android.material"
   mdcLibraryDir = "com/google/android/material"
 }
@@ -68,41 +84,34 @@ private def getTransformedProjectPath(projectPath) {
  *
  */
 def compatibility(name) {
-  def lib
-
   switch (name) {
-    case "annotations":
-      lib = "com.android.support:support-annotations"
-      break
-    case "compat":
-      lib = "com.android.support:support-compat"
-      break
+    case "annotation":
+      return "androidx.annotation:annotation:${androidXVersions.annotation}"
+    case "appcompat":
+      return "androidx.appcompat:appcompat:${androidXVersions.appCompat}"
+    case "cardview":
+      return "androidx.cardview:cardview:${androidXVersions.cardView}"
+    case "coordinatorlayout":
+      return "androidx.coordinatorlayout:coordinatorlayout:${androidXVersions.coordinatorlayout}"
+    case "core":
+      return "androidx.core:core:${androidXVersions.core}"
     case "core_ui":
-      lib = "com.android.support:support-core-ui"
-      break
+      return "androidx.legacy:legacy-support-core-ui:${androidXVersions.legacySupportCoreUi}"
     case "core_utils":
-      lib = "com.android.support:support-core-utils"
-      break
+      return "androidx.legacy:legacy-support-core-utils:${androidXVersions.legacySupportCoreUtils}"
     case "fragment":
-      lib = "com.android.support:support-fragment"
-      break
+      return "androidx.fragment:fragment:${androidXVersions.fragment}"
+    case "recyclerview":
+      return "androidx.recyclerview:recyclerview:${androidXVersions.recyclerView}"
     case "transition":
-      lib = "com.android.support:transition"
-      break
-    case "v7/appcompat":
-      lib = "com.android.support:appcompat-v7"
-      break
-    case "v7/cardview":
-      lib = "com.android.support:cardview-v7"
-      break
-    case "v7/recyclerview":
-      lib = "com.android.support:recyclerview-v7"
-      break
+      return "androidx.transition:transition:${androidXVersions.transition}"
+    case "vectordrawable":
+      return "androidx.vectordrawable:vectordrawable:${androidXVersions.vectorDrawable}"
+    case "recyclerViewSelection":
+      return "androidx.recyclerview:recyclerview-selection:${androidXVersions.recyclerViewSelection}"
     default:
       throw new IllegalArgumentException("No mapping exists for name: $name.")
   }
-
-  return "$lib:${project.rootProject.ext.supportVersion}"
 }
 
 /**
@@ -134,7 +143,7 @@ def getArchivesBaseName(name) {
 }
 
 subprojects {
-  version = rootProject.ext.supportVersion
+  version = rootProject.ext.mdcLibraryVersion
   group = 'com.google.android.material'
 
   project.plugins.whenPluginAdded { plugin ->
@@ -185,7 +194,7 @@ subprojects {
             def versionFileName = mdcLibraryPackage + '_' + getArchivesBaseName(project.name) + '.version'
 
             new File(versionFileDir).mkdirs()
-            new File(versionFileDir + '/' + versionFileName).text = mdcLibraryVersion
+            new File(versionFileDir + '/' + versionFileName).text = mdcLibraryVersion + "\n"
           }
 
           libraryVariants.all {
@@ -245,12 +254,12 @@ subprojects {
                 }
               }
               // Adds a <type> tag for each dependency. This assumes that all dependencies except
-              // for support-annotations are aars, but it can break if in the future we depend on
-              // anything else that's not an aar.
+              // for "annotation" are aars, but it can break if in the future the artifactId
+              // changes or we depend on anything else that's not an aar.
               // TODO: Remove this once Gradle automatically determines dependency types.
               whenConfigured { pom ->
                 pom.dependencies.findAll { dependency ->
-                  if (dependency.artifactId != 'support-annotations') {
+                  if (dependency.artifactId != 'annotation') {
                     dependency.type = 'aar'
                   }
                 }

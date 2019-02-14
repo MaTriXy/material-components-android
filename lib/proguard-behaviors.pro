@@ -13,10 +13,10 @@
 # limitations under the License.
 
 # CoordinatorLayout resolves the behaviors of its child components with reflection.
--keep public class * extends android.support.design.widget.CoordinatorLayout$Behavior {
+-keep public class * extends androidx.coordinatorlayout.widget.CoordinatorLayout$Behavior {
     public <init>(android.content.Context, android.util.AttributeSet);
     public <init>();
 }
 
 # Make sure we keep annotations for CoordinatorLayout's DefaultBehavior
--keepattributes *Annotation*
+-keepattributes RuntimeVisible*Annotation*

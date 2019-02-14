@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 
 dependencies {
-  api compatibility("v7/appcompat")
+  api compatibility("appcompat")
 }
 
 android {
@@ -15,5 +15,9 @@ android {
       res.srcDirs = ['res']
       manifest.srcFile 'AndroidManifest.xml'
     }
+  }
+  defaultConfig {
+    minSdkVersion 14
+    targetSdkVersion 27
   }
 }

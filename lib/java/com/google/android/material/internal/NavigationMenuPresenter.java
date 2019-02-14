@@ -18,7 +18,7 @@ package com.google.android.material.internal;
 
 import com.google.android.material.R;
 
-import static android.support.annotation.RestrictTo.Scope.LIBRARY_GROUP;
+import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
@@ -26,19 +26,23 @@ import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Parcelable;
-import android.support.annotation.LayoutRes;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.annotation.RestrictTo;
-import android.support.annotation.StyleRes;
-import android.support.v4.view.ViewCompat;
-import android.support.v4.view.WindowInsetsCompat;
-import android.support.v7.view.menu.MenuBuilder;
-import android.support.v7.view.menu.MenuItemImpl;
-import android.support.v7.view.menu.MenuPresenter;
-import android.support.v7.view.menu.MenuView;
-import android.support.v7.view.menu.SubMenuBuilder;
-import android.support.v7.widget.RecyclerView;
+import androidx.annotation.Dimension;
+import androidx.annotation.LayoutRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.StyleRes;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat.CollectionInfoCompat;
+import androidx.appcompat.view.menu.MenuBuilder;
+import androidx.appcompat.view.menu.MenuItemImpl;
+import androidx.appcompat.view.menu.MenuPresenter;
+import androidx.appcompat.view.menu.MenuView;
+import androidx.appcompat.view.menu.SubMenuBuilder;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.RecyclerViewAccessibilityDelegate;
 import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.SubMenu;
@@ -73,6 +77,8 @@ public class NavigationMenuPresenter implements MenuPresenter {
   Drawable itemBackground;
   int itemHorizontalPadding;
   int itemIconPadding;
+  int itemIconSize;
+  boolean hasCustomItemIconSize;
 
   /**
    * Padding to be inserted at the top of the list to avoid the first menu item from being placed
@@ -97,6 +103,8 @@ public class NavigationMenuPresenter implements MenuPresenter {
     if (menuView == null) {
       menuView =
           (NavigationMenuView) layoutInflater.inflate(R.layout.design_navigation_menu, root, false);
+      menuView.setAccessibilityDelegateCompat(
+          new NavigationMenuViewAccessibilityDelegate(menuView));
       if (adapter == null) {
         adapter = new NavigationMenuAdapter();
       }
@@ -284,6 +292,14 @@ public class NavigationMenuPresenter implements MenuPresenter {
     updateMenuView(false);
   }
 
+  public void setItemIconSize(@Dimension int itemIconSize) {
+    if (this.itemIconSize != itemIconSize) {
+      this.itemIconSize = itemIconSize;
+      hasCustomItemIconSize = true;
+      updateMenuView(false);
+    }
+  }
+
   public void setUpdateSuspended(boolean updateSuspended) {
     if (adapter != null) {
       adapter.setUpdateSuspended(updateSuspended);
@@ -350,11 +366,15 @@ public class NavigationMenuPresenter implements MenuPresenter {
           setUpdateSuspended(true);
           MenuItemImpl item = itemView.getItemData();
           boolean result = menu.performItemAction(item, NavigationMenuPresenter.this, 0);
+          boolean checkStateChanged = false;
           if (item != null && item.isCheckable() && result) {
             adapter.setCheckedItem(item);
+            checkStateChanged = true;
           }
           setUpdateSuspended(false);
-          updateMenuView(false);
+          if (checkStateChanged) {
+            updateMenuView(false);
+          }
         }
       };
 
@@ -439,6 +459,9 @@ public class NavigationMenuPresenter implements MenuPresenter {
             itemView.setNeedsEmptyIcon(item.needsEmptyIcon);
             itemView.setHorizontalPadding(itemHorizontalPadding);
             itemView.setIconPadding(itemIconPadding);
+            if (hasCustomItemIconSize) {
+              itemView.setIconSize(itemIconSize);
+            }
             itemView.initialize(item.getMenuItem(), 0);
             break;
           }
@@ -638,6 +661,17 @@ public class NavigationMenuPresenter implements MenuPresenter {
     public void setUpdateSuspended(boolean updateSuspended) {
       this.updateSuspended = updateSuspended;
     }
+
+    /** Returns the number of rows that will be used for accessibility. */
+    int getRowCount() {
+      int itemCount = headerLayout.getChildCount() == 0 ? 0 : 1;
+      for (int i = 0; i < adapter.getItemCount(); i++) {
+        if (adapter.getItemViewType(i) == VIEW_TYPE_NORMAL) {
+          itemCount++;
+        }
+      }
+      return itemCount;
+    }
   }
 
   /** Unified data model for all sorts of navigation menu items. */
@@ -684,5 +718,18 @@ public class NavigationMenuPresenter implements MenuPresenter {
   private static class NavigationMenuHeaderItem implements NavigationMenuItem {
     NavigationMenuHeaderItem() {}
     // The actual content is hold by NavigationMenuPresenter#mHeaderLayout.
+  }
+
+  private class NavigationMenuViewAccessibilityDelegate extends RecyclerViewAccessibilityDelegate {
+
+    NavigationMenuViewAccessibilityDelegate(@NonNull RecyclerView recyclerView) {
+      super(recyclerView);
+    }
+
+    @Override
+    public void onInitializeAccessibilityNodeInfo(View host, AccessibilityNodeInfoCompat info) {
+      super.onInitializeAccessibilityNodeInfo(host, info);
+      info.setCollectionInfo(CollectionInfoCompat.obtain(adapter.getRowCount(), 0, false));
+    }
   }
 }

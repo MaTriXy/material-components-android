@@ -15,9 +15,42 @@
   ~ limitations under the License.
 -->
 <resources>
+  <public name="colorPrimaryVariant" type="attr"/>
   <public name="colorSecondary" type="attr"/>
+  <public name="colorSecondaryVariant" type="attr"/>
+  <public name="colorSurface" type="attr"/>
+  <public name="colorOnPrimary" type="attr"/>
+  <public name="colorOnSecondary" type="attr"/>
+  <public name="colorOnBackground" type="attr"/>
+  <public name="colorOnError" type="attr"/>
+  <public name="colorOnSurface" type="attr"/>
   <public name="scrimBackground" type="attr"/>
-  <public name="colorBackgroundFloating" type="attr"/>
+
   <public name="design_default_color_primary" type="color"/>
   <public name="design_default_color_primary_dark" type="color"/>
+  <public name="design_default_color_primary_variant" type="color"/>
+  <public name="design_default_color_secondary" type="color"/>
+  <public name="design_default_color_secondary_variant" type="color"/>
+  <public name="design_default_color_background" type="color"/>
+  <public name="design_default_color_surface" type="color"/>
+  <public name="design_default_color_error" type="color"/>
+  <public name="design_default_color_on_primary" type="color"/>
+  <public name="design_default_color_on_secondary" type="color"/>
+  <public name="mtrl_on_primary_disabled" type="color"/>
+  <public name="mtrl_on_primary_emphasis_high_type" type="color"/>
+  <public name="mtrl_on_primary_emphasis_medium" type="color"/>
+  <public name="mtrl_on_surface_disabled" type="color"/>
+  <public name="mtrl_on_surface_emphasis_high_type" type="color"/>
+  <public name="mtrl_on_surface_emphasis_medium" type="color"/>
+  <public name="mtrl_dark_on_primary_disabled" type="color"/>
+  <public name="mtrl_dark_on_primary_emphasis_high_type" type="color"/>
+  <public name="mtrl_dark_on_primary_emphasis_medium" type="color"/>
+  <public name="mtrl_dark_on_surface_disabled" type="color"/>
+  <public name="mtrl_dark_on_surface_emphasis_high_type" type="color"/>
+  <public name="mtrl_dark_on_surface_emphasis_medium" type="color"/>
+  <public name="mtrl_emphasis_high_type" format="float" type="dimen" />
+  <public name="mtrl_emphasis_medium" format="float" type="dimen"/>
+  <public name="mtrl_emphasis_disabled" format="float" type="dimen"/>
+
+  <public name="useMaterialThemeColors" type="attr"/>
 </resources>

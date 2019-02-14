@@ -18,24 +18,24 @@ package com.google.android.material.bottomnavigation;
 
 import com.google.android.material.R;
 
-import static android.support.annotation.RestrictTo.Scope.LIBRARY_GROUP;
+import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.annotation.RestrictTo;
-import android.support.annotation.StyleRes;
-import android.support.v4.content.ContextCompat;
-import android.support.v4.graphics.drawable.DrawableCompat;
-import android.support.v4.view.PointerIconCompat;
-import android.support.v4.view.ViewCompat;
-import android.support.v4.widget.TextViewCompat;
-import android.support.v7.view.menu.MenuItemImpl;
-import android.support.v7.view.menu.MenuView;
-import android.support.v7.widget.TooltipCompat;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.StyleRes;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
+import androidx.core.view.PointerIconCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.widget.TextViewCompat;
+import androidx.appcompat.view.menu.MenuItemImpl;
+import androidx.appcompat.view.menu.MenuView;
+import androidx.appcompat.widget.TooltipCompat;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.Gravity;
@@ -68,6 +68,8 @@ public class BottomNavigationItemView extends FrameLayout implements MenuView.It
   private MenuItemImpl itemData;
 
   private ColorStateList iconTint;
+  private Drawable originalIconDrawable;
+  private Drawable wrappedIconDrawable;
 
   public BottomNavigationItemView(@NonNull Context context) {
     this(context, null);
@@ -92,6 +94,7 @@ public class BottomNavigationItemView extends FrameLayout implements MenuView.It
     // the content description of the BottomNavigationItemView should be used for accessibility.
     ViewCompat.setImportantForAccessibility(smallLabel, ViewCompat.IMPORTANT_FOR_ACCESSIBILITY_NO);
     ViewCompat.setImportantForAccessibility(largeLabel, ViewCompat.IMPORTANT_FOR_ACCESSIBILITY_NO);
+    setFocusable(true);
     calculateTextScaleFactors(smallLabel.getTextSize(), largeLabel.getTextSize());
   }
 
@@ -275,11 +278,18 @@ public class BottomNavigationItemView extends FrameLayout implements MenuView.It
 
   @Override
   public void setIcon(Drawable iconDrawable) {
+    if (iconDrawable == originalIconDrawable) {
+      return;
+    }
+
+    // Save the original icon to check if it has changed in future calls of this method.
+    originalIconDrawable = iconDrawable;
     if (iconDrawable != null) {
       Drawable.ConstantState state = iconDrawable.getConstantState();
       iconDrawable =
           DrawableCompat.wrap(state == null ? iconDrawable : state.newDrawable()).mutate();
-      DrawableCompat.setTintList(iconDrawable, iconTint);
+      wrappedIconDrawable = iconDrawable;
+      DrawableCompat.setTintList(wrappedIconDrawable, iconTint);
     }
     this.icon.setImageDrawable(iconDrawable);
   }
@@ -296,9 +306,9 @@ public class BottomNavigationItemView extends FrameLayout implements MenuView.It
 
   public void setIconTintList(ColorStateList tint) {
     iconTint = tint;
-    if (itemData != null) {
-      // Update the icon so that the tint takes effect
-      setIcon(itemData.getIcon());
+    if (itemData != null && wrappedIconDrawable != null) {
+      DrawableCompat.setTintList(wrappedIconDrawable, iconTint);
+      wrappedIconDrawable.invalidateSelf();
     }
   }
 
@@ -339,6 +349,9 @@ public class BottomNavigationItemView extends FrameLayout implements MenuView.It
   }
 
   public void setItemBackground(@Nullable Drawable background) {
+    if (background != null && background.getConstantState() != null) {
+      background = background.getConstantState().newDrawable().mutate();
+    }
     ViewCompat.setBackground(this, background);
   }
 }

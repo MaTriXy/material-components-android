@@ -5,17 +5,20 @@ archivesBaseName = getArchivesBaseName(project.name)
 version = rootProject.ext.mdcLibraryVersion
 
 dependencies {
-  implementation compatibility("annotations")
-  implementation compatibility("v7/appcompat")
+  implementation compatibility("annotation")
+  implementation compatibility("appcompat")
 
   implementation project(fromPath("lib/java/com/google/android/material/bottomnavigation"))
   implementation project(fromPath("lib/java/com/google/android/material/bottomsheet"))
   implementation project(fromPath("lib/java/com/google/android/material/button"))
   implementation project(fromPath("lib/java/com/google/android/material/card"))
+  implementation project(fromPath("lib/java/com/google/android/material/checkbox"))
   implementation project(fromPath("lib/java/com/google/android/material/chip"))
   implementation project(fromPath("lib/java/com/google/android/material/color"))
   implementation project(fromPath("lib/java/com/google/android/material/dialog"))
   implementation project(fromPath("lib/java/com/google/android/material/navigation"))
+  implementation project(fromPath("lib/java/com/google/android/material/radiobutton"))
+  implementation project(fromPath("lib/java/com/google/android/material/switchmaterial"))
   implementation project(fromPath("lib/java/com/google/android/material/typography"))
 }
 

@@ -1,15 +1,23 @@
 apply plugin: 'com.android.application'
 
 dependencies {
-  api compatibility("annotations")
-  api compatibility("v7/appcompat")
+  api compatibility("annotation")
+  api compatibility("appcompat")
 
   api project(fromPath("lib"))
   api project(fromPath("testing/java/com/google/android/material/testapp/base"))
   api project(fromPath("testing/java/com/google/android/material/testapp/custom"))
+
+  api 'androidx.multidex:multidex:2.0.0'
 }
 
 android {
+  defaultConfig {
+    multiDexEnabled true
+    minSdkVersion 14
+    targetSdkVersion 27
+  }
+
   sourceSets {
     main.manifest.srcFile 'AndroidManifest.xml'
     main.java.srcDirs = [ '.' ]

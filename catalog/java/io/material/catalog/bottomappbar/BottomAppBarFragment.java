@@ -18,7 +18,7 @@ package io.material.catalog.bottomappbar;
 
 import io.material.catalog.R;
 
-import android.support.v4.app.Fragment;
+import androidx.fragment.app.Fragment;
 import dagger.Provides;
 import dagger.android.ContributesAndroidInjector;
 import dagger.multibindings.IntoSet;
@@ -63,7 +63,7 @@ public class BottomAppBarFragment extends DemoLandingFragment {
     @Provides
     @ActivityScope
     static FeatureDemo provideFeatureDemo() {
-      return new FeatureDemo(R.string.cat_bottomappbar_title, R.drawable.ic_bottomappbar_24px) {
+      return new FeatureDemo(R.string.cat_bottomappbar_title, R.drawable.ic_bottomappbar) {
         @Override
         public Fragment createFragment() {
           return new BottomAppBarFragment();

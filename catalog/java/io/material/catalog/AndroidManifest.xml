@@ -20,10 +20,6 @@
   android:versionCode="1"
   android:versionName="1.0">
 
-  <uses-sdk
-    android:minSdkVersion="14"
-    android:targetSdkVersion="27"/>
-
   <application
     android:allowBackup="true"
     android:icon="@mipmap/ic_launcher"
@@ -43,6 +39,20 @@
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity>
+    <activity
+      android:exported="false"
+      android:name=".topappbar.TopAppBarActionBarDemoActivity"
+      android:label="@string/cat_topappbar_action_bar_title"
+      android:theme="@style/Theme.MaterialComponents.Light"/>
+    <activity
+      android:exported="false"
+      android:name=".topappbar.TopAppBarDarkActionBarDemoActivity"
+      android:label="@string/cat_topappbar_dark_action_bar_title"
+      android:theme="@style/Theme.MaterialComponents.Light.DarkActionBar"/>
+    <activity
+      android:exported="false"
+      android:name=".card.CardSelectionModeActivity"/>
+
   </application>
 
 </manifest>

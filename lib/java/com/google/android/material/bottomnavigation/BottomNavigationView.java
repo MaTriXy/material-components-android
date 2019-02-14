@@ -25,22 +25,25 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.support.annotation.DimenRes;
-import android.support.annotation.Dimension;
-import android.support.annotation.DrawableRes;
-import android.support.annotation.IdRes;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.annotation.StyleRes;
+import androidx.annotation.DimenRes;
+import androidx.annotation.Dimension;
+import androidx.annotation.DrawableRes;
+import androidx.annotation.IdRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.StyleRes;
 import com.google.android.material.behavior.HideBottomViewOnScrollBehavior;
 import com.google.android.material.internal.ThemeEnforcement;
-import android.support.design.widget.CoordinatorLayout;
-import android.support.v4.content.ContextCompat;
-import android.support.v4.view.AbsSavedState;
-import android.support.v4.view.ViewCompat;
-import android.support.v7.view.SupportMenuInflater;
-import android.support.v7.view.menu.MenuBuilder;
-import android.support.v7.widget.TintTypedArray;
+import com.google.android.material.resources.MaterialResources;
+import com.google.android.material.shape.MaterialShapeDrawable;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
+import androidx.customview.view.AbsSavedState;
+import androidx.core.view.ViewCompat;
+import androidx.appcompat.view.SupportMenuInflater;
+import androidx.appcompat.view.menu.MenuBuilder;
+import androidx.appcompat.widget.TintTypedArray;
 import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.Menu;
@@ -140,7 +143,9 @@ public class BottomNavigationView extends FrameLayout {
             attrs,
             R.styleable.BottomNavigationView,
             defStyleAttr,
-            R.style.Widget_Design_BottomNavigationView);
+            R.style.Widget_Design_BottomNavigationView,
+            R.styleable.BottomNavigationView_itemTextAppearanceInactive,
+            R.styleable.BottomNavigationView_itemTextAppearanceActive);
 
     if (a.hasValue(R.styleable.BottomNavigationView_itemIconTint)) {
       menuView.setIconTintList(a.getColorStateList(R.styleable.BottomNavigationView_itemIconTint));
@@ -170,6 +175,15 @@ public class BottomNavigationView extends FrameLayout {
       ViewCompat.setElevation(
           this, a.getDimensionPixelSize(R.styleable.BottomNavigationView_elevation, 0));
     }
+    // Add a drawable as background that supports tinting in every API level.
+    if (getBackground() == null) {
+      ViewCompat.setBackground(this, new MaterialShapeDrawable());
+    }
+
+    ColorStateList backgroundTint =
+        MaterialResources.getColorStateList(
+            context, a, R.styleable.BottomNavigationView_backgroundTint);
+    DrawableCompat.setTintList(getBackground().mutate(), backgroundTint);
 
     setLabelVisibilityMode(
         a.getInteger(
