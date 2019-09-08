@@ -36,6 +36,7 @@ import androidx.annotation.ColorInt;
 import androidx.annotation.Dimension;
 import androidx.annotation.IntRange;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import com.google.android.material.shape.ShapeAppearanceModel;
 import com.google.android.material.shape.ShapeAppearancePathProvider;
@@ -45,7 +46,7 @@ import androidx.core.graphics.ColorUtils;
  * A Drawable that draws borders for {@link FloatingActionButton}
  *
  * @hide
- * */
+ */
 @RestrictTo(LIBRARY_GROUP)
 class BorderDrawable extends Drawable {
 
@@ -55,13 +56,15 @@ class BorderDrawable extends Drawable {
    * multiplier used to determine to draw stroke width.
    */
   private static final float DRAW_STROKE_WIDTH_MULTIPLE = 1.3333f;
+
   private final ShapeAppearancePathProvider pathProvider = new ShapeAppearancePathProvider();
 
-  private final Paint paint;
+  @NonNull private final Paint paint;
   private final Path shapePath = new Path();
   private final Rect rect = new Rect();
   private final RectF rectF = new RectF();
-
+  private final BorderState state = new BorderState();
+  
   @Dimension float borderWidth;
   @ColorInt private int topOuterStrokeColor;
   @ColorInt private int topInnerStrokeColor;
@@ -70,8 +73,9 @@ class BorderDrawable extends Drawable {
   @ColorInt private int currentBorderTintColor;
 
   private boolean invalidateShader = true;
-  private ColorStateList borderTint;
   private ShapeAppearanceModel shapeAppearanceModel;
+
+  @Nullable private ColorStateList borderTint;
 
   BorderDrawable(ShapeAppearanceModel shapeAppearanceModel) {
     this.shapeAppearanceModel = shapeAppearanceModel;
@@ -88,7 +92,7 @@ class BorderDrawable extends Drawable {
     }
   }
 
-  void setBorderTint(ColorStateList tint) {
+  void setBorderTint(@Nullable ColorStateList tint) {
     if (tint != null) {
       currentBorderTintColor = tint.getColorForState(getState(), currentBorderTintColor);
     }
@@ -98,7 +102,7 @@ class BorderDrawable extends Drawable {
   }
 
   @Override
-  public void setColorFilter(ColorFilter colorFilter) {
+  public void setColorFilter(@Nullable ColorFilter colorFilter) {
     paint.setColorFilter(colorFilter);
     invalidateSelf();
   }
@@ -115,7 +119,7 @@ class BorderDrawable extends Drawable {
   }
 
   @Override
-  public void draw(Canvas canvas) {
+  public void draw(@NonNull Canvas canvas) {
     if (invalidateShader) {
       paint.setShader(createGradientShader());
       invalidateShader = false;
@@ -153,7 +157,7 @@ class BorderDrawable extends Drawable {
   }
 
   @Override
-  public boolean getPadding(Rect padding) {
+  public boolean getPadding(@NonNull Rect padding) {
     if (shapeAppearanceModel.isRoundRect()) {
       final int borderWidth = Math.round(this.borderWidth);
       padding.set(borderWidth, borderWidth, borderWidth, borderWidth);
@@ -165,8 +169,7 @@ class BorderDrawable extends Drawable {
     return shapeAppearanceModel;
   }
 
-  public void setShapeAppearanceModel(
-      ShapeAppearanceModel shapeAppearanceModel) {
+  public void setShapeAppearanceModel(ShapeAppearanceModel shapeAppearanceModel) {
     this.shapeAppearanceModel = shapeAppearanceModel;
     invalidateSelf();
   }
@@ -207,6 +210,7 @@ class BorderDrawable extends Drawable {
     return invalidateShader;
   }
 
+  @NonNull
   private Shader createGradientShader() {
     final Rect rect = this.rect;
     copyBounds(rect);
@@ -235,5 +239,29 @@ class BorderDrawable extends Drawable {
 
     return new LinearGradient(
         0, rect.top, 0, rect.bottom, colors, positions, Shader.TileMode.CLAMP);
+  }
+
+  @Nullable
+  @Override
+  public ConstantState getConstantState() {
+    return state;
+  }
+
+  /**
+   * Dummy implementation of constant state. This drawable doesn't have shared state. Implementing
+   * so that calls to getConstantState().newDrawable() don't crash on L and M.
+   */
+  private class BorderState extends ConstantState {
+
+    @NonNull
+    @Override
+    public Drawable newDrawable() {
+      return BorderDrawable.this;
+    }
+
+    @Override
+    public int getChangingConfigurations() {
+      return 0;
+    }
   }
 }

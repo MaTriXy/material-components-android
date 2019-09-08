@@ -27,14 +27,14 @@ import androidx.annotation.BoolRes;
 import androidx.annotation.DimenRes;
 import androidx.annotation.Dimension;
 import androidx.annotation.IdRes;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import com.google.android.material.internal.FlowLayout;
-import com.google.android.material.internal.ThemeEnforcement;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewGroup.MarginLayoutParams;
 import android.widget.CompoundButton;
+import com.google.android.material.internal.FlowLayout;
+import com.google.android.material.internal.ThemeEnforcement;
 
 /**
  * A ChipGroup is used to hold multiple {@link Chip}s. By default, the chips are reflowed across
@@ -92,6 +92,8 @@ public class ChipGroup extends FlowLayout {
   @Nullable private OnCheckedChangeListener onCheckedChangeListener;
 
   private final CheckedStateTracker checkedStateTracker = new CheckedStateTracker();
+
+  @NonNull
   private PassThroughHierarchyChangeListener passThroughListener =
       new PassThroughHierarchyChangeListener();
 
@@ -133,16 +135,19 @@ public class ChipGroup extends FlowLayout {
     super.setOnHierarchyChangeListener(passThroughListener);
   }
 
+  @NonNull
   @Override
   public ViewGroup.LayoutParams generateLayoutParams(AttributeSet attrs) {
     return new ChipGroup.LayoutParams(getContext(), attrs);
   }
 
+  @NonNull
   @Override
   protected ViewGroup.LayoutParams generateLayoutParams(ViewGroup.LayoutParams lp) {
     return new ChipGroup.LayoutParams(lp);
   }
 
+  @NonNull
   @Override
   protected ViewGroup.LayoutParams generateDefaultLayoutParams() {
     return new ChipGroup.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
@@ -360,6 +365,20 @@ public class ChipGroup extends FlowLayout {
     setChipSpacingVertical(getResources().getDimensionPixelOffset(id));
   }
 
+  // Need to override here in order to un-restrict access to this method outside of the library.
+  @SuppressWarnings("RedundantOverride")
+  @Override
+  public boolean isSingleLine() {
+    return super.isSingleLine();
+  }
+
+  // Need to override here in order to un-restrict access to this method outside of the library.
+  @SuppressWarnings("RedundantOverride")
+  @Override
+  public void setSingleLine(boolean singleLine) {
+    super.setSingleLine(singleLine);
+  }
+
   /** Sets whether this chip group is single line, or reflowed multiline. */
   public void setSingleLine(@BoolRes int id) {
     setSingleLine(getResources().getBoolean(id));
@@ -394,7 +413,7 @@ public class ChipGroup extends FlowLayout {
 
   private class CheckedStateTracker implements CompoundButton.OnCheckedChangeListener {
     @Override
-    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+    public void onCheckedChanged(@NonNull CompoundButton buttonView, boolean isChecked) {
       // prevents from infinite recursion
       if (protectFromCheckedChange) {
         return;

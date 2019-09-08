@@ -17,7 +17,15 @@
 <resources>
   <!-- Type definitions for common attributes used across component packages. -->
   <attr name="checkedIcon" format="reference" />
+  <attr name="minTouchTargetSize" format="dimension"/>
+  <attr name="singleSelection" format="boolean"/>
   <attr name="strokeColor" format="color"/>
   <attr name="strokeWidth" format="dimension"/>
-  <attr name="minTouchTargetSize" format="dimension"/>
+  <attr name="ensureMinTouchTargetSize" format="boolean"/>
+
+  <!-- Navigation and Pickers -->
+  <attr name="itemTextColor" format="color"/>
+  <attr name="itemShapeAppearance" format="reference"/>
+  <attr name="itemShapeAppearanceOverlay" format="reference"/>
+
 </resources>

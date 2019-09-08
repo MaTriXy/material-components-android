@@ -20,11 +20,13 @@
   android:versionCode="1"
   android:versionName="1.0">
 
+  <uses-sdk />
+
   <application
+    android:name="io.material.catalog.application.${application_name}"
     android:allowBackup="true"
     android:icon="@mipmap/ic_launcher"
     android:label="@string/cat_app_name"
-    android:name="io.material.catalog.application.${application_name}"
     android:roundIcon="@mipmap/ic_launcher_round"
     android:supportsRtl="true"
     android:theme="@style/Theme.${application_theme}">
@@ -40,18 +42,28 @@
       </intent-filter>
     </activity>
     <activity
+      android:name=".elevation.ElevationOverlayDemoActivity"
       android:exported="false"
+      android:label="@string/cat_elevation_overlay_title"
+      android:theme="@style/Theme.Catalog.Dark"/>
+    <activity
       android:name=".topappbar.TopAppBarActionBarDemoActivity"
+      android:exported="false"
       android:label="@string/cat_topappbar_action_bar_title"
-      android:theme="@style/Theme.MaterialComponents.Light"/>
+      android:theme="@style/Theme.MaterialComponents.DayNight"/>
     <activity
-      android:exported="false"
       android:name=".topappbar.TopAppBarDarkActionBarDemoActivity"
-      android:label="@string/cat_topappbar_dark_action_bar_title"
-      android:theme="@style/Theme.MaterialComponents.Light.DarkActionBar"/>
-    <activity
       android:exported="false"
-      android:name=".card.CardSelectionModeActivity"/>
+      android:label="@string/cat_topappbar_dark_action_bar_title"
+      android:theme="@style/Theme.MaterialComponents.DayNight.DarkActionBar"/>
+    <activity
+      android:name=".topappbar.TopAppBarScrollingTransparentStatusDemoActivity"
+      android:exported="false"
+      android:label="@string/cat_topappbar_scrolling_transparent_title"
+      android:theme="@style/Theme.Catalog.TransparentStatus"/>
+    <activity
+      android:name=".card.CardSelectionModeActivity"
+      android:exported="true"/>
 
   </application>
 

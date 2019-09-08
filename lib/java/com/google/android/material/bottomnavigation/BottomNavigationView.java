@@ -18,10 +18,17 @@ package com.google.android.material.bottomnavigation;
 
 import com.google.android.material.R;
 
+import static com.google.android.material.internal.ThemeEnforcement.createThemedContext;
+
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.os.Build;
+import android.os.Build.VERSION;
+import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -31,12 +38,10 @@ import androidx.annotation.DrawableRes;
 import androidx.annotation.IdRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.annotation.StyleRes;
-import com.google.android.material.behavior.HideBottomViewOnScrollBehavior;
-import com.google.android.material.internal.ThemeEnforcement;
-import com.google.android.material.resources.MaterialResources;
 import com.google.android.material.shape.MaterialShapeDrawable;
-import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import com.google.android.material.shape.MaterialShapeUtils;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.customview.view.AbsSavedState;
@@ -52,6 +57,14 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import com.google.android.material.badge.BadgeDrawable;
+import com.google.android.material.behavior.HideBottomViewOnScrollBehavior;
+import com.google.android.material.internal.ThemeEnforcement;
+import com.google.android.material.internal.ViewUtils;
+import com.google.android.material.internal.ViewUtils.RelativePadding;
+import com.google.android.material.resources.MaterialResources;
+import com.google.android.material.ripple.RippleUtils;
 
 /**
  * Represents a standard bottom navigation bar for application. It is an implementation of <a
@@ -99,26 +112,31 @@ import android.widget.FrameLayout;
  */
 public class BottomNavigationView extends FrameLayout {
 
+  private static final int DEF_STYLE_RES = R.style.Widget_Design_BottomNavigationView;
   private static final int MENU_PRESENTER_ID = 1;
 
-  private final MenuBuilder menu;
-  private final BottomNavigationMenuView menuView;
+  @NonNull private final MenuBuilder menu;
+  @NonNull private final BottomNavigationMenuView menuView;
   private final BottomNavigationPresenter presenter = new BottomNavigationPresenter();
+  @Nullable private ColorStateList itemRippleColor;
   private MenuInflater menuInflater;
 
   private OnNavigationItemSelectedListener selectedListener;
   private OnNavigationItemReselectedListener reselectedListener;
 
-  public BottomNavigationView(Context context) {
+  public BottomNavigationView(@NonNull Context context) {
     this(context, null);
   }
 
-  public BottomNavigationView(Context context, AttributeSet attrs) {
+  public BottomNavigationView(@NonNull Context context, @Nullable AttributeSet attrs) {
     this(context, attrs, R.attr.bottomNavigationStyle);
   }
 
-  public BottomNavigationView(Context context, AttributeSet attrs, int defStyleAttr) {
-    super(context, attrs, defStyleAttr);
+  public BottomNavigationView(
+      @NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+    super(createThemedContext(context, attrs, defStyleAttr, DEF_STYLE_RES), attrs, defStyleAttr);
+    // Ensure we are using the correctly themed context rather than the context that was passed in.
+    context = getContext();
 
     // Create the menu
     this.menu = new BottomNavigationMenu(context);
@@ -171,13 +189,14 @@ public class BottomNavigationView extends FrameLayout {
       setItemTextColor(a.getColorStateList(R.styleable.BottomNavigationView_itemTextColor));
     }
 
+    if (getBackground() == null || getBackground() instanceof ColorDrawable) {
+      // Add a MaterialShapeDrawable as background that supports tinting in every API level.
+      ViewCompat.setBackground(this, createMaterialShapeDrawableBackground(context));
+    }
+
     if (a.hasValue(R.styleable.BottomNavigationView_elevation)) {
       ViewCompat.setElevation(
           this, a.getDimensionPixelSize(R.styleable.BottomNavigationView_elevation, 0));
-    }
-    // Add a drawable as background that supports tinting in every API level.
-    if (getBackground() == null) {
-      ViewCompat.setBackground(this, new MaterialShapeDrawable());
     }
 
     ColorStateList backgroundTint =
@@ -193,7 +212,14 @@ public class BottomNavigationView extends FrameLayout {
         a.getBoolean(R.styleable.BottomNavigationView_itemHorizontalTranslationEnabled, true));
 
     int itemBackground = a.getResourceId(R.styleable.BottomNavigationView_itemBackground, 0);
-    menuView.setItemBackgroundRes(itemBackground);
+    if (itemBackground != 0) {
+      menuView.setItemBackgroundRes(itemBackground);
+    } else {
+      ColorStateList itemRippleColor =
+          MaterialResources.getColorStateList(
+              context, a, R.styleable.BottomNavigationView_itemRippleColor);
+      setItemRippleColor(itemRippleColor);
+    }
 
     if (a.hasValue(R.styleable.BottomNavigationView_menu)) {
       inflateMenu(a.getResourceId(R.styleable.BottomNavigationView_menu, 0));
@@ -208,7 +234,7 @@ public class BottomNavigationView extends FrameLayout {
     this.menu.setCallback(
         new MenuBuilder.Callback() {
           @Override
-          public boolean onMenuItemSelected(MenuBuilder menu, MenuItem item) {
+          public boolean onMenuItemSelected(MenuBuilder menu, @NonNull MenuItem item) {
             if (reselectedListener != null && item.getItemId() == getSelectedItemId()) {
               reselectedListener.onNavigationItemReselected(item);
               return true; // item is already selected
@@ -219,6 +245,57 @@ public class BottomNavigationView extends FrameLayout {
           @Override
           public void onMenuModeChange(MenuBuilder menu) {}
         });
+
+    applyWindowInsets();
+  }
+
+  private void applyWindowInsets() {
+    ViewUtils.doOnApplyWindowInsets(
+        this,
+        new ViewUtils.OnApplyWindowInsetsListener() {
+          @NonNull
+          @Override
+          public androidx.core.view.WindowInsetsCompat onApplyWindowInsets(
+              View view,
+              @NonNull androidx.core.view.WindowInsetsCompat insets,
+              @NonNull RelativePadding initialPadding) {
+            initialPadding.bottom += insets.getSystemWindowInsetBottom();
+            initialPadding.applyToView(view);
+            return insets;
+          }
+        });
+  }
+
+  @NonNull
+  private MaterialShapeDrawable createMaterialShapeDrawableBackground(Context context) {
+    MaterialShapeDrawable materialShapeDrawable = new MaterialShapeDrawable();
+    Drawable originalBackground = getBackground();
+    if (originalBackground instanceof ColorDrawable) {
+      materialShapeDrawable.setFillColor(
+          ColorStateList.valueOf(((ColorDrawable) originalBackground).getColor()));
+    }
+    materialShapeDrawable.initializeElevationOverlay(context);
+    return materialShapeDrawable;
+  }
+
+  @Override
+  protected void onAttachedToWindow() {
+    super.onAttachedToWindow();
+
+    MaterialShapeUtils.setParentAbsoluteElevation(this);
+  }
+
+  /**
+   * Sets the base elevation of this view, in pixels.
+   *
+   * @attr ref android.R.styleable#View_elevation
+   */
+  @RequiresApi(VERSION_CODES.LOLLIPOP)
+  @Override
+  public void setElevation(float elevation) {
+    super.setElevation(elevation);
+
+    MaterialShapeUtils.setElevation(this, elevation);
   }
 
   /**
@@ -367,11 +444,14 @@ public class BottomNavigationView extends FrameLayout {
   /**
    * Set the background of our menu items to the given resource.
    *
+   * <p>This will remove any ripple backgrounds created by {@link setItemRippleColor()}.
+   *
    * @param resId The identifier of the resource.
    * @attr ref R.styleable#BottomNavigationView_itemBackground
    */
   public void setItemBackgroundResource(@DrawableRes int resId) {
     menuView.setItemBackgroundRes(resId);
+    itemRippleColor = null;
   }
 
   /**
@@ -388,11 +468,64 @@ public class BottomNavigationView extends FrameLayout {
   /**
    * Set the background of our menu items to the given drawable.
    *
+   * <p>This will remove any ripple backgrounds created by {@link setItemRippleColor()}.
+   *
    * @param background The drawable for the background.
    * @attr ref R.styleable#BottomNavigationView_itemBackground
    */
   public void setItemBackground(@Nullable Drawable background) {
     menuView.setItemBackground(background);
+    itemRippleColor = null;
+  }
+
+  /**
+   * Returns the color used to create a ripple as the background drawable of the menu items. If a
+   * background is set using {@link #setItemBackground()}, this will return null.
+   *
+   * @see #setItemBackground(Drawable)
+   * @attr ref R.styleable#BottomNavigationView_itemRippleColor
+   */
+  @Nullable
+  public ColorStateList getItemRippleColor() {
+    return itemRippleColor;
+  }
+
+  /**
+   * Set the background of our menu items to be a ripple with the given colors.
+   *
+   * @param itemRippleColor The {@link ColorStateList} for the ripple. This will create a ripple
+   *     background for menu items, replacing any background previously set by {@link
+   *     #setItemBackground()}.
+   * @attr ref R.styleable#BottomNavigationView_itemRippleColor
+   */
+  public void setItemRippleColor(@Nullable ColorStateList itemRippleColor) {
+    if (this.itemRippleColor == itemRippleColor) {
+      // Clear the item background when setItemRippleColor(null) is called for consistency.
+      if (itemRippleColor == null && menuView.getItemBackground() != null) {
+        menuView.setItemBackground(null);
+      }
+      return;
+    }
+
+    this.itemRippleColor = itemRippleColor;
+    if (itemRippleColor == null) {
+      menuView.setItemBackground(null);
+    } else {
+      ColorStateList rippleDrawableColor =
+          RippleUtils.convertToRippleDrawableColor(itemRippleColor);
+      if (VERSION.SDK_INT >= VERSION_CODES.LOLLIPOP) {
+        menuView.setItemBackground(new RippleDrawable(rippleDrawableColor, null, null));
+      } else {
+        GradientDrawable rippleDrawable = new GradientDrawable();
+        // TODO: Find a workaround for this. Currently on certain devices/versions, LayerDrawable
+        // will draw a black background underneath any layer with a non-opaque color,
+        // (e.g. ripple) unless we set the shape to be something that's not a perfect rectangle.
+        rippleDrawable.setCornerRadius(0.00001F);
+        Drawable rippleDrawableCompat = DrawableCompat.wrap(rippleDrawable);
+        DrawableCompat.setTintList(rippleDrawableCompat, rippleDrawableColor);
+        menuView.setItemBackground(rippleDrawableCompat);
+      }
+    }
   }
 
   /**
@@ -515,6 +648,42 @@ public class BottomNavigationView extends FrameLayout {
     return menuView.isItemHorizontalTranslationEnabled();
   }
 
+  /**
+   * Returns an instance of {@link BadgeDrawable} associated with {@code menuItemId}, null if none
+   * was initialized.
+   *
+   * @param menuItemId Id of the menu item.
+   * @return an instance of BadgeDrawable associated with {@code menuItemId} or null.
+   * @see #getOrCreateBadge(int)
+   */
+  @Nullable
+  public BadgeDrawable getBadge(int menuItemId) {
+    return menuView.getBadge(menuItemId);
+  }
+
+  /**
+   * Creates an instance of {@link BadgeDrawable} associated with {@code menuItemId} if none exists.
+   * Initializes (if needed) and returns the associated instance of {@link BadgeDrawable} associated
+   * with {@code menuItemId}.
+   *
+   * @param menuItemId Id of the menu item.
+   * @return an instance of BadgeDrawable associated with {@code menuItemId}.
+   */
+  public BadgeDrawable getOrCreateBadge(int menuItemId) {
+    return menuView.getOrCreateBadge(menuItemId);
+  }
+
+  /**
+   * Removes the {@link BadgeDrawable} associated with {@code menuItemId}. Do nothing if none
+   * exists. Consider changing the visibility of the {@link BadgeDrawable} if you only want to hide
+   * it temporarily.
+   *
+   * @param menuItemId Id of the menu item.
+   */
+  public void removeBadge(int menuItemId) {
+    menuView.removeBadge(menuItemId);
+  }
+
   /** Listener for handling selection events on bottom navigation items. */
   public interface OnNavigationItemSelectedListener {
 
@@ -580,13 +749,13 @@ public class BottomNavigationView extends FrameLayout {
   }
 
   static class SavedState extends AbsSavedState {
-    Bundle menuPresenterState;
+    @Nullable Bundle menuPresenterState;
 
     public SavedState(Parcelable superState) {
       super(superState);
     }
 
-    public SavedState(Parcel source, ClassLoader loader) {
+    public SavedState(@NonNull Parcel source, ClassLoader loader) {
       super(source, loader);
       readFromParcel(source, loader);
     }
@@ -597,22 +766,25 @@ public class BottomNavigationView extends FrameLayout {
       out.writeBundle(menuPresenterState);
     }
 
-    private void readFromParcel(Parcel in, ClassLoader loader) {
+    private void readFromParcel(@NonNull Parcel in, ClassLoader loader) {
       menuPresenterState = in.readBundle(loader);
     }
 
     public static final Creator<SavedState> CREATOR =
         new ClassLoaderCreator<SavedState>() {
+          @NonNull
           @Override
-          public SavedState createFromParcel(Parcel in, ClassLoader loader) {
+          public SavedState createFromParcel(@NonNull Parcel in, ClassLoader loader) {
             return new SavedState(in, loader);
           }
 
+          @Nullable
           @Override
-          public SavedState createFromParcel(Parcel in) {
+          public SavedState createFromParcel(@NonNull Parcel in) {
             return new SavedState(in, null);
           }
 
+          @NonNull
           @Override
           public SavedState[] newArray(int size) {
             return new SavedState[size];

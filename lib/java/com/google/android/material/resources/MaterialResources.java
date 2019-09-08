@@ -24,11 +24,13 @@ import android.content.res.TypedArray;
 import android.graphics.drawable.Drawable;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import androidx.annotation.StyleableRes;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.appcompat.widget.TintTypedArray;
+import android.util.TypedValue;
 
 /**
  * Utility methods to resolve resources for components.
@@ -46,7 +48,7 @@ public class MaterialResources {
    */
   @Nullable
   public static ColorStateList getColorStateList(
-      Context context, TypedArray attributes, @StyleableRes int index) {
+      @NonNull Context context, @NonNull TypedArray attributes, @StyleableRes int index) {
     if (attributes.hasValue(index)) {
       int resourceId = attributes.getResourceId(index, 0);
       if (resourceId != 0) {
@@ -75,7 +77,7 @@ public class MaterialResources {
    */
   @Nullable
   public static ColorStateList getColorStateList(
-      Context context, TintTypedArray attributes, @StyleableRes int index) {
+      @NonNull Context context, @NonNull TintTypedArray attributes, @StyleableRes int index) {
     if (attributes.hasValue(index)) {
       int resourceId = attributes.getResourceId(index, 0);
       if (resourceId != 0) {
@@ -106,7 +108,7 @@ public class MaterialResources {
    */
   @Nullable
   public static Drawable getDrawable(
-      Context context, TypedArray attributes, @StyleableRes int index) {
+      @NonNull Context context, @NonNull TypedArray attributes, @StyleableRes int index) {
     if (attributes.hasValue(index)) {
       int resourceId = attributes.getResourceId(index, 0);
       if (resourceId != 0) {
@@ -126,7 +128,7 @@ public class MaterialResources {
    */
   @Nullable
   public static TextAppearance getTextAppearance(
-      Context context, TypedArray attributes, @StyleableRes int index) {
+      @NonNull Context context, @NonNull TypedArray attributes, @StyleableRes int index) {
     if (attributes.hasValue(index)) {
       int resourceId = attributes.getResourceId(index, 0);
       if (resourceId != 0) {
@@ -137,11 +139,45 @@ public class MaterialResources {
   }
 
   /**
+   * Retrieve a dimensional unit attribute at <var>index</var> for use as a size in raw pixels. A
+   * size conversion involves rounding the base value, and ensuring that a non-zero base value is at
+   * least one pixel in size.
+   *
+   * <p>This method will throw an exception if the attribute is defined but is not a dimension.
+   *
+   * @param context The Context the view is running in, through which the current theme, resources,
+   *     etc can be accessed.
+   * @param attributes array of typed attributes from which the dimension unit must be read.
+   * @param index Index of attribute to retrieve.
+   * @param defaultValue Value to return if the attribute is not defined or not a resource.
+   * @return Attribute dimension value multiplied by the appropriate metric and truncated to integer
+   *     pixels, or defaultValue if not defined.
+   * @throws UnsupportedOperationException if the attribute is defined but is not a dimension.
+   * @see TypedArray#getDimensionPixelSize(int, int)
+   */
+  public static int getDimensionPixelSize(
+      @NonNull Context context,
+      @NonNull TypedArray attributes,
+      @StyleableRes int index,
+      final int defaultValue) {
+    TypedValue value = new TypedValue();
+    if (!attributes.getValue(index, value) || value.type != TypedValue.TYPE_ATTRIBUTE) {
+      return attributes.getDimensionPixelSize(index, defaultValue);
+    }
+
+    TypedArray styledAttrs = context.getTheme().obtainStyledAttributes(new int[] {value.data});
+    int dimension = styledAttrs.getDimensionPixelSize(0, defaultValue);
+    styledAttrs.recycle();
+    return dimension;
+  }
+
+  /**
    * Returns the @StyleableRes index that contains value in the attributes array. If both indices
    * contain values, the first given index takes precedence and is returned.
    */
   @StyleableRes
-  static int getIndexWithValue(TypedArray attributes, @StyleableRes int a, @StyleableRes int b) {
+  static int getIndexWithValue(
+      @NonNull TypedArray attributes, @StyleableRes int a, @StyleableRes int b) {
     if (attributes.hasValue(a)) {
       return a;
     }

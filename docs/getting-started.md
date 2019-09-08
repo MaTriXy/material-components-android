@@ -9,11 +9,12 @@ path: /docs/getting-started/
 
 ### 1. Depend on our library
 
-Material Components for Android is available through Google's Maven repository.
+Material Components for Android is available through Google's Maven Repository.
 To use it:
 
 1.  Open the `build.gradle` file for your application.
-2.  Make sure that the `repositories` section includes Google's Maven repository `google()`. For example:
+2.  Make sure that the `repositories` section includes Google's Maven Repository
+    `google()`. For example:
 
     ```groovy
       allprojects {
@@ -29,10 +30,16 @@ To use it:
     ```groovy
       dependencies {
         // ...
-        implementation 'com.google.android.material:material:1.0.0'
+        implementation 'com.google.android.material:material:<version>'
         // ...
       }
     ```
+
+Visit [Google's Maven Repository](http://maven.google.com) or
+[MVN Repository](https://mvnrepository.com/artifact/com.google.android.material/material)
+to find the latest version of the library.
+
+##### New Namespace and AndroidX
 
 If your app currently depends on the original Design Support Library, you can
 make use of the
@@ -48,12 +55,12 @@ the `com.android.support:design:28.0.0` dependency.
 Note: You should not use the `com.android.support` and
 `com.google.android.material` dependencies in your app at the same time.
 
-### 2. Compile your app with Android P
+### 2. Compile your app with Android 9
 
 In order to use Material Components for Android, and the latest versions of the
 Support Libraries, you will have to update your app's `compileSdkVersion` to
-`28` and download the Android P Preview using the SDK manager. For more
-information on Android P and its timeline, take a look at the [Program
+`28` and download the Android 9 using the SDK manager. For more
+information on Android 9 and its timeline, take a look at the [Program
 Overview](https://developer.android.com/preview/overview) page.
 
 ### 3. Ensure you are using `AppCompatActivity`
@@ -83,22 +90,27 @@ Note: If you **can't** change your theme, you can do one of the following:
 The following is the list of Material Components themes you can use to get the
 latest component styles and theme-level attributes.
 
-* `Theme.MaterialComponents`
-* `Theme.MaterialComponents.NoActionBar`
-* `Theme.MaterialComponents.Light`
-* `Theme.MaterialComponents.Light.NoActionBar`
-* `Theme.MaterialComponents.Light.DarkActionBar`
+*   `Theme.MaterialComponents`
+*   `Theme.MaterialComponents.NoActionBar`
+*   `Theme.MaterialComponents.Light`
+*   `Theme.MaterialComponents.Light.NoActionBar`
+*   `Theme.MaterialComponents.Light.DarkActionBar`
+*   `Theme.MaterialComponents.DayNight`
+*   `Theme.MaterialComponents.DayNight.NoActionBar`
+*   `Theme.MaterialComponents.DayNight.DarkActionBar`
 
 Update your app theme to inherit from one of these themes, e.g.:
 
 ```xml
-<style name="Theme.MyApp" parent="Theme.MaterialComponents.Light">
+<style name="Theme.MyApp" parent="Theme.MaterialComponents.DayNight">
     <!-- ... -->
 </style>
 ```
 
-For more information on how to set up theme-level attributes for your app,
-take a look at our [Theming](theming.md) guide.
+For more information on how to set up theme-level attributes for your app, take
+a look at our [Theming](theming.md) guide, as well as our
+[Dark Theme](theming/Dark.md) guide for why it's important to inherit from the
+`DayNight` theme.
 
 Note: Using a Material Components theme enables a custom view inflater which
 replaces default components with their Material counterparts. Currently, this

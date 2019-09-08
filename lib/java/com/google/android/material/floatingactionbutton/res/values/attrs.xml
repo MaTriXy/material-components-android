@@ -36,6 +36,9 @@
     <attr name="fabCustomSize" format="dimension"/>
     <!-- Elevation value for the FAB -->
     <attr name="elevation"/>
+    <!-- Whether to extend the bounds of the FloatingActionButton to meet
+        @dimen/mtrl_fab_min_touch_target. -->
+    <attr name="ensureMinTouchTargetSize"/>
     <!-- TranslationZ value for the FAB when hovered, focused, or hovered and focused. -->
     <attr name="hoveredFocusedTranslationZ" format="dimension"/>
     <!-- TranslationZ value for the FAB when pressed-->
@@ -65,6 +68,14 @@
   <declare-styleable name="ExtendedFloatingActionButton">
     <!-- Elevation for the ExtendedFloatingActionButton. -->
     <attr name="elevation"/>
+    <!-- Motion spec for show animation. This should be a MotionSpec resource. -->
+    <attr name="showMotionSpec"/>
+    <!-- Motion spec for hide animation. This should be a MotionSpec resource. -->
+    <attr name="hideMotionSpec"/>
+    <!-- Motion spec for extend animation. This should be a MotionSpec resource. -->
+    <attr name="extendMotionSpec" format="reference"/>
+    <!-- Motion spec for shrink animation. This should be a MotionSpec resource. -->
+    <attr name="shrinkMotionSpec" format="reference"/>
   </declare-styleable>
 
   <declare-styleable name="ExtendedFloatingActionButton_Behavior_Layout">

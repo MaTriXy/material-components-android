@@ -19,23 +19,33 @@ package io.material.catalog.themeswitcher;
 import io.material.catalog.R;
 
 import android.annotation.SuppressLint;
-import android.app.Dialog;
+import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.os.Bundle;
 import androidx.annotation.ArrayRes;
 import androidx.annotation.ColorInt;
+import androidx.annotation.IdRes;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.StyleRes;
 import androidx.annotation.StyleableRes;
+import com.google.android.material.button.MaterialButtonToggleGroup;
+import androidx.core.view.MarginLayoutParamsCompat;
 import androidx.core.widget.CompoundButtonCompat;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.AppCompatRadioButton;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.RadioGroup;
-import dagger.android.support.DaggerAppCompatDialogFragment;
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
+import dagger.android.AndroidInjector;
+import dagger.android.DispatchingAndroidInjector;
+import dagger.android.HasAndroidInjector;
+import dagger.android.support.AndroidSupportInjection;
 import javax.inject.Inject;
 
 /**
@@ -43,11 +53,8 @@ import javax.inject.Inject;
  * shapes. Each group in the dialog has a set of possible style values that are used as theme
  * overlays, overriding attributes in the base theme like shape appearances or color attributes.
  */
-public class ThemeSwitcherDialogFragment extends DaggerAppCompatDialogFragment {
-
-  private static final int PRIMARY_COLOR_INDEX = 0;
-  private static final int SECONDARY_COLOR_INDEX = 1;
-  private static final int SHAPE_CORNER_FAMILY_INDEX = 2;
+public class ThemeSwitcherDialogFragment extends BottomSheetDialogFragment
+    implements HasAndroidInjector {
 
   private enum RadioButtonType {
     DEFAULT,
@@ -56,7 +63,8 @@ public class ThemeSwitcherDialogFragment extends DaggerAppCompatDialogFragment {
 
   private enum ThemingType {
     COLOR(RadioButtonType.DEFAULT),
-    SHAPE_CORNER_FAMILY(RadioButtonType.XML);
+    SHAPE_CORNER_FAMILY(RadioButtonType.XML),
+    SHAPE_CORNER_SIZE(RadioButtonType.DEFAULT);
 
     private final RadioButtonType radioButtonType;
 
@@ -65,53 +73,27 @@ public class ThemeSwitcherDialogFragment extends DaggerAppCompatDialogFragment {
     }
   }
 
-  @StyleableRes
-  private static final int[] PRIMARY_THEME_OVERLAY_ATTRS = {
-    R.attr.colorPrimary, R.attr.colorPrimaryDark
-  };
-
-  @StyleableRes private static final int[] SECONDARY_THEME_OVERLAY_ATTRS = {R.attr.colorSecondary};
-
   @Inject ThemeSwitcherResourceProvider resourceProvider;
   private RadioGroup primaryColorGroup;
   private RadioGroup secondaryColorGroup;
   private RadioGroup shapeCornerFamilyGroup;
+  private RadioGroup shapeCornerSizeGroup;
 
-  @NonNull
+  @Nullable
   @Override
-  public Dialog onCreateDialog(Bundle bundle) {
-    AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-    builder
-        .setTitle(R.string.mtrl_theme_switcher_title)
-        .setView(onCreateDialogView(getActivity().getLayoutInflater()))
-        .setPositiveButton(
-            R.string.mtrl_theme_switcher_save,
-            (dialog, which) -> {
-              dialog.dismiss();
-              applyThemeOverlays();
-            })
-        .setNegativeButton(R.string.mtrl_theme_switcher_cancel, null)
-        .setNeutralButton(
-            R.string.mtrl_theme_switcher_reset,
-            (dialog, which) -> {
-              dialog.dismiss();
-              ThemeOverlayUtils.setThemeOverlays(getActivity(), 0, 0);
-            });
-    return builder.create();
-  }
-
-  private View onCreateDialogView(LayoutInflater layoutInflater) {
+  public View onCreateView(
+      @NonNull LayoutInflater layoutInflater,
+      @Nullable ViewGroup viewGroup,
+      @Nullable Bundle bundle) {
     View view = layoutInflater.inflate(R.layout.mtrl_theme_switcher_dialog, null);
-
-    int[] currentThemeOverlays = ThemeOverlayUtils.getThemeOverlays();
-
+    initializeChooseThemeButtons(view);
     primaryColorGroup = view.findViewById(R.id.primary_colors);
     initializeThemingValues(
         primaryColorGroup,
         resourceProvider.getPrimaryColors(),
         resourceProvider.getPrimaryColorsContentDescription(),
-        PRIMARY_THEME_OVERLAY_ATTRS,
-        currentThemeOverlays.length >= 2 ? currentThemeOverlays[PRIMARY_COLOR_INDEX] : 0,
+        resourceProvider.getPrimaryThemeOverlayAttrs(),
+        R.id.theme_feature_primary_color,
         ThemingType.COLOR);
 
     secondaryColorGroup = view.findViewById(R.id.secondary_colors);
@@ -119,8 +101,8 @@ public class ThemeSwitcherDialogFragment extends DaggerAppCompatDialogFragment {
         secondaryColorGroup,
         resourceProvider.getSecondaryColors(),
         resourceProvider.getSecondaryColorsContentDescription(),
-        SECONDARY_THEME_OVERLAY_ATTRS,
-        currentThemeOverlays.length >= 2 ? currentThemeOverlays[SECONDARY_COLOR_INDEX] : 0,
+        resourceProvider.getSecondaryThemeOverlayAttrs(),
+        R.id.theme_feature_secondary_color,
         ThemingType.COLOR);
 
     shapeCornerFamilyGroup = view.findViewById(R.id.shape_families);
@@ -128,39 +110,92 @@ public class ThemeSwitcherDialogFragment extends DaggerAppCompatDialogFragment {
         shapeCornerFamilyGroup,
         resourceProvider.getShapes(),
         resourceProvider.getShapesContentDescription(),
-        currentThemeOverlays.length >= 3 ? currentThemeOverlays[SHAPE_CORNER_FAMILY_INDEX] : 0,
+        R.id.theme_feature_corner_family,
         ThemingType.SHAPE_CORNER_FAMILY);
+
+    shapeCornerSizeGroup = view.findViewById(R.id.shape_corner_sizes);
+    initializeThemingValues(
+        shapeCornerSizeGroup,
+        resourceProvider.getShapeSizes(),
+        resourceProvider.getShapeSizesContentDescription(),
+        R.id.theme_feature_corner_family,
+        ThemingType.SHAPE_CORNER_SIZE);
+
+    View applyButton = view.findViewById(R.id.apply_button);
+    applyButton.setOnClickListener(
+        v -> {
+          applyThemeOverlays();
+          dismiss();
+        });
+
+    View clearButton = view.findViewById(R.id.clear_button);
+    clearButton.setOnClickListener(
+        v -> {
+          ThemeOverlayUtils.clearThemeOverlays(getActivity());
+          dismiss();
+        });
 
     return view;
   }
 
+  private void initializeChooseThemeButtons(View view) {
+    Context context = view.getContext();
+    ThemePreferencesManager themePreferencesManager =
+        new ThemePreferencesManager(context, resourceProvider);
+
+    MaterialButtonToggleGroup themeToggleGroup = view.findViewById(R.id.theme_toggle_group);
+    themeToggleGroup.check(themePreferencesManager.getCurrentThemeId());
+
+    for (int themeId : themePreferencesManager.getThemeIds()) {
+      Button themeButton = view.findViewById(themeId);
+      themeButton.setOnClickListener(
+          v -> {
+            int checkedButtonId = themeToggleGroup.getCheckedButtonId();
+            if (checkedButtonId == 0 || checkedButtonId == View.NO_ID) {
+              // Make sure one theme is always checked.
+              themeToggleGroup.check(themeId);
+            } else {
+              themePreferencesManager.saveAndApplyTheme(themeId);
+            }
+          });
+    }
+  }
+
   private void applyThemeOverlays() {
-    ThemeOverlayUtils.setThemeOverlays(
-        getActivity(),
-        getThemeOverlayResId(primaryColorGroup),
-        getThemeOverlayResId(secondaryColorGroup),
-        getThemeOverlayResId(shapeCornerFamilyGroup));
+    int[][] themesMap = new int[][]{
+        {R.id.theme_feature_primary_color, getThemeOverlayResId(primaryColorGroup)},
+        {R.id.theme_feature_secondary_color, getThemeOverlayResId(secondaryColorGroup)},
+        {R.id.theme_feature_corner_family, getThemeOverlayResId(shapeCornerFamilyGroup)},
+        {R.id.theme_feature_corner_size, getThemeOverlayResId(shapeCornerSizeGroup)}
+    };
+
+    for (int i = 0; i < themesMap.length; ++i) {
+      ThemeOverlayUtils.setThemeOverlay(themesMap[i][0], themesMap[i][1]);
+    }
+
+    getActivity().recreate();
   }
 
   private int getThemeOverlayResId(RadioGroup radioGroup) {
     if (radioGroup.getCheckedRadioButtonId() == View.NO_ID) {
       return 0;
-    } else {
-      ThemeAttributeValues overlayFeature =
+    }
+
+    ThemeAttributeValues overlayFeature =
           (ThemeAttributeValues)
               getDialog().findViewById(radioGroup.getCheckedRadioButtonId()).getTag();
-      return overlayFeature.themeOverlay;
-    }
+
+    return overlayFeature.themeOverlay;
   }
 
   private void initializeThemingValues(
       RadioGroup group,
       @ArrayRes int overlays,
       @ArrayRes int contentDescriptions,
-      @StyleRes int currentThemeOverlay,
+      @IdRes int overlayId,
       ThemingType themingType) {
     initializeThemingValues(
-        group, overlays, contentDescriptions, new int[] {}, currentThemeOverlay, themingType);
+        group, overlays, contentDescriptions, new int[] {}, overlayId, themingType);
   }
 
   private void initializeThemingValues(
@@ -168,7 +203,7 @@ public class ThemeSwitcherDialogFragment extends DaggerAppCompatDialogFragment {
       @ArrayRes int overlays,
       @ArrayRes int contentDescriptions,
       @StyleableRes int[] themeOverlayAttrs,
-      @StyleRes int currentThemeOverlay,
+      @IdRes int overlayId,
       ThemingType themingType) {
     TypedArray themingValues = getResources().obtainTypedArray(overlays);
     TypedArray contentDescriptionArray = getResources().obtainTypedArray(contentDescriptions);
@@ -188,6 +223,11 @@ public class ThemeSwitcherDialogFragment extends DaggerAppCompatDialogFragment {
         case SHAPE_CORNER_FAMILY:
           themeAttributeValues = new ThemeAttributeValues(valueThemeOverlay);
           break;
+        case SHAPE_CORNER_SIZE:
+          themeAttributeValues =
+              new ThemeAttributeValuesWithContentDescription(
+                  valueThemeOverlay, contentDescriptionArray.getString(i));
+          break;
       }
 
       // Expect the radio group to have a RadioButton as child for each themeAttributeValues value.
@@ -199,6 +239,7 @@ public class ThemeSwitcherDialogFragment extends DaggerAppCompatDialogFragment {
       button.setTag(themeAttributeValues);
       themeAttributeValues.customizeRadioButton(button);
 
+      int currentThemeOverlay = ThemeOverlayUtils.getThemeOverlay(overlayId);
       if (themeAttributeValues.themeOverlay == currentThemeOverlay) {
         group.check(button.getId());
       }
@@ -228,6 +269,28 @@ public class ThemeSwitcherDialogFragment extends DaggerAppCompatDialogFragment {
     public void customizeRadioButton(AppCompatRadioButton button) {}
   }
 
+  private static class ThemeAttributeValuesWithContentDescription extends ThemeAttributeValues {
+    private final String contentDescription;
+
+    @SuppressLint("ResourceType")
+    public ThemeAttributeValuesWithContentDescription(
+        @StyleRes int themeOverlay, String contentDescription) {
+      super(themeOverlay);
+      this.contentDescription = contentDescription;
+    }
+
+    @Override
+    public void customizeRadioButton(AppCompatRadioButton button) {
+      button.setText(contentDescription);
+      LinearLayout.LayoutParams size =
+          new LinearLayout.LayoutParams(
+              LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+      MarginLayoutParamsCompat.setMarginEnd(
+          size, button.getResources().getDimensionPixelSize(R.dimen.theme_switcher_radio_spacing));
+      button.setLayoutParams(size);
+    }
+  }
+
   private class ColorPalette extends ThemeAttributeValues {
     @ColorInt private final int main;
 
@@ -250,5 +313,18 @@ public class ThemeSwitcherDialogFragment extends DaggerAppCompatDialogFragment {
     private int convertToDisplay(@ColorInt int color) {
       return color == Color.WHITE ? Color.BLACK : color;
     }
+  }
+
+  @Inject DispatchingAndroidInjector<Object> childFragmentInjector;
+
+  @Override
+  public void onAttach(Context context) {
+    AndroidSupportInjection.inject(this);
+    super.onAttach(context);
+  }
+
+  @Override
+  public AndroidInjector<Object> androidInjector() {
+    return childFragmentInjector;
   }
 }

@@ -34,15 +34,15 @@ import android.view.View;
 import android.view.ViewGroup;
 import dagger.android.AndroidInjector;
 import dagger.android.DispatchingAndroidInjector;
+import dagger.android.HasAndroidInjector;
 import dagger.android.support.AndroidSupportInjection;
-import dagger.android.support.HasSupportFragmentInjector;
 import io.material.catalog.themeswitcher.ThemeSwitcherHelper;
 import io.material.catalog.themeswitcher.ThemeSwitcherHelper.ThemeSwitcherFragment;
 import javax.inject.Inject;
 
 /** Base Fragment class that provides a demo screen structure for a single demo. */
 public abstract class DemoFragment extends Fragment
-    implements ThemeSwitcherFragment, HasSupportFragmentInjector {
+    implements ThemeSwitcherFragment, HasAndroidInjector {
 
   public static final String ARG_DEMO_TITLE = "demo_title";
 
@@ -50,7 +50,7 @@ public abstract class DemoFragment extends Fragment
   private ViewGroup demoContainer;
   @Nullable private ThemeSwitcherHelper themeSwitcherHelper;
 
-  @Inject DispatchingAndroidInjector<Fragment> childFragmentInjector;
+  @Inject DispatchingAndroidInjector<Object> childFragmentInjector;
 
   @Override
   public void onAttach(Context context) {
@@ -73,6 +73,8 @@ public abstract class DemoFragment extends Fragment
     initDemoActionBar();
     demoContainer.addView(onCreateDemoView(layoutInflater, viewGroup, bundle));
 
+    ViewGroup children = (ViewGroup) demoContainer.getChildAt(0);
+    DemoUtils.addBottomSpaceInsetsIfNeeded(children, demoContainer);
     return view;
   }
 
@@ -91,7 +93,7 @@ public abstract class DemoFragment extends Fragment
   }
 
   @Override
-  public AndroidInjector<Fragment> supportFragmentInjector() {
+  public AndroidInjector<Object> androidInjector() {
     return childFragmentInjector;
   }
 

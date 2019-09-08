@@ -35,6 +35,7 @@
   <public name="boxPaddingBottom" type="attr"/>
   <public name="boxStrokeColor" type="attr"/>
   <public name="boxStrokeWidth" type="attr"/>
+  <public name="boxStrokeWidthFocused" type="attr"/>
 
   <public name="counterEnabled" type="attr"/>
   <public name="counterMaxLength" type="attr"/>
@@ -45,6 +46,9 @@
   <public name="errorEnabled" type="attr"/>
   <public name="errorTextAppearance" type="attr"/>
   <public name="errorTextColor" type="attr"/>
+  <public name="errorIconDrawable" type="attr"/>
+  <public name="errorIconTint" type="attr"/>
+  <public name="errorIconTintMode" type="attr"/>
   <public name="helperText" type="attr"/>
   <public name="helperTextEnabled" type="attr"/>
   <public name="helperTextTextAppearance" type="attr"/>
@@ -53,10 +57,26 @@
   <public name="hintEnabled" type="attr"/>
   <public name="hintTextAppearance" type="attr"/>
   <public name="hintTextColor" type="attr"/>
+  <public name="startIconDrawable" type="attr"/>
+  <public name="startIconContentDescription" type="attr"/>
+  <public name="startIconCheckable" type="attr"/>
+  <public name="startIconTint" type="attr"/>
+  <public name="startIconTintMode" type="attr"/>
+  <public name="endIconMode" type="attr"/>
+  <public name="endIconDrawable" type="attr"/>
+  <public name="endIconContentDescription" type="attr"/>
+  <public name="endIconCheckable" type="attr"/>
+  <public name="endIconTint" type="attr"/>
+  <public name="endIconTintMode" type="attr"/>
+  <!-- Deprecated. Use endIconMode instead. -->
   <public name="passwordToggleEnabled" type="attr"/>
+  <!--Deprecated. Use endIconDrawable instead. -->
   <public name="passwordToggleDrawable" type="attr"/>
+  <!--Deprecated. Use endIconContentDescription instead. -->
   <public name="passwordToggleContentDescription" type="attr"/>
+  <!--Deprecated. Use endIconTint instead. -->
   <public name="passwordToggleTint" type="attr"/>
+  <!--Deprecated. Use endIconTintMode instead. -->
   <public name="passwordToggleTintMode" type="attr"/>
 
   <public name="Widget.Design.TextInputLayout" type="style"/>

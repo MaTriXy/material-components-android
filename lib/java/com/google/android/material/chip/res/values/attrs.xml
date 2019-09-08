@@ -41,7 +41,7 @@
     <!-- Minimum size of chip's touch target, by default, Android recommended 48dp. -->
     <attr name="chipMinTouchTargetSize" format="dimension"/>
     <!-- Whether to extend the bounds of chip to meet chipMinTouchTargetSize. -->
-    <attr name="ensureMinTouchTargetSize" format="boolean"/>
+    <attr name="ensureMinTouchTargetSize"/>
 
     <!-- Text to display on the chip. -->
     <attr name="android:text"/>
@@ -149,7 +149,7 @@
 
     <!-- Whether only a single chip in this group is allowed to be checked at any time. By default,
          this is false and multiple chips in this group are allowed to be checked at once. -->
-    <attr name="singleSelection" format="boolean"/>
+    <attr name="singleSelection"/>
     <!-- The id of the child chip that should be checked by default within this chip group. -->
     <attr name="checkedChip" format="reference"/>
 

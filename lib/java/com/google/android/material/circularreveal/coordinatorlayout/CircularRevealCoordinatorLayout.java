@@ -19,23 +19,25 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import androidx.annotation.ColorInt;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import android.util.AttributeSet;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import com.google.android.material.circularreveal.CircularRevealHelper;
 import com.google.android.material.circularreveal.CircularRevealWidget;
-import androidx.coordinatorlayout.widget.CoordinatorLayout;
-import android.util.AttributeSet;
 
 /** A CircularRevealWidget wrapper for {@link CoordinatorLayout}. */
 public class CircularRevealCoordinatorLayout extends CoordinatorLayout
     implements CircularRevealWidget {
 
+  @NonNull
   private final CircularRevealHelper helper;
 
-  public CircularRevealCoordinatorLayout(Context context) {
+  public CircularRevealCoordinatorLayout(@NonNull Context context) {
     this(context, null);
   }
 
-  public CircularRevealCoordinatorLayout(Context context, AttributeSet attrs) {
+  public CircularRevealCoordinatorLayout(@NonNull Context context, AttributeSet attrs) {
     super(context, attrs);
     helper = new CircularRevealHelper(this);
   }

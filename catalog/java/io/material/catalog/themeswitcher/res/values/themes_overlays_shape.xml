@@ -17,42 +17,12 @@
 
 <resources>
   <style name="ThemeOverlay.Shapes.Rounded" parent="">
-    <item name="shapeAppearanceSmallComponent">@style/ThemeOverlay.Rounded.SmallComponent</item>
-    <item name="shapeAppearanceMediumComponent">@style/ThemeOverlay.Rounded.MediumComponent</item>
-    <item name="shapeAppearanceLargeComponent">@style/ThemeOverlay.Rounded.LargeComponent</item>
+    <item name="cornerFamily">rounded</item>
   </style>
 
   <style name="ThemeOverlay.Shapes.Cut" parent="">
-    <item name="shapeAppearanceSmallComponent">@style/ThemeOverlay.Cut.SmallComponent</item>
-    <item name="shapeAppearanceMediumComponent">@style/ThemeOverlay.Cut.MediumComponent</item>
-    <item name="shapeAppearanceLargeComponent">@style/ThemeOverlay.Cut.LargeComponent</item>
-  </style>
-
-
-  <style name="ThemeOverlay.Rounded.SmallComponent" parent="ShapeAppearance.MaterialComponents.SmallComponent">
-    <item name="cornerFamily">rounded</item>
-  </style>
-
-  <style name="ThemeOverlay.Rounded.MediumComponent" parent="ShapeAppearance.MaterialComponents.MediumComponent">
-    <item name="cornerFamily">rounded</item>
-  </style>
-
-  <style name="ThemeOverlay.Rounded.LargeComponent" parent="ShapeAppearance.MaterialComponents.LargeComponent">
-    <item name="cornerFamily">rounded</item>
-  </style>
-
-  <style name="ThemeOverlay.Cut.SmallComponent" parent="ShapeAppearance.MaterialComponents.SmallComponent">
     <item name="cornerFamily">cut</item>
   </style>
-
-  <style name="ThemeOverlay.Cut.MediumComponent" parent="ShapeAppearance.MaterialComponents.MediumComponent">
-    <item name="cornerFamily">cut</item>
-  </style>
-
-  <style name="ThemeOverlay.Cut.LargeComponent" parent="ShapeAppearance.MaterialComponents.LargeComponent">
-    <item name="cornerFamily">cut</item>
-  </style>
-
 
 </resources>
 

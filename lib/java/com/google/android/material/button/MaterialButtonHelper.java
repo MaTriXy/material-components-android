@@ -30,24 +30,27 @@ import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
-import com.google.android.material.internal.ViewUtils;
-import com.google.android.material.resources.MaterialResources;
-import com.google.android.material.ripple.RippleUtils;
 import com.google.android.material.shape.MaterialShapeDrawable;
 import com.google.android.material.shape.ShapeAppearanceModel;
+import com.google.android.material.shape.Shapeable;
 import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.core.view.ViewCompat;
+import com.google.android.material.color.MaterialColors;
+import com.google.android.material.internal.ViewUtils;
+import com.google.android.material.resources.MaterialResources;
+import com.google.android.material.ripple.RippleDrawableCompat;
+import com.google.android.material.ripple.RippleUtils;
 
 /** @hide */
 @RestrictTo(LIBRARY_GROUP)
 class MaterialButtonHelper {
 
-  private static final float CORNER_RADIUS_ADJUSTMENT = 0.00001F;
   private static final boolean IS_LOLLIPOP = VERSION.SDK_INT >= VERSION_CODES.LOLLIPOP;
   private final MaterialButton materialButton;
-  private final ShapeAppearanceModel shapeAppearanceModel;
+  @NonNull private ShapeAppearanceModel shapeAppearanceModel;
 
   private int insetLeft;
   private int insetRight;
@@ -61,17 +64,19 @@ class MaterialButtonHelper {
   @Nullable private ColorStateList strokeColor;
   @Nullable private ColorStateList rippleColor;
 
-  @Nullable private MaterialShapeDrawable maskDrawable;
+  @Nullable private Drawable maskDrawable;
+  private boolean shouldDrawSurfaceColorStroke = false;
   private boolean backgroundOverwritten = false;
   private boolean cornerRadiusSet = false;
+  private boolean checkable;
   private LayerDrawable rippleDrawable;
 
-  MaterialButtonHelper(MaterialButton button, ShapeAppearanceModel shapeAppearanceModel) {
+  MaterialButtonHelper(MaterialButton button, @NonNull ShapeAppearanceModel shapeAppearanceModel) {
     materialButton = button;
     this.shapeAppearanceModel = shapeAppearanceModel;
   }
 
-  void loadFromAttributes(TypedArray attributes) {
+  void loadFromAttributes(@NonNull TypedArray attributes) {
     insetLeft = attributes.getDimensionPixelOffset(R.styleable.MaterialButton_android_insetLeft, 0);
     insetRight =
         attributes.getDimensionPixelOffset(R.styleable.MaterialButton_android_insetRight, 0);
@@ -82,11 +87,9 @@ class MaterialButtonHelper {
     // cornerRadius should override whatever corner radius is set in shapeAppearanceModel
     if (attributes.hasValue(R.styleable.MaterialButton_cornerRadius)) {
       cornerRadius = attributes.getDimensionPixelSize(R.styleable.MaterialButton_cornerRadius, -1);
-      shapeAppearanceModel.setCornerRadius(cornerRadius);
+      setShapeAppearanceModel(shapeAppearanceModel.withCornerRadius(cornerRadius));
       cornerRadiusSet = true;
     }
-
-    adjustShapeAppearanceModelCornerRadius(shapeAppearanceModel, CORNER_RADIUS_ADJUSTMENT);
 
     strokeWidth = attributes.getDimensionPixelSize(R.styleable.MaterialButton_strokeWidth, 0);
 
@@ -103,6 +106,7 @@ class MaterialButtonHelper {
         MaterialResources.getColorStateList(
             materialButton.getContext(), attributes, R.styleable.MaterialButton_rippleColor);
 
+    checkable = attributes.getBoolean(R.styleable.MaterialButton_android_checkable, false);
     int elevation = attributes.getDimensionPixelSize(R.styleable.MaterialButton_elevation, 0);
 
     // Store padding before setting background, since background overwrites padding values
@@ -145,6 +149,7 @@ class MaterialButtonHelper {
     return backgroundOverwritten;
   }
 
+  @NonNull
   private InsetDrawable wrapDrawableWithInset(Drawable drawable) {
     return new InsetDrawable(drawable, insetLeft, insetTop, insetRight, insetBottom);
   }
@@ -175,6 +180,11 @@ class MaterialButtonHelper {
     return backgroundTintMode;
   }
 
+  void setShouldDrawSurfaceColorStroke(boolean shouldDrawSurfaceColorStroke) {
+    this.shouldDrawSurfaceColorStroke = shouldDrawSurfaceColorStroke;
+    updateStroke();
+  }
+
   /**
    * Create RippleDrawable background for Lollipop (API 21) and later API versions
    *
@@ -182,34 +192,49 @@ class MaterialButtonHelper {
    */
   private Drawable createBackground() {
     MaterialShapeDrawable backgroundDrawable = new MaterialShapeDrawable(shapeAppearanceModel);
+    backgroundDrawable.initializeElevationOverlay(materialButton.getContext());
     DrawableCompat.setTintList(backgroundDrawable, backgroundTint);
     if (backgroundTintMode != null) {
       DrawableCompat.setTintMode(backgroundDrawable, backgroundTintMode);
     }
     backgroundDrawable.setStroke(strokeWidth, strokeColor);
-    maskDrawable = new MaterialShapeDrawable(shapeAppearanceModel);
+
+    MaterialShapeDrawable surfaceColorStrokeDrawable =
+        new MaterialShapeDrawable(shapeAppearanceModel);
+    surfaceColorStrokeDrawable.setTint(Color.TRANSPARENT);
+    surfaceColorStrokeDrawable.setStroke(
+        strokeWidth,
+        shouldDrawSurfaceColorStroke
+            ? MaterialColors.getColor(materialButton, R.attr.colorSurface)
+            : Color.TRANSPARENT);
 
     if (IS_LOLLIPOP) {
+      maskDrawable = new MaterialShapeDrawable(shapeAppearanceModel);
       if (strokeWidth > 0) {
-        ShapeAppearanceModel temporaryAdjustedShapeAppearanceModel =
-            new ShapeAppearanceModel(shapeAppearanceModel);
-        adjustShapeAppearanceModelCornerRadius(
-            temporaryAdjustedShapeAppearanceModel, strokeWidth / 2f);
-        backgroundDrawable.setShapeAppearanceModel(temporaryAdjustedShapeAppearanceModel);
-        maskDrawable.setShapeAppearanceModel(temporaryAdjustedShapeAppearanceModel);
+        ShapeAppearanceModel adjustedShapeAppearanceModel =
+            adjustShapeAppearanceModelCornerRadius(shapeAppearanceModel, strokeWidth / 2f);
+        backgroundDrawable.setShapeAppearanceModel(adjustedShapeAppearanceModel);
+        surfaceColorStrokeDrawable.setShapeAppearanceModel(adjustedShapeAppearanceModel);
+        ((MaterialShapeDrawable) maskDrawable)
+            .setShapeAppearanceModel(adjustedShapeAppearanceModel);
       }
 
       DrawableCompat.setTint(maskDrawable, Color.WHITE);
       rippleDrawable =
           new RippleDrawable(
-              RippleUtils.convertToRippleDrawableColor(rippleColor),
-              wrapDrawableWithInset(backgroundDrawable),
+              RippleUtils.sanitizeRippleDrawableColor(rippleColor),
+              wrapDrawableWithInset(
+                  new LayerDrawable(
+                      new Drawable[] {surfaceColorStrokeDrawable, backgroundDrawable})),
               maskDrawable);
       return rippleDrawable;
     } else {
+      maskDrawable = new RippleDrawableCompat(shapeAppearanceModel);
       DrawableCompat.setTintList(
-          maskDrawable, RippleUtils.convertToRippleDrawableColor(rippleColor));
-      rippleDrawable = new LayerDrawable(new Drawable[] {backgroundDrawable, maskDrawable});
+          maskDrawable, RippleUtils.sanitizeRippleDrawableColor(rippleColor));
+      rippleDrawable =
+          new LayerDrawable(
+              new Drawable[] {surfaceColorStrokeDrawable, backgroundDrawable, maskDrawable});
       return wrapDrawableWithInset(rippleDrawable);
     }
   }
@@ -231,10 +256,10 @@ class MaterialButtonHelper {
       this.rippleColor = rippleColor;
       if (IS_LOLLIPOP && materialButton.getBackground() instanceof RippleDrawable) {
         ((RippleDrawable) materialButton.getBackground())
-            .setColor(RippleUtils.convertToRippleDrawableColor(rippleColor));
-      } else if (!IS_LOLLIPOP && getMaskDrawable() != null) {
-        DrawableCompat.setTintList(
-            getMaskDrawable(), RippleUtils.convertToRippleDrawableColor(rippleColor));
+            .setColor(RippleUtils.sanitizeRippleDrawableColor(rippleColor));
+      } else if (!IS_LOLLIPOP && materialButton.getBackground() instanceof RippleDrawableCompat) {
+        ((RippleDrawableCompat) materialButton.getBackground()).setTintList(
+            RippleUtils.sanitizeRippleDrawableColor(rippleColor));
       }
     }
   }
@@ -269,20 +294,23 @@ class MaterialButtonHelper {
 
   private void updateStroke() {
     MaterialShapeDrawable materialShapeDrawable = getMaterialShapeDrawable();
+    MaterialShapeDrawable surfaceColorStrokeDrawable = getSurfaceColorStrokeDrawable();
     if (materialShapeDrawable != null) {
       materialShapeDrawable.setStroke(strokeWidth, strokeColor);
+      if (surfaceColorStrokeDrawable != null) {
+        surfaceColorStrokeDrawable.setStroke(
+            strokeWidth,
+            shouldDrawSurfaceColorStroke
+                ? MaterialColors.getColor(materialButton, R.attr.colorSurface)
+                : Color.TRANSPARENT);
+      }
       if (IS_LOLLIPOP) {
-        ShapeAppearanceModel temporaryShapeAppearance =
-            new ShapeAppearanceModel(shapeAppearanceModel);
-        adjustShapeAppearanceModelCornerRadius(temporaryShapeAppearance, strokeWidth / 2f);
-        materialShapeDrawable.setShapeAppearanceModel(temporaryShapeAppearance);
-
-        if (getMaskDrawable() != null) {
-          getMaskDrawable().setShapeAppearanceModel(temporaryShapeAppearance);
-        }
+        ShapeAppearanceModel shapeAppearance =
+            adjustShapeAppearanceModelCornerRadius(shapeAppearanceModel, strokeWidth / 2f);
+        updateButtonShape(shapeAppearance);
         // Some APIs don't unwrap the drawable correctly.
         if (maskDrawable != null) {
-          maskDrawable.setShapeAppearanceModel(temporaryShapeAppearance);
+          ((MaterialShapeDrawable) maskDrawable).setShapeAppearanceModel(shapeAppearance);
         }
       }
     }
@@ -294,14 +322,8 @@ class MaterialButtonHelper {
     if (!cornerRadiusSet || this.cornerRadius != cornerRadius) {
       this.cornerRadius = cornerRadius;
       cornerRadiusSet = true;
-      shapeAppearanceModel.setCornerRadius(
-          cornerRadius + CORNER_RADIUS_ADJUSTMENT + (strokeWidth / 2f));
-      if (getMaterialShapeDrawable() != null) {
-        getMaterialShapeDrawable().setShapeAppearanceModel(shapeAppearanceModel);
-      }
-      if (getMaskDrawable() != null) {
-        getMaskDrawable().setShapeAppearanceModel(shapeAppearanceModel);
-      }
+      setShapeAppearanceModel(
+          shapeAppearanceModel.withCornerRadius(cornerRadius + (strokeWidth / 2f)));
     }
   }
 
@@ -309,41 +331,22 @@ class MaterialButtonHelper {
     return cornerRadius;
   }
 
-  private void adjustShapeAppearanceModelCornerRadius(
-      ShapeAppearanceModel shapeAppearanceModel, float cornerRadiusAdjustment) {
-    shapeAppearanceModel
-        .getTopLeftCorner()
-        .setCornerSize(
-            shapeAppearanceModel.getTopLeftCorner().getCornerSize() + cornerRadiusAdjustment);
-    shapeAppearanceModel
-        .getTopRightCorner()
-        .setCornerSize(
-            shapeAppearanceModel.getTopRightCorner().getCornerSize() + cornerRadiusAdjustment);
-    shapeAppearanceModel
-        .getBottomRightCorner()
-        .setCornerSize(
-            shapeAppearanceModel.getBottomRightCorner().getCornerSize() + cornerRadiusAdjustment);
-    shapeAppearanceModel
-        .getBottomLeftCorner()
-        .setCornerSize(
-            shapeAppearanceModel.getBottomLeftCorner().getCornerSize() + cornerRadiusAdjustment);
+  private ShapeAppearanceModel adjustShapeAppearanceModelCornerRadius(
+      @NonNull ShapeAppearanceModel shapeAppearanceModel, float cornerRadiusAdjustment) {
+    return shapeAppearanceModel.withAdjustedCorners(cornerRadiusAdjustment);
   }
 
   @Nullable
-  private MaterialShapeDrawable getMaterialShapeDrawable() {
-    Drawable result = null;
+  private MaterialShapeDrawable getMaterialShapeDrawable(boolean getSurfaceColorStrokeDrawable) {
     if (rippleDrawable != null && rippleDrawable.getNumberOfLayers() > 0) {
-      result = rippleDrawable.getDrawable(0);
-    }
-
-    if (result instanceof MaterialShapeDrawable) {
-      return (MaterialShapeDrawable) result;
-    }
-
-    if (result instanceof InsetDrawable) {
-      InsetDrawable insetDrawable = (InsetDrawable) result;
       if (IS_LOLLIPOP) {
-        return (MaterialShapeDrawable) insetDrawable.getDrawable();
+        InsetDrawable insetDrawable = (InsetDrawable) rippleDrawable.getDrawable(0);
+        LayerDrawable layerDrawable = (LayerDrawable) insetDrawable.getDrawable();
+        return (MaterialShapeDrawable)
+            layerDrawable.getDrawable(getSurfaceColorStrokeDrawable ? 0 : 1);
+      } else {
+        return (MaterialShapeDrawable)
+            rippleDrawable.getDrawable(getSurfaceColorStrokeDrawable ? 0 : 1);
       }
     }
 
@@ -351,11 +354,56 @@ class MaterialButtonHelper {
   }
 
   @Nullable
-  public MaterialShapeDrawable getMaskDrawable() {
+  MaterialShapeDrawable getMaterialShapeDrawable() {
+    return getMaterialShapeDrawable(false);
+  }
+
+  void setCheckable(boolean checkable) {
+    this.checkable = checkable;
+  }
+
+  boolean isCheckable() {
+    return checkable;
+  }
+
+  @Nullable
+  private MaterialShapeDrawable getSurfaceColorStrokeDrawable() {
+    return getMaterialShapeDrawable(true);
+  }
+
+  private void updateButtonShape(@NonNull ShapeAppearanceModel shapeAppearanceModel) {
+    if (getMaterialShapeDrawable() != null) {
+      getMaterialShapeDrawable().setShapeAppearanceModel(shapeAppearanceModel);
+    }
+    if (getSurfaceColorStrokeDrawable() != null) {
+      getSurfaceColorStrokeDrawable().setShapeAppearanceModel(shapeAppearanceModel);
+    }
+    if (getMaskDrawable() != null) {
+      getMaskDrawable().setShapeAppearanceModel(shapeAppearanceModel);
+    }
+  }
+
+  @Nullable
+  public Shapeable getMaskDrawable() {
     if (rippleDrawable != null && rippleDrawable.getNumberOfLayers() > 1) {
-      return (MaterialShapeDrawable) rippleDrawable.getDrawable(1);
+      if (rippleDrawable.getNumberOfLayers() > 2) {
+        // This is a LayerDrawable with 3 layers, so return the mask layer
+        return (Shapeable) rippleDrawable.getDrawable(2);
+      }
+      // This is a RippleDrawable, so return the mask layer
+      return (Shapeable) rippleDrawable.getDrawable(1);
     }
 
     return null;
+  }
+
+  void setShapeAppearanceModel(@NonNull ShapeAppearanceModel shapeAppearanceModel) {
+    this.shapeAppearanceModel = shapeAppearanceModel;
+    updateButtonShape(shapeAppearanceModel);
+  }
+
+  @NonNull
+  ShapeAppearanceModel getShapeAppearanceModel() {
+    return this.shapeAppearanceModel;
   }
 }

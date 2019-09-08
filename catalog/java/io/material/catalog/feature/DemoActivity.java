@@ -21,7 +21,6 @@ import io.material.catalog.R;
 import android.os.Bundle;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
-import androidx.fragment.app.Fragment;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -32,26 +31,27 @@ import android.view.ViewGroup;
 import dagger.android.AndroidInjection;
 import dagger.android.AndroidInjector;
 import dagger.android.DispatchingAndroidInjector;
-import dagger.android.HasFragmentInjector;
-import dagger.android.support.HasSupportFragmentInjector;
+import dagger.android.HasAndroidInjector;
+import io.material.catalog.windowpreferences.WindowPreferencesManager;
 import javax.inject.Inject;
 
 /** Base Activity class that provides a demo screen structure for a single demo. */
-public abstract class DemoActivity extends AppCompatActivity
-    implements HasFragmentInjector, HasSupportFragmentInjector {
+public abstract class DemoActivity extends AppCompatActivity implements HasAndroidInjector {
 
   public static final String EXTRA_DEMO_TITLE = "demo_title";
 
   private Toolbar toolbar;
   private ViewGroup demoContainer;
 
-  @Inject DispatchingAndroidInjector<Fragment> supportFragmentInjector;
-  @Inject DispatchingAndroidInjector<android.app.Fragment> frameworkFragmentInjector;
+  @Inject DispatchingAndroidInjector<Object> androidInjector;
 
   @Override
   protected void onCreate(@Nullable Bundle bundle) {
     safeInject();
     super.onCreate(bundle);
+    WindowPreferencesManager windowPreferencesManager = new WindowPreferencesManager(this);
+    windowPreferencesManager.applyEdgeToEdgePreference(getWindow());
+
     setContentView(R.layout.cat_demo_activity);
 
     toolbar = findViewById(R.id.toolbar);
@@ -79,14 +79,13 @@ public abstract class DemoActivity extends AppCompatActivity
     return true;
   }
 
-  @Override
-  public AndroidInjector<Fragment> supportFragmentInjector() {
-    return supportFragmentInjector;
+  protected boolean shouldShowDefaultDemoActionBarCloseButton() {
+    return true;
   }
 
   @Override
-  public AndroidInjector<android.app.Fragment> fragmentInjector() {
-    return frameworkFragmentInjector;
+  public AndroidInjector<Object> androidInjector() {
+    return androidInjector;
   }
 
   private void safeInject() {
@@ -101,6 +100,11 @@ public abstract class DemoActivity extends AppCompatActivity
     if (shouldShowDefaultDemoActionBar()) {
       setSupportActionBar(toolbar);
       setDemoActionBarTitle(getSupportActionBar());
+
+      if (shouldShowDefaultDemoActionBarCloseButton()) {
+        getSupportActionBar().setHomeAsUpIndicator(R.drawable.ic_close_vd_theme_24px);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+      }
     } else {
       toolbar.setVisibility(View.GONE);
     }

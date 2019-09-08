@@ -38,7 +38,7 @@ public final class BottomNavigationViewTest {
 
   @Before
   public void themeApplicationContext() {
-    context.setTheme(R.style.Theme_AppCompat);
+    context.setTheme(R.style.Theme_MaterialComponents_Light);
   }
 
   @Test
@@ -70,5 +70,14 @@ public final class BottomNavigationViewTest {
 
     // Assert that the selected item is still selected.
     assertThat(bottomNavigation.getSelectedItemId()).isEqualTo(selectedItem.getItemId());
+  }
+
+  @Test
+  public void testRemoveBadgeEmptyMenu() {
+    BottomNavigationView bottomNavigation = new BottomNavigationView(context);
+    Menu menu = bottomNavigation.getMenu();
+    assertThat(menu.size()).isEqualTo(0);
+    bottomNavigation.removeBadge(123);
+    // No exception expected.
   }
 }

@@ -18,6 +18,7 @@ package io.material.catalog.feature;
 
 import io.material.catalog.R;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
@@ -40,6 +41,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.MarginLayoutParams;
 import android.widget.TextView;
+import com.google.android.material.resources.MaterialResources;
 import dagger.android.support.DaggerFragment;
 import java.util.Collections;
 import java.util.List;
@@ -49,7 +51,7 @@ public abstract class DemoLandingFragment extends DaggerFragment {
 
   private static final String FRAGMENT_DEMO_CONTENT = "fragment_demo_content";
   @ColorInt private int colorControlNormal;
-  @ColorInt private int colorSecondary;
+  @ColorInt private int colorAccent;
 
   @Override
   public void onCreate(@Nullable Bundle bundle) {
@@ -57,6 +59,7 @@ public abstract class DemoLandingFragment extends DaggerFragment {
     setHasOptionsMenu(true);
   }
 
+  @SuppressWarnings("RestrictTo")
   @Nullable
   @Override
   public View onCreateView(
@@ -72,13 +75,14 @@ public abstract class DemoLandingFragment extends DaggerFragment {
     activity.getSupportActionBar().setTitle(getTitleResId());
     activity.getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
+    Context toolbarContext = toolbar.getContext();
     TypedArray a =
-        toolbar
-            .getContext()
+        toolbarContext
             .getTheme()
-            .obtainStyledAttributes(new int[] {R.attr.colorControlNormal, R.attr.colorSecondary});
-    colorControlNormal = a.getColor(0, 0);
-    colorSecondary = a.getColor(1, 0);
+            .obtainStyledAttributes(new int[] {R.attr.colorControlNormal, R.attr.colorAccent});
+    colorControlNormal =
+        MaterialResources.getColorStateList(toolbarContext, a, 0).getDefaultColor();
+    colorAccent = a.getColor(1, 0);
 
     TextView descriptionTextView = view.findViewById(R.id.cat_demo_landing_description);
     ViewGroup mainDemoContainer = view.findViewById(R.id.cat_demo_landing_main_demo_container);
@@ -96,6 +100,7 @@ public abstract class DemoLandingFragment extends DaggerFragment {
     }
     additionalDemosSection.setVisibility(additionalDemos.isEmpty() ? View.GONE : View.VISIBLE);
 
+    DemoUtils.addBottomSpaceInsetsIfNeeded((ViewGroup) view, viewGroup);
     return view;
   }
 
@@ -193,7 +198,7 @@ public abstract class DemoLandingFragment extends DaggerFragment {
     boolean isChecked = FeatureDemoUtils.getDefaultDemo(getContext()).equals(getClass().getName());
     item.setChecked(isChecked);
     MenuItemCompat.setIconTintList(
-        item, ColorStateList.valueOf(isChecked ? colorSecondary : colorControlNormal));
+        item, ColorStateList.valueOf(isChecked ? colorAccent : colorControlNormal));
   }
 
   @Override

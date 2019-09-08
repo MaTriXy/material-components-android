@@ -17,15 +17,17 @@ package com.google.android.material.color;
 
 import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
 
+import android.content.Context;
 import android.graphics.Color;
 import androidx.annotation.AttrRes;
 import androidx.annotation.ColorInt;
 import androidx.annotation.FloatRange;
+import androidx.annotation.NonNull;
 import androidx.annotation.RestrictTo;
-import com.google.android.material.resources.MaterialAttributes;
 import androidx.core.graphics.ColorUtils;
 import android.util.TypedValue;
 import android.view.View;
+import com.google.android.material.resources.MaterialAttributes;
 
 /**
  * A utility class for common color variants used in Material themes.
@@ -42,12 +44,35 @@ public class MaterialColors {
   public static final float ALPHA_DISABLED_LOW = 0.12F;
 
   /**
-   * Returns the color int for the provided theme color attribute, or throws an {@link
-   * IllegalArgumentException} if the attribute is not set in the current theme.
+   * Returns the color int for the provided theme color attribute, using the {@link Context} of the
+   * provided {@code view}.
+   *
+   * @throws IllegalArgumentException if the attribute is not set in the current theme.
    */
   @ColorInt
-  public static int getColor(View view, @AttrRes int colorAttributeResId) {
-    return MaterialAttributes.resolveAttributeOrThrow(view, colorAttributeResId).data;
+  public static int getColor(@NonNull View view, @AttrRes int colorAttributeResId) {
+    return MaterialAttributes.resolveOrThrow(view, colorAttributeResId);
+  }
+
+  /**
+   * Returns the color int for the provided theme color attribute.
+   *
+   * @throws IllegalArgumentException if the attribute is not set in the current theme.
+   */
+  @ColorInt
+  public static int getColor(
+      Context context, @AttrRes int colorAttributeResId, String errorMessageComponent) {
+    return MaterialAttributes.resolveOrThrow(context, colorAttributeResId, errorMessageComponent);
+  }
+
+  /**
+   * Returns the color int for the provided theme color attribute, or the default value if the
+   * attribute is not set in the current theme, using the {@code view}'s {@link Context}.
+   */
+  @ColorInt
+  public static int getColor(
+      @NonNull View view, @AttrRes int colorAttributeResId, @ColorInt int defaultValue) {
+    return getColor(view.getContext(), colorAttributeResId, defaultValue);
   }
 
   /**
@@ -56,9 +81,8 @@ public class MaterialColors {
    */
   @ColorInt
   public static int getColor(
-      View view, @AttrRes int colorAttributeResId, @ColorInt int defaultValue) {
-    TypedValue typedValue =
-        MaterialAttributes.resolveAttribute(view.getContext(), colorAttributeResId);
+      @NonNull Context context, @AttrRes int colorAttributeResId, @ColorInt int defaultValue) {
+    TypedValue typedValue = MaterialAttributes.resolve(context, colorAttributeResId);
     if (typedValue != null) {
       return typedValue.data;
     } else {
@@ -72,7 +96,7 @@ public class MaterialColors {
    */
   @ColorInt
   public static int layer(
-      View view,
+      @NonNull View view,
       @AttrRes int backgroundColorAttributeResId,
       @AttrRes int overlayColorAttributeResId) {
     return layer(view, backgroundColorAttributeResId, overlayColorAttributeResId, 1f);
@@ -84,7 +108,7 @@ public class MaterialColors {
    */
   @ColorInt
   public static int layer(
-      View view,
+      @NonNull View view,
       @AttrRes int backgroundColorAttributeResId,
       @AttrRes int overlayColorAttributeResId,
       @FloatRange(from = 0.0, to = 1.0) float overlayAlpha) {

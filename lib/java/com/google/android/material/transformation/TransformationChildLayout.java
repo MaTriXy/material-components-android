@@ -16,9 +16,11 @@
 package com.google.android.material.transformation;
 
 import android.content.Context;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import android.util.AttributeSet;
 import com.google.android.material.circularreveal.CircularRevealFrameLayout;
 import com.google.android.material.expandable.ExpandableWidget;
-import android.util.AttributeSet;
 
 /**
  * Wrapper layout for views that can react to an {@link ExpandableWidget}'s {@link
@@ -32,11 +34,11 @@ import android.util.AttributeSet;
  */
 public class TransformationChildLayout extends CircularRevealFrameLayout {
 
-  public TransformationChildLayout(Context context) {
+  public TransformationChildLayout(@NonNull Context context) {
     this(context, null);
   }
 
-  public TransformationChildLayout(Context context, AttributeSet attrs) {
+  public TransformationChildLayout(@NonNull Context context, @Nullable AttributeSet attrs) {
     super(context, attrs);
   }
 }
