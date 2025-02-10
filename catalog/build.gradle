@@ -1,20 +1,40 @@
 apply plugin: 'com.android.application'
 
 dependencies {
-  api 'com.google.dagger:dagger:2.23.1'
-  annotationProcessor 'com.google.dagger:dagger-compiler:2.23.1'
 
-  api 'com.google.dagger:dagger-android:2.23.1'
-  api 'com.google.dagger:dagger-android-support:2.23.1'
-  annotationProcessor 'com.google.dagger:dagger-android-processor:2.23.1'
+  // Align kotlin versions
+  implementation(platform("org.jetbrains.kotlin:kotlin-bom:1.8.22"))
 
-  api 'androidx.multidex:multidex:2.0.0'
+  api 'com.google.dagger:dagger:2.51.1'
+  annotationProcessor 'com.google.dagger:dagger-compiler:2.51.1'
 
-  api 'com.google.guava:guava:27.0.1-android'
+  api 'com.google.dagger:dagger-android:2.51.1'
+  api 'com.google.dagger:dagger-android-support:2.51.1'
+  annotationProcessor 'com.google.dagger:dagger-android-processor:2.51.1'
+
+  api 'androidx.multidex:multidex:2.0.1'
+  api 'androidx.constraintlayout:constraintlayout:2.1.0'
+  api 'androidx.gridlayout:gridlayout:1.0.0'
+  api "androidx.multidex:multidex:2.0.1"
+  api "androidx.recyclerview:recyclerview:1.2.1"
+  api 'androidx.window:window:1.0.0-beta04'
+  api "androidx.window:window-java:1.0.0-beta04"
+  api "androidx.preference:preference:1.1.1"
+
+  api 'com.google.guava:guava:33.3.1-android'
+  modules {
+    module("com.google.guava:listenablefuture") {
+      replacedBy("com.google.guava:guava", "listenablefuture is part of guava")
+    }
+  }
+
+  api 'com.github.bumptech.glide:glide:4.16.0'
 
   api project(':lib')
 
   api compatibility("recyclerViewSelection")
+
+  implementation "com.google.errorprone:error_prone_annotations:${errorproneVersion}"
 
   androidTestImplementation "androidx.test:core:${project.rootProject.ext.testRunnerVersion}"
   androidTestImplementation "androidx.test:runner:${project.rootProject.ext.testRunnerVersion}"
@@ -22,10 +42,16 @@ dependencies {
   androidTestImplementation "androidx.test.espresso:espresso-core:${project.rootProject.ext.espressoVersion}"
   androidTestImplementation "androidx.test.espresso:espresso-contrib:${project.rootProject.ext.espressoVersion}"
 
-  testAnnotationProcessor "com.google.auto.service:auto-service:1.0-rc4"
+  testImplementation "androidx.test:core:${project.rootProject.ext.testRunnerVersion}"
+  testImplementation "androidx.test:runner:${project.rootProject.ext.testRunnerVersion}"
+  testImplementation "junit:junit:4.13.2"
+  testImplementation "com.google.truth:truth:${project.rootProject.ext.truthVersion}"
+  testImplementation "org.mockito:mockito-core:${project.rootProject.ext.mockitoCoreVersion}"
+  testImplementation "org.robolectric:robolectric:${project.rootProject.ext.robolectricVersion}"
 }
 
 def srcDirs = [
+  'adaptive',
   'application',
   'application/attrs',
   'application/legacymultidex',
@@ -37,27 +63,42 @@ def srcDirs = [
   'bottomsheet',
   'button',
   'card',
+  'carousel',
   'checkbox',
   'chip',
+  'color',
   'datepicker',
   'dialog',
+  'divider',
   'draggable',
   'elevation',
+  'imageview',
   'fab',
   'feature',
+  'floatingtoolbar',
   'font',
   'internal',
+  'loadingindicator',
   'main',
+  'materialswitch',
   'menu',
+  'musicplayer',
+  'navigationrail',
+  'navigationdrawer',
+  'preferences',
+  'progressindicator',
   'radiobutton',
+  'search',
   'shapetheming',
-  'switchmaterial',
+  'sidesheet',
+  'slider',
   'tableofcontents',
   'tabs',
   'textfield',
   'themeswitcher',
+  'timepicker',
   'topappbar',
-  'transformation',
+  'transition',
   'windowpreferences'
 ]
 
@@ -71,23 +112,22 @@ android {
 
     testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     vectorDrawables.useSupportLibrary = true
-    minSdkVersion 14
-    targetSdkVersion 27
+    multiDexEnabled true
+    minSdkVersion 21
+    targetSdkVersion 33
   }
 
   testOptions {
     unitTests.returnDefaultValues = true
   }
 
-  aaptOptions {
-    additionalParameters "--no-version-vectors"
-  }
-
   sourceSets {
     main {
       manifest.srcFile 'java/io/material/catalog/AndroidManifest.xml'
       java.srcDir 'java'
-      java.includes = srcDirs.collect { 'io/material/catalog/' + it + '/**/*.java' }
+      java.includes = srcDirs.collect {
+        'io/material/catalog/' + it + '/**/*.java'
+      }
       java.excludes = [
         '**/build/**',
       ]
@@ -96,11 +136,16 @@ android {
         res.srcDirs += 'java/io/material/catalog/' + it + '/res'
       }
     }
-    androidTest.java.srcDir 'javatests'
+    //TODO(b/141695010)
+    // androidTest.java.srcDir 'androidTest/javatests'
+    // test.java.srcDir 'test/javatests'
   }
 
   compileOptions {
     sourceCompatibility JavaVersion.VERSION_1_8
     targetCompatibility JavaVersion.VERSION_1_8
+  }
+  androidResources {
+    additionalParameters '--no-version-vectors'
   }
 }

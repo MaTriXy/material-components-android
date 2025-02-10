@@ -24,12 +24,6 @@ import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
-import androidx.annotation.ColorInt;
-import androidx.annotation.IdRes;
-import androidx.annotation.NonNull;
-import androidx.core.view.GravityCompat;
-import androidx.core.view.ViewCompat;
-import androidx.core.widget.TextViewCompat;
 import androidx.appcompat.view.menu.MenuItemImpl;
 import android.view.Gravity;
 import android.view.Menu;
@@ -38,6 +32,12 @@ import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.widget.ImageView;
 import android.widget.TextView;
+import androidx.annotation.ColorInt;
+import androidx.annotation.IdRes;
+import androidx.annotation.NonNull;
+import androidx.core.view.GravityCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.widget.TextViewCompat;
 import androidx.test.espresso.matcher.BoundedMatcher;
 import com.google.android.material.expandable.ExpandableWidget;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -560,6 +560,21 @@ public class TestUtilsMatchers {
       @Override
       public boolean matchesSafely(final View view) {
         return typeface.equals(((TextView) view).getTypeface());
+      }
+    };
+  }
+
+  /** Returns a matcher that matches TextViews with the specified typeface style. */
+  public static Matcher<View> withTypefaceStyle(final int typefaceStyle) {
+    return new TypeSafeMatcher<View>(TextView.class) {
+      @Override
+      public void describeTo(final Description description) {
+        description.appendText("view with typeface style: " + typefaceStyle);
+      }
+
+      @Override
+      public boolean matchesSafely(final View view) {
+        return typefaceStyle == ((TextView) view).getTypeface().getStyle();
       }
     };
   }

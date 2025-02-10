@@ -18,18 +18,19 @@ package com.google.android.material.radiobutton;
 
 import com.google.android.material.R;
 
-import static com.google.android.material.internal.ThemeEnforcement.createThemedContext;
+import static com.google.android.material.theme.overlay.MaterialThemeOverlay.wrap;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
+import androidx.appcompat.widget.AppCompatRadioButton;
+import android.util.AttributeSet;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.widget.CompoundButtonCompat;
-import androidx.appcompat.widget.AppCompatRadioButton;
-import android.util.AttributeSet;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.internal.ThemeEnforcement;
+import com.google.android.material.resources.MaterialResources;
 
 /**
  * A class that creates a Material Themed RadioButton.
@@ -38,6 +39,11 @@ import com.google.android.material.internal.ThemeEnforcement;
  * changes, it behaves identically to {@link AppCompatRadioButton}. Your theme's {@code
  * ?attr/colorControlActivated}, {@code ?attr/colorSurface}, and {@code ?attr/colorOnSurface} must
  * be set.
+ *
+ * <p>For more information, see the <a
+ * href="https://github.com/material-components/material-components-android/blob/master/docs/components/RadioButton.md">component
+ * developer guidance</a> and <a href="https://material.io/components/radio-button/overview">design
+ * guidelines</a>.
  */
 public class MaterialRadioButton extends AppCompatRadioButton {
 
@@ -63,13 +69,22 @@ public class MaterialRadioButton extends AppCompatRadioButton {
 
   public MaterialRadioButton(
       @NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
-    super(createThemedContext(context, attrs, defStyleAttr, DEF_STYLE_RES), attrs, defStyleAttr);
+    super(wrap(context, attrs, defStyleAttr, DEF_STYLE_RES), attrs, defStyleAttr);
     // Ensure we are using the correctly themed context rather than the context that was passed in.
     context = getContext();
 
     TypedArray attributes =
         ThemeEnforcement.obtainStyledAttributes(
             context, attrs, R.styleable.MaterialRadioButton, defStyleAttr, DEF_STYLE_RES);
+
+    // If buttonTint is specified, read it using MaterialResources to allow themeable attributes in
+    // all API levels.
+    if (attributes.hasValue(R.styleable.MaterialRadioButton_buttonTint)) {
+      CompoundButtonCompat.setButtonTintList(
+          this,
+          MaterialResources.getColorStateList(
+              context, attributes, R.styleable.MaterialRadioButton_buttonTint));
+    }
 
     useMaterialThemeColors =
         attributes.getBoolean(R.styleable.MaterialRadioButton_useMaterialThemeColors, false);

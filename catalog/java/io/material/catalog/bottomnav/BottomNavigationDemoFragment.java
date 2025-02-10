@@ -19,22 +19,23 @@ package io.material.catalog.bottomnav;
 import io.material.catalog.R;
 
 import android.os.Bundle;
-import androidx.annotation.LayoutRes;
-import androidx.annotation.Nullable;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.TextView;
+import androidx.annotation.LayoutRes;
+import androidx.annotation.Nullable;
+import androidx.core.math.MathUtils;
 import com.google.android.material.badge.BadgeDrawable;
 import com.google.android.material.badge.BadgeDrawable.BadgeGravity;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-import com.google.android.material.bottomnavigation.BottomNavigationView.OnNavigationItemSelectedListener;
+import com.google.android.material.materialswitch.MaterialSwitch;
+import com.google.android.material.navigation.NavigationBarView.OnItemSelectedListener;
 import io.material.catalog.feature.DemoFragment;
 import io.material.catalog.feature.DemoUtils;
 import java.util.List;
@@ -43,6 +44,14 @@ import java.util.List;
 public abstract class BottomNavigationDemoFragment extends DemoFragment {
 
   private static final int MAX_BOTTOM_NAV_CHILDREN = 5;
+
+  @Nullable
+  private final int[] badgeGravityValues =
+      new int[] {
+        BadgeDrawable.TOP_END,
+        BadgeDrawable.TOP_START,
+      };
+
   private int numVisibleChildren = 3;
   protected List<BottomNavigationView> bottomNavigationViews;
 
@@ -55,7 +64,7 @@ public abstract class BottomNavigationDemoFragment extends DemoFragment {
     initBottomNavs(layoutInflater, view);
     initBottomNavDemoControls(view);
 
-    OnNavigationItemSelectedListener navigationItemListener =
+    OnItemSelectedListener navigationItemListener =
         item -> {
           handleAllBottomNavSelections(item.getItemId());
 
@@ -76,8 +85,9 @@ public abstract class BottomNavigationDemoFragment extends DemoFragment {
           return false;
         };
     setBottomNavListeners(navigationItemListener);
-
-    setupBadging();
+    if (bundle == null) {
+      setupBadging();
+    }
     return view;
   }
 
@@ -172,14 +182,24 @@ public abstract class BottomNavigationDemoFragment extends DemoFragment {
     badgeGravitySpinner.setAdapter(adapter);
 
     badgeGravitySpinner.setOnItemSelectedListener(
-        new OnItemSelectedListener() {
+        new AdapterView.OnItemSelectedListener() {
           @Override
           public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-            updateBadgeGravity(position);
+            updateBadgeGravity(
+                badgeGravityValues[MathUtils.clamp(position, 0, badgeGravityValues.length - 1)]);
           }
 
           @Override
           public void onNothingSelected(AdapterView<?> parent) {}
+        });
+
+    MaterialSwitch materialSwitch = view.findViewById(R.id.bold_text_switch);
+    materialSwitch.setChecked(true);
+    materialSwitch.setOnCheckedChangeListener(
+        (buttonView, isChecked) -> {
+          for (BottomNavigationView bn : bottomNavigationViews) {
+            bn.setItemTextAppearanceActiveBoldEnabled(isChecked);
+          }
         });
   }
 
@@ -207,9 +227,9 @@ public abstract class BottomNavigationDemoFragment extends DemoFragment {
         });
   }
 
-  private void setBottomNavListeners(OnNavigationItemSelectedListener listener) {
+  private void setBottomNavListeners(OnItemSelectedListener listener) {
     for (BottomNavigationView bn : bottomNavigationViews) {
-      bn.setOnNavigationItemSelectedListener(listener);
+      bn.setOnItemSelectedListener(listener);
     }
   }
 

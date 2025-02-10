@@ -19,12 +19,45 @@
   <!-- Style to use for TextInputLayout in the theme. -->
   <attr name="textInputStyle" format="reference"/>
 
-  <declare-styleable name="TextInputLayout">
-    <!-- The text color for input text. -->
-    <attr name="android:textColorHint"/>
+  <!-- Style to use for Outlined Textfield in this theme. -->
+  <attr name="textInputOutlinedStyle" format="reference"/>
 
+  <!-- Style to use for Filled Textfield in this theme. -->
+  <attr name="textInputFilledStyle" format="reference"/>
+
+  <!-- Style to use for Outlined Dense Textfield in this theme. -->
+  <attr name="textInputOutlinedDenseStyle" format="reference"/>
+
+  <!-- Style to use for Filled Dense Textfield in this theme. -->
+  <attr name="textInputFilledDenseStyle" format="reference"/>
+
+  <!-- Style to use for Outlined Textfield for Exposed Dropdown Menu in this theme. -->
+  <attr name="textInputOutlinedExposedDropdownMenuStyle" format="reference"/>
+
+  <!-- Style to use for Filled Textfield for Exposed Dropdown Menu in this theme. -->
+  <attr name="textInputFilledExposedDropdownMenuStyle" format="reference"/>
+
+  <declare-styleable name="TextInputLayout">
+    <!-- Whether the layout is enabled -->
+    <attr name="android:enabled"/>
     <!-- The hint to display in the floating label. -->
     <attr name="android:hint"/>
+    <!-- The text color for the hint when the text field is not activated (such
+         as for the resting and disabled states). -->
+    <attr name="android:textColorHint"/>
+    <!-- Makes the text field be at least this many ems wide if its width is
+         set to wrap_content. -->
+    <attr name="android:minEms"/>
+    <!-- Makes the text field be at most this many ems wide if its width is set
+         to wrap_content. -->
+    <attr name="android:maxEms"/>
+    <!-- Makes the text field be at least this dimension wide in pixels if its width is
+         set to wrap_content. -->
+    <attr name="android:minWidth"/>
+    <!-- Makes the text field be at most this dimension wide in pixels if its width is set
+         to wrap_content. -->
+    <attr name="android:maxWidth"/>
+
     <!-- Whether the layout's floating label functionality is enabled. -->
     <attr name="hintEnabled" format="boolean"/>
     <!-- Whether to animate hint state changes. -->
@@ -34,6 +67,9 @@
     <!-- Text color of the hint in the collapsed floating label.
          If set, this takes precedence over hintTextAppearance. -->
     <attr name="hintTextColor" format="color"/>
+    <!-- Whether the hint should occupy the input area when the text field is
+         unpopulated and not focused. -->
+    <attr name="expandedHintEnabled" format="boolean"/>
 
     <!-- The text to display as helper text underneath the text input area. -->
     <attr name="helperText" format="string"/>
@@ -52,6 +88,12 @@
     <!-- Text color for any error message displayed.
          If set, this takes precedence over errorTextAppearance. -->
     <attr name="errorTextColor" format="color"/>
+    <!-- Text to set as the content description for the error view.
+         Should be set when the error message has special characters that a
+         screen reader is not able to announce properly. -->
+    <attr name="errorContentDescription" format="string"/>
+    <!-- AccessibilityLiveRegion of any error message displayed. -->
+    <attr name="errorAccessibilityLiveRegion" format="integer"/>
     <!-- End icon to be shown when an error is displayed. -->
     <attr name="errorIconDrawable" format="reference"/>
     <!-- Tint color to use for the error icon. -->
@@ -74,6 +116,15 @@
       <enum name="screen" value="15"/>
     </attr>
 
+    <!-- Color for the cursor. If set, this takes precedence over
+         ?attr/colorControlActivated set for the edit text.
+         Note: Only has effect on API levels 28+. -->
+    <attr name="cursorColor" format="color"/>
+    <!-- Error color for the cursor.
+         If null, the cursor color won't change on error.
+         Note: Only has effect on API levels 28+. -->
+    <attr name="cursorErrorColor" format="color"/>
+
     <!-- Whether the layout is laid out as if the character counter will be displayed. -->
     <attr name="counterEnabled" format="boolean"/>
     <!-- The max length to display in the character counter. -->
@@ -88,6 +139,29 @@
     <!-- Text color of the character counter when the text is longer than the max.
          If set, this takes precedence over counterOverflowTextAppearance. -->
     <attr name="counterOverflowTextColor" format="reference"/>
+
+    <!-- The text to display as placeholder text in the text input area. -->
+    <attr name="placeholderText" format="string"/>
+    <!-- TextAppearance of the placeholder text displayed in the text input area. -->
+    <attr name="placeholderTextAppearance" format="reference"/>
+    <!-- Text color of the placeholder text displayed in the text input area.
+         If set, this takes precedence over placeholderTextAppearance. -->
+    <attr name="placeholderTextColor" format="color"/>
+
+    <!-- The text to display as prefix text in the text input area. -->
+    <attr name="prefixText" format="string"/>
+    <!-- TextAppearance of the prefix text displayed in the text input area. -->
+    <attr name="prefixTextAppearance" format="reference"/>
+    <!-- Text color of the prefix text displayed in the text input area.
+         If set, this takes precedence over prefixTextAppearance. -->
+    <attr name="prefixTextColor" format="color"/>
+    <!-- The text to display as suffix text in the text input area. -->
+    <attr name="suffixText" format="string"/>
+    <!-- TextAppearance of the suffix text displayed in the text input area. -->
+    <attr name="suffixTextAppearance" format="reference"/>
+    <!-- Text color of the suffix text displayed in the text input area.
+         If set, this takes precedence over suffixTextAppearance. -->
+    <attr name="suffixTextColor" format="color"/>
 
     <!-- Drawable to use for the start icon. -->
     <attr name="startIconDrawable" format="reference"/>
@@ -113,6 +187,30 @@
       <enum name="multiply" value="14"/>
       <!-- [Sa + Da - Sa * Da, Sc + Dc - Sc * Dc] -->
       <enum name="screen" value="15"/>
+    </attr>
+    <!-- The minimum size of the start icon. -->
+    <attr name="startIconMinSize" format="dimension"/>
+    <!-- The scale type of the start icon. -->
+    <attr name="startIconScaleType">
+      <!-- Scale the image using {@link android.graphics.Matrix.ScaleToFit#FILL}. -->
+      <enum name="fitXY" value="0" />
+      <!-- Scale the image using {@link android.graphics.Matrix.ScaleToFit#START}. -->
+      <enum name="fitStart" value="1" />
+      <!-- Scale the image using {@link android.graphics.Matrix.ScaleToFit#CENTER}. -->
+      <enum name="fitCenter" value="2" />
+      <!-- Scale the image using {@link android.graphics.Matrix.ScaleToFit#END}. -->
+      <enum name="fitEnd" value="3" />
+      <!-- Center the image in the view, but perform no scaling. -->
+      <enum name="center" value="4" />
+      <!-- Scale the image uniformly (maintain the image's aspect ratio) so both dimensions
+           (width and height) of the image will be equal to or larger than the corresponding
+           dimension of the view (minus padding). The image is then centered in the view. -->
+      <enum name="centerCrop" value="5" />
+      <!-- Scale the image uniformly (maintain the image's aspect ratio) so that both
+           dimensions (width and height) of the image will be equal to or less than the
+           corresponding dimension of the view (minus padding). The image is then centered in
+           the view. -->
+      <enum name="centerInside" value="6" />
     </attr>
     <!-- The end icon mode of the TextInputLayout. It will display one of the end icons detailed
          below, or no end icon. -->
@@ -153,6 +251,30 @@
       <!-- [Sa + Da - Sa * Da, Sc + Dc - Sc * Dc] -->
       <enum name="screen" value="15"/>
     </attr>
+    <!-- The minimum size of the end icon -->
+    <attr name="endIconMinSize" format="dimension"/>
+    <!-- The scale type of the end icon. -->
+    <attr name="endIconScaleType">
+      <!-- Scale the image using {@link android.graphics.Matrix.ScaleToFit#FILL}. -->
+      <enum name="fitXY" value="0" />
+      <!-- Scale the image using {@link android.graphics.Matrix.ScaleToFit#START}. -->
+      <enum name="fitStart" value="1" />
+      <!-- Scale the image using {@link android.graphics.Matrix.ScaleToFit#CENTER}. -->
+      <enum name="fitCenter" value="2" />
+      <!-- Scale the image using {@link android.graphics.Matrix.ScaleToFit#END}. -->
+      <enum name="fitEnd" value="3" />
+      <!-- Center the image in the view, but perform no scaling. -->
+      <enum name="center" value="4" />
+      <!-- Scale the image uniformly (maintain the image's aspect ratio) so both dimensions
+           (width and height) of the image will be equal to or larger than the corresponding
+           dimension of the view (minus padding). The image is then centered in the view. -->
+      <enum name="centerCrop" value="5" />
+      <!-- Scale the image uniformly (maintain the image's aspect ratio) so that both
+           dimensions (width and height) of the image will be equal to or less than the
+           corresponding dimension of the view (minus padding). The image is then centered in
+           the view. -->
+      <enum name="centerInside" value="6" />
+    </attr>
 
     <!-- Whether the text input area should be drawn as a filled box, an outline box, or not as a box.-->
     <attr name="boxBackgroundMode">
@@ -175,7 +297,13 @@
     <attr name="boxCornerRadiusBottomEnd" format="dimension"/>
     <!-- The color to use for the box's stroke when in outline box mode. -->
     <attr name="boxStrokeColor" format="color"/>
-    <!-- The color to use for the box's background color when in filled box mode. -->
+    <!-- The color to use for the box's stroke in outline box mode when an error
+         is being displayed. If not set, it defaults to errorTextColor if on
+         error state, or to counterOverflowTextColor if on overflow state. -->
+    <attr name="boxStrokeErrorColor" format="color"/>
+    <!-- The color to use for the box's background color when in filled box mode.
+         If a non-stateful color resource is specified, default colors will be used for the hover
+         and disabled states. -->
     <attr name="boxBackgroundColor" format="color"/>
     <!-- The value to use for the box's stroke when in outline box mode, or for the underline stroke
          in filled mode. -->
@@ -222,6 +350,30 @@
       <!-- [Sa + Da - Sa * Da, Sc + Dc - Sc * Dc] -->
       <enum name="screen" value="15"/>
     </attr>
+    <!-- Max number of lines that can be displayed in the resting and floating hint. -->
+    <attr name="hintMaxLines" format="integer"/>
+  </declare-styleable>
+
+  <declare-styleable name="TextInputEditText">
+    <!-- Whether the TextInputEditText should use the TextInputLayout's focused
+         rectangle instead of its own. -->
+    <attr name="textInputLayoutFocusedRectEnabled" format="boolean"/>
+  </declare-styleable>
+
+  <declare-styleable name="MaterialAutoCompleteTextView" parent="AppCompatAutoCompleteTextView">
+    <attr name="android:inputType"/>
+    <attr name="android:popupElevation"/>
+
+    <!-- The default layout used to inflate auto-complete items -->
+    <attr name="simpleItemLayout" format="reference"/>
+    <!-- The default auto-completion items in a string array -->
+    <attr name="simpleItems" format="reference"/>
+    <!-- The color of the default selected item of the dropdown list. -->
+    <attr name="simpleItemSelectedColor" format="color"/>
+    <!-- The ripple color of the default selected item of the dropdown list. -->
+    <attr name="simpleItemSelectedRippleColor" format="color"/>
+    <!-- The container color of the dropdown menu. -->
+    <attr name="dropDownBackgroundTint" format="color"/>
   </declare-styleable>
 
 </resources>

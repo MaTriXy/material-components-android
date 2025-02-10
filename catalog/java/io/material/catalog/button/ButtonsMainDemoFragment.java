@@ -19,16 +19,16 @@ package io.material.catalog.button;
 import io.material.catalog.R;
 
 import android.os.Bundle;
-import androidx.annotation.LayoutRes;
-import androidx.annotation.Nullable;
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.snackbar.Snackbar;
+import androidx.appcompat.widget.SwitchCompat;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import com.google.android.material.switchmaterial.SwitchMaterial;
+import androidx.annotation.LayoutRes;
+import androidx.annotation.Nullable;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.snackbar.Snackbar;
 import io.material.catalog.feature.DemoFragment;
 import io.material.catalog.feature.DemoUtils;
 import java.util.List;
@@ -41,6 +41,13 @@ public class ButtonsMainDemoFragment extends DemoFragment {
   public View onCreateDemoView(
       LayoutInflater layoutInflater, @Nullable ViewGroup viewGroup, @Nullable Bundle bundle) {
     View view = layoutInflater.inflate(getButtonsContent(), viewGroup, false /* attachToRoot */);
+
+    ViewGroup labelButtonContent = view.findViewById(R.id.labelButtonContent);
+    View.inflate(getContext(), getLabelButtonContent(), labelButtonContent);
+    ViewGroup labelIconButtonContent = view.findViewById(R.id.labelIconButtonContent);
+    View.inflate(getContext(), getLabelIconButtonContent(), labelIconButtonContent);
+    ViewGroup iconButtonContent = view.findViewById(R.id.iconButtonContent);
+    View.inflate(getContext(), getIconButtonContent(), iconButtonContent);
 
     List<MaterialButton> buttons = DemoUtils.findViewsWithType(view, MaterialButton.class);
     int maxMeasuredWidth = 0;
@@ -59,7 +66,8 @@ public class ButtonsMainDemoFragment extends DemoFragment {
           });
     }
 
-    SwitchMaterial enabledSwitch = view.findViewById(R.id.cat_button_enabled_switch);
+    // Using SwitchCompat here to avoid class cast issues in derived demos.
+    SwitchCompat enabledSwitch = view.findViewById(R.id.cat_button_enabled_switch);
     enabledSwitch.setOnCheckedChangeListener(
         (buttonView, isChecked) -> {
           CharSequence updatedText =
@@ -73,10 +81,26 @@ public class ButtonsMainDemoFragment extends DemoFragment {
               button.setText(updatedText);
             }
             button.setEnabled(isChecked);
+            button.setFocusable(isChecked);
           }
         });
 
     return view;
+  }
+
+  @LayoutRes
+  protected int getLabelButtonContent() {
+    return R.layout.cat_label_buttons_content;
+  }
+
+  @LayoutRes
+  protected int getLabelIconButtonContent() {
+    return R.layout.cat_label_icon_buttons_content;
+  }
+
+  @LayoutRes
+  protected int getIconButtonContent() {
+    return R.layout.cat_icon_buttons_content;
   }
 
   @LayoutRes

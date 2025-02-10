@@ -17,12 +17,14 @@
 package com.google.android.material.bottomappbar;
 
 import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
+import static java.lang.Math.abs;
 
+import androidx.annotation.FloatRange;
 import androidx.annotation.NonNull;
 import androidx.annotation.RestrictTo;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.shape.EdgeTreatment;
 import com.google.android.material.shape.ShapePath;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 /**
  * Top edge treatment for the bottom app bar which "cradles" a circular {@link
@@ -40,6 +42,7 @@ public class BottomAppBarTopEdgeTreatment extends EdgeTreatment implements Clone
   private static final int ARC_HALF = 180;
   private static final int ANGLE_UP = 270;
   private static final int ANGLE_LEFT = 180;
+  private static final float ROUNDED_CORNER_FAB_OFFSET = 1.75f;
 
   private float roundedCornerRadius;
   private float fabMargin;
@@ -47,6 +50,7 @@ public class BottomAppBarTopEdgeTreatment extends EdgeTreatment implements Clone
   private float fabDiameter;
   private float cradleVerticalOffset;
   private float horizontalOffset;
+  private float fabCornerSize = -1f;
 
   /**
    * @param fabMargin the margin in pixels between the cutout and the fab.
@@ -60,10 +64,7 @@ public class BottomAppBarTopEdgeTreatment extends EdgeTreatment implements Clone
       float fabMargin, float roundedCornerRadius, float cradleVerticalOffset) {
     this.fabMargin = fabMargin;
     this.roundedCornerRadius = roundedCornerRadius;
-    this.cradleVerticalOffset = cradleVerticalOffset;
-    if (cradleVerticalOffset < 0) {
-      throw new IllegalArgumentException("cradleVerticalOffset must be positive.");
-    }
+    setCradleVerticalOffset(cradleVerticalOffset);
     this.horizontalOffset = 0f;
   }
 
@@ -99,6 +100,14 @@ public class BottomAppBarTopEdgeTreatment extends EdgeTreatment implements Clone
 
     // Calculate the X distance between the center of the two adjacent circles using pythagorean
     // theorem.
+    float cornerSize = fabCornerSize * interpolation;
+    boolean useCircleCutout = fabCornerSize == -1 || abs(fabCornerSize * 2f - fabDiameter) < .1f;
+    float arcOffset = 0;
+    if (!useCircleCutout) {
+      verticalOffset = 0;
+      arcOffset = ROUNDED_CORNER_FAB_OFFSET;
+    }
+
     float distanceBetweenCenters = cradleRadius + roundedCornerOffset;
     float distanceBetweenCentersSquared = distanceBetweenCenters * distanceBetweenCenters;
     float distanceY = verticalOffset + roundedCornerOffset;
@@ -110,7 +119,7 @@ public class BottomAppBarTopEdgeTreatment extends EdgeTreatment implements Clone
 
     // Calculate the arc between the center of the two circles.
     float cornerRadiusArcLength = (float) Math.toDegrees(Math.atan(distanceX / distanceY));
-    float cutoutArcOffset = ARC_QUARTER - cornerRadiusArcLength;
+    float cutoutArcOffset = (ARC_QUARTER - cornerRadiusArcLength) + arcOffset;
 
     // Draw the starting line up to the left rounded corner.
     shapePath.lineTo(/* x= */ leftRoundedCornerCircleX, /* y= */ 0);
@@ -125,14 +134,36 @@ public class BottomAppBarTopEdgeTreatment extends EdgeTreatment implements Clone
         /* startAngle= */ ANGLE_UP,
         /* sweepAngle= */ cornerRadiusArcLength);
 
-    // Draw the cutout circle.
-    shapePath.addArc(
-        /* left= */ middle - cradleRadius,
-        /* top= */ -cradleRadius - verticalOffset,
-        /* right= */ middle + cradleRadius,
-        /* bottom= */ cradleRadius - verticalOffset,
-        /* startAngle= */ ANGLE_LEFT - cutoutArcOffset,
-        /* sweepAngle= */ cutoutArcOffset * 2 - ARC_HALF);
+    if (useCircleCutout) {
+      // Draw the cutout circle.
+      shapePath.addArc(
+          /* left= */ middle - cradleRadius,
+          /* top= */ -cradleRadius - verticalOffset,
+          /* right= */ middle + cradleRadius,
+          /* bottom= */ cradleRadius - verticalOffset,
+          /* startAngle= */ ANGLE_LEFT - cutoutArcOffset,
+          /* sweepAngle= */ cutoutArcOffset * 2 - ARC_HALF);
+    } else {
+      float cutoutDiameter = fabMargin + cornerSize * 2f;
+      shapePath.addArc(
+          /* left= */ middle - cradleRadius,
+          /* top= */ -(cornerSize + fabMargin),
+          /* right= */ middle - cradleRadius + cutoutDiameter,
+          /* bottom= */ (fabMargin + cornerSize),
+          /* startAngle= */ ANGLE_LEFT - cutoutArcOffset,
+          /* sweepAngle= */ (cutoutArcOffset * 2 - ARC_HALF) / 2f);
+
+      shapePath.lineTo(middle + cradleRadius - (cornerSize + fabMargin / 2f), /* y= */
+          (cornerSize + fabMargin));
+
+      shapePath.addArc(
+          /* left= */ middle + cradleRadius - (cornerSize * 2f + fabMargin),
+          /* top= */  -(cornerSize + fabMargin),
+          /* right= */ middle + cradleRadius,
+          /* bottom= */ (fabMargin + cornerSize),
+          /* startAngle= */ 90,
+          /* sweepAngle= */ -90 + cutoutArcOffset);
+    }
 
     // Draw an arc for the right rounded corner circle. The bounding box is the area around the
     // circle's center which is at `(rightRoundedCornerCircleX, roundedCornerOffset)`.
@@ -197,7 +228,10 @@ public class BottomAppBarTopEdgeTreatment extends EdgeTreatment implements Clone
    * offset of 0 indicates the vertical center of the {@link FloatingActionButton} is positioned on
    * the top edge.
    */
-  void setCradleVerticalOffset(float cradleVerticalOffset) {
+  void setCradleVerticalOffset(@FloatRange(from = 0f) float cradleVerticalOffset) {
+    if (cradleVerticalOffset < 0) {
+      throw new IllegalArgumentException("cradleVerticalOffset must be positive.");
+    }
     this.cradleVerticalOffset = cradleVerticalOffset;
   }
 
@@ -215,5 +249,13 @@ public class BottomAppBarTopEdgeTreatment extends EdgeTreatment implements Clone
 
   void setFabCradleRoundedCornerRadius(float roundedCornerRadius) {
     this.roundedCornerRadius = roundedCornerRadius;
+  }
+
+  public float getFabCornerRadius() {
+    return fabCornerSize;
+  }
+
+  public void setFabCornerSize(float size) {
+    this.fabCornerSize = size;
   }
 }

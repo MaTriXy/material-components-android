@@ -20,13 +20,13 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
-import androidx.annotation.NonNull;
-import androidx.annotation.RestrictTo;
-import androidx.annotation.RestrictTo.Scope;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnTouchListener;
 import android.view.ViewConfiguration;
+import androidx.annotation.NonNull;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.RestrictTo.Scope;
 
 /**
  * Ensures that touches within the transparent region of the inset drawable used for Dialogs are
@@ -63,7 +63,9 @@ public class InsetDialogOnTouchListener implements OnTouchListener {
       return false;
     }
     MotionEvent outsideEvent = MotionEvent.obtain(event);
-    outsideEvent.setAction(MotionEvent.ACTION_OUTSIDE);
+    if (event.getAction() == MotionEvent.ACTION_UP) {
+      outsideEvent.setAction(MotionEvent.ACTION_OUTSIDE);
+    }
     // Window.shouldCloseOnTouch does not respect MotionEvent.ACTION_OUTSIDE until Pie, so we fix
     // the coordinates outside the view and use MotionEvent.ACTION_DOWN
     if (VERSION.SDK_INT < VERSION_CODES.P) {

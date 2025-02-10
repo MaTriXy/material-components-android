@@ -21,14 +21,14 @@ import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 
 import android.content.res.ColorStateList;
 import android.graphics.drawable.Drawable;
+import android.view.LayoutInflater;
+import android.view.View;
 import androidx.annotation.DrawableRes;
 import androidx.annotation.IdRes;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StyleRes;
-import android.view.LayoutInflater;
-import android.view.View;
 import androidx.test.espresso.UiController;
 import androidx.test.espresso.ViewAction;
 import com.google.android.material.navigation.NavigationView;
@@ -36,7 +36,7 @@ import org.hamcrest.Matcher;
 
 public class NavigationViewActions {
   /** Sets item text appearance on the content of the navigation view. */
-  public static ViewAction setItemTextAppearance(final @StyleRes int resId) {
+  public static ViewAction setItemTextAppearance(@StyleRes final int resId, boolean isActiveBold) {
     return new ViewAction() {
       @Override
       public Matcher<View> getConstraints() {
@@ -54,6 +54,7 @@ public class NavigationViewActions {
 
         NavigationView navigationView = (NavigationView) view;
         navigationView.setItemTextAppearance(resId);
+        navigationView.setItemTextAppearanceActiveBoldEnabled(isActiveBold);
 
         uiController.loopMainThreadUntilIdle();
       }

@@ -21,11 +21,8 @@ import com.google.android.material.R;
 import android.app.DatePickerDialog;
 import android.content.Context;
 import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
-import android.os.Build;
-import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
 import androidx.annotation.AttrRes;
 import androidx.annotation.NonNull;
@@ -33,10 +30,10 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import androidx.annotation.RestrictTo.Scope;
 import androidx.annotation.StyleRes;
-import com.google.android.material.shape.MaterialShapeDrawable;
 import com.google.android.material.dialog.InsetDialogOnTouchListener;
 import com.google.android.material.dialog.MaterialDialogs;
 import com.google.android.material.resources.MaterialAttributes;
+import com.google.android.material.shape.MaterialShapeDrawable;
 
 /**
  * A Material version of {@link android.app.DatePickerDialog}
@@ -89,12 +86,7 @@ public class MaterialStyledDatePickerDialog extends DatePickerDialog {
 
     MaterialShapeDrawable materialShapeDrawable =
         new MaterialShapeDrawable(context, null, DEF_STYLE_ATTR, DEF_STYLE_RES);
-    // Pre-L, windowBackground is a second background behind the Picker Dialog.
-    if (Build.VERSION.SDK_INT >= VERSION_CODES.LOLLIPOP) {
-      materialShapeDrawable.setFillColor(ColorStateList.valueOf(surfaceColor));
-    } else {
-      materialShapeDrawable.setFillColor(ColorStateList.valueOf(Color.TRANSPARENT));
-    }
+    materialShapeDrawable.setFillColor(ColorStateList.valueOf(surfaceColor));
 
     backgroundInsets =
         MaterialDialogs.getDialogBackgroundInsets(context, DEF_STYLE_ATTR, DEF_STYLE_RES);

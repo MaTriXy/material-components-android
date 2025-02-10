@@ -21,12 +21,15 @@ import androidx.annotation.NonNull;
 /**
  * An edge treatment which draws triangles at the midpoint of an edge, facing into or out of the
  * shape.
+ *
+ * <p>If you want to draw a triangular shape below a circle (similar to a map marker), use {@link
+ * MarkerEdgeTreatment} instead.
  */
 public class TriangleEdgeTreatment extends EdgeTreatment {
 
   private final float size;
   private final boolean inside;
-
+ 
   /**
    * Instantiates a triangle treatment of the given size, which faces inward or outward relative to
    * the shape.
@@ -44,9 +47,13 @@ public class TriangleEdgeTreatment extends EdgeTreatment {
   @Override
   public void getEdgePath(
       float length, float center, float interpolation, @NonNull ShapePath shapePath) {
-    shapePath.lineTo(center - (size * interpolation), 0);
-    shapePath.lineTo(center, inside ? size * interpolation : -size * interpolation);
-    shapePath.lineTo(center + (size * interpolation), 0);
-    shapePath.lineTo(length, 0);
+    if (inside) {
+      shapePath.lineTo(center - (size * interpolation), 0);
+      shapePath.lineTo(center, size * interpolation, center + (size * interpolation), 0);
+      shapePath.lineTo(length, 0);
+    } else {
+      shapePath.lineTo(center - (size * interpolation), 0, center, -size * interpolation);
+      shapePath.lineTo(center + (size * interpolation), 0, length, 0);
+    }
   }
 }

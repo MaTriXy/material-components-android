@@ -19,19 +19,24 @@ package io.material.catalog.topappbar;
 import io.material.catalog.R;
 
 import android.os.Bundle;
-import androidx.annotation.Nullable;
-import androidx.annotation.StringRes;
+import androidx.appcompat.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.TextView;
+import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 import io.material.catalog.feature.DemoActivity;
 import io.material.catalog.feature.DemoUtils;
 
 /** A base activity for the Top App Bar Action Bar demos for the Catalog app. */
 public abstract class BaseTopAppBarActionBarDemoActivity extends DemoActivity {
+
+  private ActionMode actionMode;
+  private boolean inActionMode;
 
   @Override
   protected void onCreate(@Nullable Bundle bundle) {
@@ -48,6 +53,44 @@ public abstract class BaseTopAppBarActionBarDemoActivity extends DemoActivity {
         layoutInflater.inflate(R.layout.cat_topappbar_action_bar_activity, viewGroup, false);
     TextView demoDescriptionTextView = view.findViewById(R.id.action_bar_demo_description);
     demoDescriptionTextView.setText(getActionBarDemoDescription());
+    Button actionModeButton = view.findViewById(R.id.action_bar_demo_action_mode_button);
+    actionModeButton.setOnClickListener(
+        v -> {
+          inActionMode = !inActionMode;
+          if (inActionMode) {
+            if (actionMode == null) {
+              actionMode =
+                  startSupportActionMode(
+                      new ActionMode.Callback() {
+                        @Override
+                        public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
+                          getMenuInflater().inflate(R.menu.cat_topappbar_menu_actionmode, menu);
+                          return true;
+                        }
+
+                        @Override
+                        public boolean onPrepareActionMode(ActionMode actionMode, Menu menu) {
+                          return false;
+                        }
+
+                        @Override
+                        public boolean onActionItemClicked(
+                            ActionMode actionMode, MenuItem menuItem) {
+                          return false;
+                        }
+
+                        @Override
+                        public void onDestroyActionMode(ActionMode am) {
+                          actionMode = null;
+                        }
+                      });
+            }
+            actionMode.setTitle(R.string.cat_topappbar_action_bar_action_mode_title);
+            actionMode.setSubtitle(R.string.cat_topappbar_action_bar_action_mode_subtitle);
+          } else {
+            actionMode.finish();
+          }
+        });
     return view;
   }
 
@@ -70,5 +113,16 @@ public abstract class BaseTopAppBarActionBarDemoActivity extends DemoActivity {
   @StringRes
   public int getActionBarDemoDescription() {
     return R.string.cat_topappbar_action_bar_description;
+  }
+
+  @Override
+  protected boolean shouldSetUpContainerTransform() {
+    return false;
+  }
+
+  // Disable edge to edge due to that causing glitches with the status bar during action mode.
+  @Override
+  protected boolean shouldApplyEdgeToEdgePreference() {
+    return false;
   }
 }

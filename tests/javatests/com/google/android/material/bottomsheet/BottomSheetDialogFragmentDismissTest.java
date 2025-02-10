@@ -27,11 +27,12 @@ import static org.mockito.Mockito.verify;
 
 import android.content.DialogInterface;
 import android.os.Bundle;
-import androidx.annotation.NonNull;
 import androidx.appcompat.widget.AppCompatTextView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.test.espresso.Espresso;
 import androidx.test.filters.MediumTest;
 import androidx.test.rule.ActivityTestRule;
@@ -115,6 +116,12 @@ public class BottomSheetDialogFragmentDismissTest {
 
     public void setOnDismissListener(DialogInterface.OnDismissListener onDismissListener) {
       this.onDismissListener = onDismissListener;
+    }
+
+    @Nullable
+    @Override
+    public BottomSheetDialog getDialog() {
+      return (BottomSheetDialog) super.getDialog();
     }
 
     @Override

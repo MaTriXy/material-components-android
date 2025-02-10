@@ -16,7 +16,7 @@
 
 package com.google.android.material.textview;
 
-import com.google.android.material.R;
+import com.google.android.material.test.R;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -50,6 +50,7 @@ public class MaterialTextViewTest {
 
   @Test
   public void ensureThatViewCanBeCreatedWithoutSettingLineHeightAttribute() {
+    context.setTheme(R.style.Theme_AppCompat);
     inflater.inflate(R.layout.text_view_without_line_height, null, false);
   }
 
@@ -63,6 +64,7 @@ public class MaterialTextViewTest {
 
   @Test
   public void ensureThatCreatedViewUsesLineHeightFromTextAppearance() {
+    context.setTheme(R.style.Theme_AppCompat);
     MaterialTextView textView =
         (MaterialTextView)
             inflater.inflate(R.layout.text_view_with_line_height_from_appearance, null, false);
@@ -71,6 +73,7 @@ public class MaterialTextViewTest {
 
   @Test
   public void ensureThatCreatedViewUsesLineHeightFromStyleWithTextAppearance() {
+    context.setTheme(R.style.Theme_AppCompat);
     MaterialTextView textView =
         (MaterialTextView)
             inflater.inflate(R.layout.text_view_with_line_height_from_style, null, false);
@@ -79,6 +82,7 @@ public class MaterialTextViewTest {
 
   @Test
   public void ensureThatLineHeightFromLayoutOverridesThatFromTextAppearance() {
+    context.setTheme(R.style.Theme_AppCompat);
     MaterialTextView textView =
         (MaterialTextView)
             inflater.inflate(R.layout.text_view_with_line_height_from_layout, null, false);
@@ -87,6 +91,7 @@ public class MaterialTextViewTest {
 
   @Test
   public void ensureThatViewAppliesLineHeightWhenSettingTextAppearance() {
+    context.setTheme(R.style.Theme_AppCompat);
     MaterialTextView textView = new MaterialTextView(context);
     textView.setTextAppearance(context, R.style.TestStyleWithLineHeight);
     assertThat(textView.getLineHeight()).isEqualTo(testLineHeight);

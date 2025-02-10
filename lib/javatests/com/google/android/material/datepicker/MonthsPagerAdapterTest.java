@@ -15,7 +15,7 @@
  */
 package com.google.android.material.datepicker;
 
-import com.google.android.material.R;
+import com.google.android.material.test.R;
 
 import static org.junit.Assert.assertEquals;
 
@@ -58,10 +58,11 @@ public class MonthsPagerAdapterTest {
             context,
             /* dateSelector= */ null,
             new CalendarConstraints.Builder()
-                .setStart(feb2016)
-                .setEnd(april2016)
-                .setOpening(march2016)
+                .setStart(feb2016.timeInMillis)
+                .setEnd(april2016.timeInMillis)
+                .setOpenAt(march2016.timeInMillis)
                 .build(),
+            /* dayViewDecorator= */ null,
             /* onDayClickListener= */ null);
     assertEquals(3, monthsAdapter.getItemCount());
     assertEquals(1, monthsAdapter.getPosition(march2016));
@@ -74,10 +75,11 @@ public class MonthsPagerAdapterTest {
             context,
             /* dateSelector= */ null,
             new CalendarConstraints.Builder()
-                .setStart(feb2016)
-                .setEnd(feb2016)
-                .setOpening(feb2016)
+                .setStart(feb2016.timeInMillis)
+                .setEnd(feb2016.timeInMillis)
+                .setOpenAt(feb2016.timeInMillis)
                 .build(),
+            /* dayViewDecorator= */ null,
             /* onDayClickListener= */ null);
     assertEquals(1, monthsAdapter.getItemCount());
     assertEquals(0, monthsAdapter.getPosition(feb2016));
@@ -92,10 +94,11 @@ public class MonthsPagerAdapterTest {
         context,
         /* dateSelector= */ null,
         new CalendarConstraints.Builder()
-            .setStart(feb2016)
-            .setEnd(march2016)
-            .setOpening(april2016)
+            .setStart(feb2016.timeInMillis)
+            .setEnd(march2016.timeInMillis)
+            .setOpenAt(april2016.timeInMillis)
             .build(),
+        /* dayViewDecorator= */ null,
         /* onDayClickListener= */ null);
   }
 
@@ -106,10 +109,11 @@ public class MonthsPagerAdapterTest {
         context,
         /* dateSelector= */ null,
         new CalendarConstraints.Builder()
-            .setStart(march2016)
-            .setEnd(feb2016)
-            .setOpening(march2016)
+            .setStart(march2016.timeInMillis)
+            .setEnd(feb2016.timeInMillis)
+            .setOpenAt(march2016.timeInMillis)
             .build(),
+        /* dayViewDecorator= */ null,
         /* onDayClickListener= */ null);
   }
 
@@ -120,13 +124,17 @@ public class MonthsPagerAdapterTest {
             context,
             /* dateSelector= */ null,
             new CalendarConstraints.Builder()
-                .setStart(feb2016)
-                .setEnd(april2016)
-                .setOpening(march2016)
+                .setStart(feb2016.timeInMillis)
+                .setEnd(april2016.timeInMillis)
+                .setOpenAt(march2016.timeInMillis)
                 .build(),
+            /* dayViewDecorator= */ null,
             /* onDayClickListener= */ null);
-    assertEquals(feb2016.getLongName(), monthsAdapter.getPageTitle(/* position= */ 0).toString());
-    assertEquals(march2016.getLongName(), monthsAdapter.getPageTitle(/* position= */ 1).toString());
-    assertEquals(april2016.getLongName(), monthsAdapter.getPageTitle(/* position= */ 2).toString());
+    assertEquals(
+        feb2016.getLongName(), monthsAdapter.getPageTitle(/* position= */ 0).toString());
+    assertEquals(
+        march2016.getLongName(), monthsAdapter.getPageTitle(/* position= */ 1).toString());
+    assertEquals(
+        april2016.getLongName(), monthsAdapter.getPageTitle(/* position= */ 2).toString());
   }
 }

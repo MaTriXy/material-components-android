@@ -20,9 +20,9 @@ import static androidx.viewpager2.widget.ViewPager2.SCROLL_STATE_DRAGGING;
 import static androidx.viewpager2.widget.ViewPager2.SCROLL_STATE_IDLE;
 import static androidx.viewpager2.widget.ViewPager2.SCROLL_STATE_SETTLING;
 
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 import java.lang.ref.WeakReference;
 
@@ -31,7 +31,7 @@ import java.lang.ref.WeakReference;
  * position with the selected tab when a tab is selected, and the TabLayout's scroll position when
  * the user drags the ViewPager2. TabLayoutMediator will listen to ViewPager2's OnPageChangeCallback
  * to adjust tab when ViewPager2 moves. TabLayoutMediator listens to TabLayout's
- * OnTabSelectedListener to adjust VP2 when tab moves. TLM listens to RecyclerView's
+ * OnTabSelectedListener to adjust VP2 when tab moves. TabLayoutMediator listens to RecyclerView's
  * AdapterDataObserver to recreate tab content when dataset changes.
  *
  * <p>Establish the link by creating an instance of this class, make sure the ViewPager2 has an
@@ -47,6 +47,7 @@ public final class TabLayoutMediator {
   @NonNull private final TabLayout tabLayout;
   @NonNull private final ViewPager2 viewPager;
   private final boolean autoRefresh;
+  private final boolean smoothScroll;
   private final TabConfigurationStrategy tabConfigurationStrategy;
   @Nullable private RecyclerView.Adapter<?> adapter;
   private boolean attached;
@@ -75,7 +76,7 @@ public final class TabLayoutMediator {
       @NonNull TabLayout tabLayout,
       @NonNull ViewPager2 viewPager,
       @NonNull TabConfigurationStrategy tabConfigurationStrategy) {
-    this(tabLayout, viewPager, true, tabConfigurationStrategy);
+    this(tabLayout, viewPager, /* autoRefresh= */ true, tabConfigurationStrategy);
   }
 
   public TabLayoutMediator(
@@ -83,9 +84,19 @@ public final class TabLayoutMediator {
       @NonNull ViewPager2 viewPager,
       boolean autoRefresh,
       @NonNull TabConfigurationStrategy tabConfigurationStrategy) {
+    this(tabLayout, viewPager, autoRefresh, /* smoothScroll= */ true, tabConfigurationStrategy);
+  }
+
+  public TabLayoutMediator(
+      @NonNull TabLayout tabLayout,
+      @NonNull ViewPager2 viewPager,
+      boolean autoRefresh,
+      boolean smoothScroll,
+      @NonNull TabConfigurationStrategy tabConfigurationStrategy) {
     this.tabLayout = tabLayout;
     this.viewPager = viewPager;
     this.autoRefresh = autoRefresh;
+    this.smoothScroll = smoothScroll;
     this.tabConfigurationStrategy = tabConfigurationStrategy;
   }
 
@@ -113,7 +124,7 @@ public final class TabLayoutMediator {
     viewPager.registerOnPageChangeCallback(onPageChangeCallback);
 
     // Now we'll add a tab selected listener to set ViewPager's current item
-    onTabSelectedListener = new ViewPagerOnTabSelectedListener(viewPager);
+    onTabSelectedListener = new ViewPagerOnTabSelectedListener(viewPager, smoothScroll);
     tabLayout.addOnTabSelectedListener(onTabSelectedListener);
 
     // Now we'll populate ourselves from the pager adapter, adding an observer if
@@ -136,14 +147,23 @@ public final class TabLayoutMediator {
    * called before {@link #attach()} when a ViewPager2's adapter is changed.
    */
   public void detach() {
-    adapter.unregisterAdapterDataObserver(pagerAdapterObserver);
+    if (autoRefresh && adapter != null) {
+      adapter.unregisterAdapterDataObserver(pagerAdapterObserver);
+      pagerAdapterObserver = null;
+    }
     tabLayout.removeOnTabSelectedListener(onTabSelectedListener);
     viewPager.unregisterOnPageChangeCallback(onPageChangeCallback);
-    pagerAdapterObserver = null;
     onTabSelectedListener = null;
     onPageChangeCallback = null;
     adapter = null;
     attached = false;
+  }
+
+  /**
+   * Returns whether the {@link TabLayout} and the {@link ViewPager2} are linked together.
+   */
+  public boolean isAttached() {
+    return attached;
   }
 
   @SuppressWarnings("WeakerAccess")
@@ -157,12 +177,12 @@ public final class TabLayoutMediator {
         tabConfigurationStrategy.onConfigureTab(tab, i);
         tabLayout.addTab(tab, false);
       }
-
       // Make sure we reflect the currently set ViewPager item
       if (adapterCount > 0) {
-        int currItem = viewPager.getCurrentItem();
+        int lastItem = tabLayout.getTabCount() - 1;
+        int currItem = Math.min(viewPager.getCurrentItem(), lastItem);
         if (currItem != tabLayout.getSelectedTabPosition()) {
-          tabLayout.getTabAt(currItem).select();
+          tabLayout.selectTab(tabLayout.getTabAt(currItem));
         }
       }
     }
@@ -190,22 +210,27 @@ public final class TabLayoutMediator {
     public void onPageScrollStateChanged(final int state) {
       previousScrollState = scrollState;
       scrollState = state;
+      TabLayout tabLayout = tabLayoutRef.get();
+      if (tabLayout != null) {
+        tabLayout.updateViewPagerScrollState(scrollState);
+      }
     }
 
     @Override
     public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
       TabLayout tabLayout = tabLayoutRef.get();
       if (tabLayout != null) {
-        // Only update the text selection if we're not settling, or we are settling after
+        // Only update the tab view selection if we're not settling, or we are settling after
         // being dragged
-        boolean updateText =
+        boolean updateSelectedTabView =
             scrollState != SCROLL_STATE_SETTLING || previousScrollState == SCROLL_STATE_DRAGGING;
         // Update the indicator if we're not settling after being idle. This is caused
         // from a setCurrentItem() call and will be handled by an animation from
         // onPageSelected() instead.
         boolean updateIndicator =
             !(scrollState == SCROLL_STATE_SETTLING && previousScrollState == SCROLL_STATE_IDLE);
-        tabLayout.setScrollPosition(position, positionOffset, updateText, updateIndicator);
+        tabLayout.setScrollPosition(
+            position, positionOffset, updateSelectedTabView, updateIndicator, false);
       }
     }
 
@@ -236,14 +261,16 @@ public final class TabLayoutMediator {
    */
   private static class ViewPagerOnTabSelectedListener implements TabLayout.OnTabSelectedListener {
     private final ViewPager2 viewPager;
+    private final boolean smoothScroll;
 
-    ViewPagerOnTabSelectedListener(ViewPager2 viewPager) {
+    ViewPagerOnTabSelectedListener(ViewPager2 viewPager, boolean smoothScroll) {
       this.viewPager = viewPager;
+      this.smoothScroll = smoothScroll;
     }
 
     @Override
     public void onTabSelected(@NonNull TabLayout.Tab tab) {
-      viewPager.setCurrentItem(tab.getPosition(), true);
+      viewPager.setCurrentItem(tab.getPosition(), smoothScroll);
     }
 
     @Override

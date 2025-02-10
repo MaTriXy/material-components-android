@@ -18,15 +18,20 @@ package com.google.android.material.datepicker;
 import com.google.android.material.R;
 
 import android.content.Context;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import android.text.format.DateUtils;
+import android.content.res.ColorStateList;
+import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.TextView;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
+import androidx.core.util.Pair;
 import java.util.Calendar;
+import java.util.Collection;
+import java.util.Locale;
 
 /**
  * Represents the days of a month with {@link TextView} instances for each day.
@@ -39,7 +44,15 @@ class MonthAdapter extends BaseAdapter {
   /**
    * The maximum number of weeks possible in any month. 6 for {@link java.util.GregorianCalendar}.
    */
-  static final int MAXIMUM_WEEKS = Calendar.getInstance().getMaximum(Calendar.WEEK_OF_MONTH);
+  static final int MAXIMUM_WEEKS = UtcDates.getUtcCalendar().getMaximum(Calendar.WEEK_OF_MONTH);
+
+  /** The maximum number of cells needed in the month grid view. */
+  private static final int MAXIMUM_GRID_CELLS =
+      UtcDates.getUtcCalendar().getMaximum(Calendar.DAY_OF_MONTH)
+          + UtcDates.getUtcCalendar().getMaximum(Calendar.DAY_OF_WEEK)
+          - 1;
+
+  private static final int NO_DAY_NUMBER = -1;
 
   final Month month;
   /**
@@ -47,13 +60,23 @@ class MonthAdapter extends BaseAdapter {
    */
   final DateSelector<?> dateSelector;
 
+  private Collection<Long> previouslySelectedDates;
+
   CalendarStyle calendarStyle;
   final CalendarConstraints calendarConstraints;
 
-  MonthAdapter(Month month, DateSelector<?> dateSelector, CalendarConstraints calendarConstraints) {
+  @Nullable final DayViewDecorator dayViewDecorator;
+
+  MonthAdapter(
+      Month month,
+      DateSelector<?> dateSelector,
+      CalendarConstraints calendarConstraints,
+      @Nullable DayViewDecorator dayViewDecorator) {
     this.month = month;
     this.dateSelector = dateSelector;
     this.calendarConstraints = calendarConstraints;
+    this.dayViewDecorator = dayViewDecorator;
+    this.previouslySelectedDates = dateSelector.getSelectedDays();
   }
 
   @Override
@@ -65,14 +88,15 @@ class MonthAdapter extends BaseAdapter {
    * Returns a {@link Long} object for the given grid position
    *
    * @param position Index for the item. 0 matches the {@link Calendar#getFirstDayOfWeek()} for the
-   *     first week of the month represented by {@link Month}.
+   *     first week of the month represented by {@link Month} or {@link
+   *     CalendarConstraints#getFirstDayOfWeek()} if set.
    * @return A {@link Long} representing the day at the position or null if the position does not
    *     represent a valid day in the month.
    */
   @Nullable
   @Override
   public Long getItem(int position) {
-    if (position < month.daysFromStartOfWeekToFirstOfMonth() || position > lastPositionInMonth()) {
+    if (position < firstPositionInMonth() || position > lastPositionInMonth()) {
       return null;
     }
     return month.getDay(positionToDay(position));
@@ -84,71 +108,174 @@ class MonthAdapter extends BaseAdapter {
   }
 
   /**
-   * Returns the number of days in a month plus the amount required to off-set for the first day to
-   * the correct position within the week.
+   * Returns the maximum number of item views needed to display a calender month.
    *
-   * <p>{@see MonthAdapter#firstPositionInMonth}.
+   * <p>{@see MonthAdapter#MAXIMUM_GRID_CELLS}.
    *
    * @return The maximum valid position index
    */
   @Override
   public int getCount() {
-    return month.daysInMonth + firstPositionInMonth();
+    return MAXIMUM_GRID_CELLS;
   }
 
   @NonNull
   @Override
   public TextView getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
     initializeStyles(parent.getContext());
-    TextView day = (TextView) convertView;
+    TextView dayTextView = (TextView) convertView;
     if (convertView == null) {
       LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
-      day = (TextView) layoutInflater.inflate(R.layout.mtrl_calendar_day, parent, false);
+      dayTextView = (TextView) layoutInflater.inflate(R.layout.mtrl_calendar_day, parent, false);
     }
     int offsetPosition = position - firstPositionInMonth();
+    int dayNumber = NO_DAY_NUMBER;
     if (offsetPosition < 0 || offsetPosition >= month.daysInMonth) {
-      day.setVisibility(View.GONE);
-      day.setEnabled(false);
+      dayTextView.setVisibility(View.GONE);
+      dayTextView.setEnabled(false);
     } else {
-      int dayNumber = offsetPosition + 1;
+      dayNumber = offsetPosition + 1;
       // The tag and text uniquely identify the view within the MaterialCalendar for testing
-      day.setTag(month);
-      day.setText(String.valueOf(dayNumber));
-      long dayInMillis = month.getDay(dayNumber);
-      if (month.year == Month.today().year) {
-        day.setContentDescription(DateStrings.getMonthDayOfWeekDay(dayInMillis));
-      } else {
-        day.setContentDescription(DateStrings.getYearMonthDayOfWeekDay(dayInMillis));
-      }
-      day.setVisibility(View.VISIBLE);
-      day.setEnabled(true);
+      dayTextView.setTag(month);
+      Locale locale = dayTextView.getResources().getConfiguration().locale;
+      dayTextView.setText(String.format(locale, "%d", dayNumber));
+      dayTextView.setVisibility(View.VISIBLE);
+      dayTextView.setEnabled(true);
     }
 
     Long date = getItem(position);
     if (date == null) {
-      return day;
+      return dayTextView;
     }
-    if (calendarConstraints.getDateValidator().isValid(date)) {
-      day.setEnabled(true);
-      for (long selectedDay : dateSelector.getSelectedDays()) {
-        if (DateLongs.canonicalYearMonthDay(date) == DateLongs.canonicalYearMonthDay(selectedDay)) {
-          calendarStyle.selectedDay.styleItem(day);
-          return day;
-        }
-      }
+    updateSelectedState(dayTextView, date, dayNumber);
+    return dayTextView;
+  }
 
-      if (DateUtils.isToday(date)) {
-        calendarStyle.todayDay.styleItem(day);
-        return day;
+  public void updateSelectedStates(MaterialCalendarGridView monthGrid) {
+    // Update previously selected dates.
+    for (Long date : previouslySelectedDates) {
+      updateSelectedStateForDate(monthGrid, date);
+    }
+
+    // Update currently selected dates.
+    if (dateSelector != null) {
+      for (Long date : dateSelector.getSelectedDays()) {
+        updateSelectedStateForDate(monthGrid, date);
+      }
+      // Update the list of previously selected dates.
+      previouslySelectedDates = dateSelector.getSelectedDays();
+    }
+  }
+
+  private void updateSelectedStateForDate(MaterialCalendarGridView monthGrid, long date) {
+    if (Month.create(date).equals(month)) {
+      // Validate that the day is in the right month.
+      int day = month.getDayOfMonth(date);
+      updateSelectedState(
+          (TextView)
+              monthGrid.getChildAt(
+                  monthGrid.getAdapter().dayToPosition(day) - monthGrid.getFirstVisiblePosition()),
+          date,
+          day);
+    }
+  }
+
+  private void updateSelectedState(@Nullable TextView dayTextView, long date, int dayNumber) {
+    if (dayTextView == null) {
+      return;
+    }
+
+    Context context = dayTextView.getContext();
+    String contentDescription = getDayContentDescription(context, date);
+    dayTextView.setContentDescription(contentDescription);
+
+    final CalendarItemStyle style;
+    boolean valid = calendarConstraints.getDateValidator().isValid(date);
+    boolean selected = false;
+    if (valid) {
+      dayTextView.setEnabled(true);
+      selected = isSelected(date);
+      dayTextView.setSelected(selected);
+      if (selected) {
+        style = calendarStyle.selectedDay;
+      } else if (isToday(date)) {
+        style = calendarStyle.todayDay;
       } else {
-        calendarStyle.day.styleItem(day);
-        return day;
+        style = calendarStyle.day;
       }
     } else {
-      day.setEnabled(false);
-      calendarStyle.invalidDay.styleItem(day);
-      return day;
+      dayTextView.setEnabled(false);
+      style = calendarStyle.invalidDay;
     }
+
+    if (dayViewDecorator != null && dayNumber != NO_DAY_NUMBER) {
+      int year = month.year;
+      int month = this.month.month;
+
+      ColorStateList backgroundColorOverride =
+          dayViewDecorator.getBackgroundColor(context, year, month, dayNumber, valid, selected);
+      ColorStateList textColorOverride =
+          dayViewDecorator.getTextColor(context, year, month, dayNumber, valid, selected);
+      style.styleItem(dayTextView, backgroundColorOverride, textColorOverride);
+
+      Drawable drawableLeft =
+          dayViewDecorator.getCompoundDrawableLeft(
+              context, year, month, dayNumber, valid, selected);
+      Drawable drawableTop =
+          dayViewDecorator.getCompoundDrawableTop(context, year, month, dayNumber, valid, selected);
+      Drawable drawableRight =
+          dayViewDecorator.getCompoundDrawableRight(
+              context, year, month, dayNumber, valid, selected);
+      Drawable drawableBottom =
+          dayViewDecorator.getCompoundDrawableBottom(
+              context, year, month, dayNumber, valid, selected);
+      dayTextView.setCompoundDrawables(drawableLeft, drawableTop, drawableRight, drawableBottom);
+
+      CharSequence decoratorContentDescription =
+          dayViewDecorator.getContentDescription(
+              context, year, month, dayNumber, valid, selected, contentDescription);
+      dayTextView.setContentDescription(decoratorContentDescription);
+    } else {
+      style.styleItem(dayTextView);
+    }
+  }
+
+  private String getDayContentDescription(Context context, long date) {
+    return DateStrings.getDayContentDescription(
+        context, date, isToday(date), isStartOfRange(date), isEndOfRange(date));
+  }
+
+  private boolean isToday(long date) {
+    return UtcDates.getTodayCalendar().getTimeInMillis() == date;
+  }
+
+  @VisibleForTesting
+  boolean isStartOfRange(long date) {
+    for (Pair<Long, Long> range : dateSelector.getSelectedRanges()) {
+      if (range.first != null && range.first == date) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @VisibleForTesting
+  boolean isEndOfRange(long date) {
+    for (Pair<Long, Long> range : dateSelector.getSelectedRanges()) {
+      if (range.second != null && range.second == date) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean isSelected(long date) {
+    for (long selectedDay : dateSelector.getSelectedDays()) {
+      if (UtcDates.canonicalYearMonthDay(date) == UtcDates.canonicalYearMonthDay(selectedDay)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void initializeStyles(Context context) {
@@ -165,7 +292,7 @@ class MonthAdapter extends BaseAdapter {
    * be greater than 0.
    */
   int firstPositionInMonth() {
-    return month.daysFromStartOfWeekToFirstOfMonth();
+    return month.daysFromStartOfWeekToFirstOfMonth(calendarConstraints.getFirstDayOfWeek());
   }
 
   /**
@@ -176,7 +303,7 @@ class MonthAdapter extends BaseAdapter {
    * not match the number of days in the month.
    */
   int lastPositionInMonth() {
-    return month.daysFromStartOfWeekToFirstOfMonth() + month.daysInMonth - 1;
+    return firstPositionInMonth() + month.daysInMonth - 1;
   }
 
   /**
@@ -187,7 +314,7 @@ class MonthAdapter extends BaseAdapter {
    *     less than {@link MonthAdapter#firstPositionInMonth()}.
    */
   int positionToDay(int position) {
-    return position - month.daysFromStartOfWeekToFirstOfMonth() + 1;
+    return position - firstPositionInMonth() + 1;
   }
 
   /** Returns the adapter index representing the provided day. */

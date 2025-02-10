@@ -16,20 +16,29 @@
 
 package com.google.android.material.ripple;
 
-import android.annotation.TargetApi;
+import com.google.android.material.R;
+
+import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.InsetDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
+import android.util.Log;
+import android.util.StateSet;
 import androidx.annotation.ColorInt;
+import androidx.annotation.DoNotInline;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.Px;
 import androidx.annotation.RestrictTo;
 import androidx.annotation.RestrictTo.Scope;
 import androidx.annotation.VisibleForTesting;
 import androidx.core.graphics.ColorUtils;
-import android.util.Log;
-import android.util.StateSet;
+import com.google.android.material.color.MaterialColors;
 
 /**
  * Utils class for ripples.
@@ -39,32 +48,21 @@ import android.util.StateSet;
 @RestrictTo(Scope.LIBRARY_GROUP)
 public class RippleUtils {
 
-  public static final boolean USE_FRAMEWORK_RIPPLE = VERSION.SDK_INT >= VERSION_CODES.LOLLIPOP;
+  /**
+   * @deprecated No longer used as framework ripple is available on all supported devices.
+   */
+  @Deprecated
+  public static final boolean USE_FRAMEWORK_RIPPLE = true;
 
   private static final int[] PRESSED_STATE_SET = {
     android.R.attr.state_pressed,
   };
-  private static final int[] HOVERED_FOCUSED_STATE_SET = {
-    android.R.attr.state_hovered, android.R.attr.state_focused,
-  };
   private static final int[] FOCUSED_STATE_SET = {
     android.R.attr.state_focused,
-  };
-  private static final int[] HOVERED_STATE_SET = {
-    android.R.attr.state_hovered,
   };
 
   private static final int[] SELECTED_PRESSED_STATE_SET = {
     android.R.attr.state_selected, android.R.attr.state_pressed,
-  };
-  private static final int[] SELECTED_HOVERED_FOCUSED_STATE_SET = {
-    android.R.attr.state_selected, android.R.attr.state_hovered, android.R.attr.state_focused,
-  };
-  private static final int[] SELECTED_FOCUSED_STATE_SET = {
-    android.R.attr.state_selected, android.R.attr.state_focused,
-  };
-  private static final int[] SELECTED_HOVERED_STATE_SET = {
-    android.R.attr.state_selected, android.R.attr.state_hovered,
   };
   private static final int[] SELECTED_STATE_SET = {
     android.R.attr.state_selected,
@@ -109,80 +107,32 @@ public class RippleUtils {
    */
   @NonNull
   public static ColorStateList convertToRippleDrawableColor(@Nullable ColorStateList rippleColor) {
-    if (USE_FRAMEWORK_RIPPLE) {
-      int size = 2;
+    int size = 3;
 
-      final int[][] states = new int[size][];
-      final int[] colors = new int[size];
-      int i = 0;
+    final int[][] states = new int[size][];
+    final int[] colors = new int[size];
+    int i = 0;
 
-      // Ideally we would define a different composite color for each state, but that causes the
-      // ripple animation to abort prematurely.
-      // So we only allow two base states: selected, and non-selected. For each base state, we only
-      // base the ripple composite on its pressed state.
+    // Ideally we would define a different composite color for each state, but that causes the
+    // ripple animation to abort prematurely.
+    // So we only allow two base states: selected, and non-selected. For each base state, we only
+    // base the ripple composite on its pressed state.
 
-      // Selected base state.
-      states[i] = SELECTED_STATE_SET;
-      colors[i] = getColorForState(rippleColor, SELECTED_PRESSED_STATE_SET);
-      i++;
+    // Selected base state.
+    states[i] = SELECTED_STATE_SET;
+    colors[i] = getColorForState(rippleColor, SELECTED_PRESSED_STATE_SET);
+    i++;
 
-      // Non-selected base state.
-      states[i] = StateSet.NOTHING;
-      colors[i] = getColorForState(rippleColor, PRESSED_STATE_SET);
-      i++;
+    states[i] = FOCUSED_STATE_SET;
+    colors[i] = getColorForState(rippleColor, FOCUSED_STATE_SET);
+    i++;
 
-      return new ColorStateList(states, colors);
-    } else {
-      int size = 10;
+    // Non-selected base state.
+    states[i] = StateSet.NOTHING;
+    colors[i] = getColorForState(rippleColor, PRESSED_STATE_SET);
+    i++;
 
-      final int[][] states = new int[size][];
-      final int[] colors = new int[size];
-      int i = 0;
-
-      states[i] = SELECTED_PRESSED_STATE_SET;
-      colors[i] = getColorForState(rippleColor, SELECTED_PRESSED_STATE_SET);
-      i++;
-
-      states[i] = SELECTED_HOVERED_FOCUSED_STATE_SET;
-      colors[i] = getColorForState(rippleColor, SELECTED_HOVERED_FOCUSED_STATE_SET);
-      i++;
-
-      states[i] = SELECTED_FOCUSED_STATE_SET;
-      colors[i] = getColorForState(rippleColor, SELECTED_FOCUSED_STATE_SET);
-      i++;
-
-      states[i] = SELECTED_HOVERED_STATE_SET;
-      colors[i] = getColorForState(rippleColor, SELECTED_HOVERED_STATE_SET);
-      i++;
-
-      // Checked state.
-      states[i] = SELECTED_STATE_SET;
-      colors[i] = Color.TRANSPARENT;
-      i++;
-
-      states[i] = PRESSED_STATE_SET;
-      colors[i] = getColorForState(rippleColor, PRESSED_STATE_SET);
-      i++;
-
-      states[i] = HOVERED_FOCUSED_STATE_SET;
-      colors[i] = getColorForState(rippleColor, HOVERED_FOCUSED_STATE_SET);
-      i++;
-
-      states[i] = FOCUSED_STATE_SET;
-      colors[i] = getColorForState(rippleColor, FOCUSED_STATE_SET);
-      i++;
-
-      states[i] = HOVERED_STATE_SET;
-      colors[i] = getColorForState(rippleColor, HOVERED_STATE_SET);
-      i++;
-
-      // Default state.
-      states[i] = StateSet.NOTHING;
-      colors[i] = Color.TRANSPARENT;
-      i++;
-
-      return new ColorStateList(states, colors);
-    }
+    return new ColorStateList(states, colors);
   }
 
   /**
@@ -235,6 +185,17 @@ public class RippleUtils {
     return enabled && interactedState;
   }
 
+  /**
+   * On API 21 and 22, the ripple implementation has a bug that it will be shown behind the
+   * container view under certain conditions. Adding a mask when creating {@link RippleDrawable}
+   * solves this. Besides that since {@link RippleDrawable} doesn't support radius setting on
+   * Lollipop, adding masks will make the circle ripple size fit into the view boundary.
+   */
+  @NonNull
+  public static Drawable createOvalRippleLollipop(@NonNull Context context, @Px int padding) {
+    return RippleUtilsLollipop.createOvalRipple(context, padding);
+  }
+
   @ColorInt
   private static int getColorForState(@Nullable ColorStateList rippleColor, int[] state) {
     int color;
@@ -243,17 +204,34 @@ public class RippleUtils {
     } else {
       color = Color.TRANSPARENT;
     }
-    return USE_FRAMEWORK_RIPPLE ? doubleAlpha(color) : color;
+    return doubleAlpha(color);
   }
 
   /**
-   * On API 21+, the framework composites a ripple color onto the display at about 50% opacity.
+   * The framework composites a ripple color onto the display at about 50% opacity.
    * Since we are providing precise ripple colors, cancel that out by doubling the opacity here.
    */
   @ColorInt
-  @TargetApi(VERSION_CODES.LOLLIPOP)
   private static int doubleAlpha(@ColorInt int color) {
     int alpha = Math.min(2 * Color.alpha(color), 255);
     return ColorUtils.setAlphaComponent(color, alpha);
+  }
+
+  private static class RippleUtilsLollipop {
+
+    // Note: we need to return Drawable here to maintain API compatibility
+    @DoNotInline
+    private static Drawable createOvalRipple(@NonNull Context context, @Px int padding) {
+      GradientDrawable maskDrawable = new GradientDrawable();
+      maskDrawable.setColor(Color.WHITE);
+      maskDrawable.setShape(GradientDrawable.OVAL);
+      InsetDrawable maskWithPaddings =
+          new InsetDrawable(maskDrawable, padding, padding, padding, padding);
+      return new RippleDrawable(
+          MaterialColors.getColorStateList(
+              context, R.attr.colorControlHighlight, ColorStateList.valueOf(Color.TRANSPARENT)),
+          null,
+          maskWithPaddings);
+    }
   }
 }

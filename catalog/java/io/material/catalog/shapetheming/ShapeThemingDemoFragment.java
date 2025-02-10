@@ -18,19 +18,18 @@ package io.material.catalog.shapetheming;
 
 import io.material.catalog.R;
 
-import android.os.Build;
 import android.os.Bundle;
-import androidx.annotation.Nullable;
-import androidx.annotation.StyleRes;
-import com.google.android.material.button.MaterialButton;
-import androidx.appcompat.view.ContextThemeWrapper;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import androidx.annotation.Nullable;
+import androidx.annotation.StyleRes;
+import androidx.appcompat.view.ContextThemeWrapper;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import io.material.catalog.feature.DemoFragment;
 
@@ -47,25 +46,22 @@ public abstract class ShapeThemingDemoFragment extends DemoFragment {
     this.wrappedContext = new ContextThemeWrapper(getContext(), getShapeTheme());
     LayoutInflater layoutInflaterWithThemedContext =
         layoutInflater.cloneInContext(wrappedContext);
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-      Window window = getActivity().getWindow();
-      statusBarColor = window.getStatusBarColor();
-      final TypedValue value = new TypedValue();
-      wrappedContext
-          .getTheme()
-          .resolveAttribute(R.attr.colorPrimaryDark, value, true);
-      window.setStatusBarColor(value.data);
-    }
+
+    Window window = getActivity().getWindow();
+    statusBarColor = window.getStatusBarColor();
+    final TypedValue value = new TypedValue();
+    wrappedContext
+        .getTheme()
+        .resolveAttribute(R.attr.colorPrimaryDark, value, true);
+    window.setStatusBarColor(value.data);
 
     return super.onCreateView(layoutInflaterWithThemedContext, viewGroup, bundle);
   }
 
   @Override
   public void onDestroyView() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-      Window window = getActivity().getWindow();
-      window.setStatusBarColor(statusBarColor);
-    }
+    Window window = getActivity().getWindow();
+    window.setStatusBarColor(statusBarColor);
     super.onDestroyView();
   }
 

@@ -18,15 +18,18 @@ package com.google.android.material.appbar;
 
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
+import static com.google.android.material.appbar.AppBarLayout.LayoutParams.SCROLL_FLAG_NO_SCROLL;
 import static org.junit.Assert.assertEquals;
 
 import android.graphics.Rect;
-import androidx.core.view.ViewCompat;
 import android.view.View;
 import android.view.ViewGroup;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.view.ViewCompat;
 import androidx.test.InstrumentationRegistry;
 import androidx.test.filters.MediumTest;
 import androidx.test.runner.AndroidJUnit4;
+import com.google.android.material.shape.MaterialShapeDrawable;
 import com.google.android.material.testapp.R;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -244,5 +247,168 @@ public class AppBarWithToolbarTest extends AppBarLayoutBaseTest {
     // Assert that the appbar has collapsed vertically
     assertEquals(originalScrollingXY[0], newScrollingXY[0]);
     assertEquals(originalScrollingXY[1] - mAppBar.getHeight(), newScrollingXY[1]);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testUpdateAccessibilityActionsWithEnterAlwaysFlag() throws Throwable {
+    configureContent(
+        R.layout.design_appbar_toolbar_scroll_fitsystemwindows,
+        R.string.design_appbar_toolbar_scroll_tabs_pin);
+
+    final int[] appbarOnScreenXY = new int[2];
+    mAppBar.getLocationOnScreen(appbarOnScreenXY);
+
+    final int originalAppbarBottom = appbarOnScreenXY[1] + mAppBar.getHeight();
+    final int centerX = appbarOnScreenXY[0] + mAppBar.getWidth() / 2;
+
+    final int appbarHeight = mAppBar.getHeight();
+    final int longSwipeAmount = 3 * appbarHeight / 2;
+
+    // Call onLayout so the accessibility actions are initially updated.
+    activityTestRule.runOnUiThread(
+        () -> {
+          final CoordinatorLayout.Behavior<AppBarLayout> behavior =
+              ((CoordinatorLayout.LayoutParams) mAppBar.getLayoutParams()).getBehavior();
+          behavior.onLayoutChild(mCoordinatorLayout, mAppBar, mAppBar.getLayoutDirection());
+        });
+
+    // Very top of screen, can scroll forward to collapse but can't scroll backward.
+    assertAccessibilityHasScrollForwardAction(true);
+    assertAccessibilityHasScrollBackwardAction(false);
+    assertAccessibilityScrollable(true);
+
+    // Perform a swipe-up gesture across the horizontal center of the screen.
+    performVerticalSwipeUpGesture(
+        R.id.coordinator_layout,
+        centerX,
+        originalAppbarBottom + 3 * longSwipeAmount / 2,
+        longSwipeAmount);
+
+    // AppBar has been collapsed fully so we can't scroll forward. Can scroll backward since
+    // the bar will always be entered/expanded on scroll.
+    assertAccessibilityHasScrollForwardAction(false);
+    assertAccessibilityHasScrollBackwardAction(true);
+    assertAccessibilityScrollable(true);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testUpdateAccessibilityActionWithViewsRemoved() throws Throwable {
+    configureContent(
+        R.layout.design_appbar_toolbar_scroll_fitsystemwindows,
+        R.string.design_appbar_toolbar_scroll_tabs_pin);
+
+    // Call onLayout so the accessibility actions are initially updated.
+    activityTestRule.runOnUiThread(
+        () -> {
+          final CoordinatorLayout.Behavior<AppBarLayout> behavior =
+              ((CoordinatorLayout.LayoutParams) mAppBar.getLayoutParams()).getBehavior();
+          behavior.onLayoutChild(mCoordinatorLayout, mAppBar, mAppBar.getLayoutDirection());
+        });
+
+    assertAccessibilityHasScrollForwardAction(true);
+    assertAccessibilityHasScrollBackwardAction(false);
+    assertAccessibilityScrollable(true);
+
+    activityTestRule.runOnUiThread(
+        () -> {
+          mCoordinatorLayout.removeAllViews();
+        });
+
+    assertAccessibilityHasScrollForwardAction(false);
+    assertAccessibilityHasScrollBackwardAction(false);
+    assertAccessibilityScrollable(false);
+  }
+
+  @Test
+  public void testUpdateAccessibilityActionsWithSetScrollFlags() throws Throwable {
+    configureContent(
+        R.layout.design_appbar_toolbar_scroll_fitsystemwindows,
+        R.string.design_appbar_toolbar_scroll_tabs_pin);
+
+    final int[] appbarOnScreenXY = new int[2];
+    mAppBar.getLocationOnScreen(appbarOnScreenXY);
+    final int originalAppbarBottom = appbarOnScreenXY[1] + mAppBar.getHeight();
+    final int centerX = appbarOnScreenXY[0] + mAppBar.getWidth() / 2;
+    final int appbarHeight = mAppBar.getHeight();
+    final int longSwipeAmount = 3 * appbarHeight / 2;
+
+    AppBarLayout.LayoutParams lp = (AppBarLayout.LayoutParams) mToolbar.getLayoutParams();
+
+    // Disable scrolling and call onLayout to update the a11y actions.
+    lp.setScrollFlags(SCROLL_FLAG_NO_SCROLL);
+    activityTestRule.runOnUiThread(
+        () -> {
+          mToolbar.setLayoutParams(lp);
+          final CoordinatorLayout.Behavior<AppBarLayout> behavior =
+              ((CoordinatorLayout.LayoutParams) mAppBar.getLayoutParams()).getBehavior();
+          behavior.onLayoutChild(mCoordinatorLayout, mAppBar, mAppBar.getLayoutDirection());
+        });
+
+    assertAccessibilityHasScrollForwardAction(false);
+    assertAccessibilityHasScrollBackwardAction(false);
+
+    // Add the SCROLL_FLAG_SCROLL flag and update the a11y actions.
+    lp.setScrollFlags(AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL);
+    activityTestRule.runOnUiThread(
+        () -> {
+          mToolbar.setLayoutParams(lp);
+          final CoordinatorLayout.Behavior<AppBarLayout> behavior =
+              ((CoordinatorLayout.LayoutParams) mAppBar.getLayoutParams()).getBehavior();
+          behavior.onLayoutChild(mCoordinatorLayout, mAppBar, mAppBar.getLayoutDirection());
+        });
+    // Can scroll forward to collapse, and cannot expand because it's already expanded.
+    assertAccessibilityHasScrollForwardAction(true);
+    assertAccessibilityHasScrollBackwardAction(false);
+    assertAccessibilityScrollable(true);
+
+    // Perform a swipe-up gesture across the horizontal center of the screen. The toolbar should be
+    // collapsed.
+    performVerticalSwipeUpGesture(
+        R.id.coordinator_layout,
+        centerX,
+        originalAppbarBottom + 3 * longSwipeAmount / 2,
+        longSwipeAmount);
+
+    // Content is already collapsed, so it can't scroll forward. The pre-scroll range will be 0
+    // for SCROLL_FLAG_SCROLL, so it can't scroll backward.
+    assertAccessibilityHasScrollForwardAction(false);
+    assertAccessibilityHasScrollBackwardAction(false);
+    assertAccessibilityScrollable(false);
+  }
+
+  /** Tests the lift on scroll color of the app bar layout. */
+  @Test
+  public void testLiftOnScrollColor() throws Throwable {
+    configureContent(
+        R.layout.design_appbar_toolbar_liftonscroll_color,
+        R.string.design_appbar_toolbar_scroll_tabs_pin);
+
+    final int[] appbarOnScreenXY = new int[2];
+    mAppBar.getLocationOnScreen(appbarOnScreenXY);
+
+    final int originalAppbarBottom = appbarOnScreenXY[1] + mAppBar.getHeight();
+    final int centerX = appbarOnScreenXY[0] + mAppBar.getWidth() / 2;
+
+    final int appbarHeight = mAppBar.getHeight();
+    final int longSwipeAmount = 3 * appbarHeight / 2;
+
+    MaterialShapeDrawable backgroundDrawable = mAppBar.getMaterialShapeBackground();
+
+    assertEquals(
+        mAppBar.getResources().getColor(R.color.material_blue_grey_900),
+        backgroundDrawable.getResolvedTintColor());
+
+    // Perform a swipe-up gesture across the horizontal center of the screen.
+    performVerticalSwipeUpGesture(
+        R.id.coordinator_layout,
+        centerX,
+        originalAppbarBottom + 3 * longSwipeAmount / 2,
+        longSwipeAmount);
+
+    assertEquals(
+        mAppBar.getResources().getColor(R.color.material_blue_grey_950),
+        backgroundDrawable.getResolvedTintColor());
   }
 }

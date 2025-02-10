@@ -25,24 +25,28 @@ import static com.google.android.material.testutils.SwipeUtils.swipeDown;
 import static com.google.android.material.testutils.SwipeUtils.swipeUp;
 import static com.google.android.material.testutils.TestUtilsActions.setText;
 import static com.google.android.material.testutils.TestUtilsActions.setTitle;
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 
 import android.graphics.Color;
 import android.os.Build;
+import android.os.Build.VERSION;
 import android.os.SystemClock;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import android.text.TextUtils;
+import android.view.View;
+import android.widget.TextView;
 import androidx.annotation.CallSuper;
 import androidx.annotation.IdRes;
 import androidx.annotation.IntRange;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.StringRes;
 import androidx.core.view.ViewCompat;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-import android.text.TextUtils;
-import android.widget.TextView;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import com.google.android.material.internal.BaseDynamicCoordinatorLayoutTest;
-import com.google.android.material.resources.TextAppearanceConfig;
 import com.google.android.material.testapp.R;
+import com.google.android.material.testutils.AccessibilityUtils;
 import com.google.android.material.testutils.Shakespeare;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -73,7 +77,6 @@ public abstract class AppBarLayoutBaseTest extends BaseDynamicCoordinatorLayoutT
   @CallSuper
   protected void configureContent(@LayoutRes final int layoutResId, @StringRes final int titleResId)
       throws Throwable {
-    TextAppearanceConfig.setShouldLoadFontSynchronously(true);
     onView(withId(R.id.coordinator_stub)).perform(inflateViewStub(layoutResId));
 
     mAppBar = mCoordinatorLayout.findViewById(R.id.app_bar);
@@ -113,17 +116,47 @@ public abstract class AppBarLayoutBaseTest extends BaseDynamicCoordinatorLayoutT
     onView(withId(R.id.collapsing_app_bar)).check(matches(withScrimAlpha(alpha)));
   }
 
-  static Matcher withScrimAlpha(final int alpha) {
-    return new TypeSafeMatcher<CollapsingToolbarLayout>() {
+  static Matcher<View> withScrimAlpha(final int alpha) {
+    return new TypeSafeMatcher<View>(CollapsingToolbarLayout.class) {
       @Override
       public void describeTo(Description description) {
         description.appendText("CollapsingToolbarLayout has content scrim with alpha: " + alpha);
       }
 
       @Override
-      protected boolean matchesSafely(CollapsingToolbarLayout view) {
-        return alpha == view.getScrimAlpha();
+      protected boolean matchesSafely(View view) {
+        return alpha == ((CollapsingToolbarLayout) view).getScrimAlpha();
       }
     };
+  }
+
+  protected void assertAccessibilityHasScrollForwardAction(boolean hasScrollForward) {
+    if (VERSION.SDK_INT >= 21) {
+      AccessibilityNodeInfoCompat info = AccessibilityNodeInfoCompat.obtain();
+      ViewCompat.onInitializeAccessibilityNodeInfo(mCoordinatorLayout, info);
+      assertThat(
+              AccessibilityUtils.hasAction(
+                  info,
+                  AccessibilityNodeInfoCompat.AccessibilityActionCompat.ACTION_SCROLL_FORWARD))
+          .isEqualTo(hasScrollForward);
+    }
+  }
+
+  protected void assertAccessibilityHasScrollBackwardAction(boolean hasScrollBackward) {
+    if (VERSION.SDK_INT >= 21) {
+      AccessibilityNodeInfoCompat info = AccessibilityNodeInfoCompat.obtain();
+      ViewCompat.onInitializeAccessibilityNodeInfo(mCoordinatorLayout, info);
+      assertThat(
+              AccessibilityUtils.hasAction(
+                  info,
+                  AccessibilityNodeInfoCompat.AccessibilityActionCompat.ACTION_SCROLL_BACKWARD))
+          .isEqualTo(hasScrollBackward);
+    }
+  }
+
+  protected void assertAccessibilityScrollable(boolean isScrollable) {
+    AccessibilityNodeInfoCompat info = AccessibilityNodeInfoCompat.obtain();
+    ViewCompat.onInitializeAccessibilityNodeInfo(mCoordinatorLayout, info);
+    assertThat(info.isScrollable()).isEqualTo(isScrollable);
   }
 }

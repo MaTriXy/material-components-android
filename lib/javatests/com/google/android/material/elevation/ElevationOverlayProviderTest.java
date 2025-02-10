@@ -16,37 +16,60 @@
 
 package com.google.android.material.elevation;
 
-import com.google.android.material.R;
+import com.google.android.material.test.R;
 
 import static com.google.common.truth.Truth.assertThat;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.os.Build.VERSION_CODES;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.FrameLayout;
+import androidx.core.graphics.ColorUtils;
+import androidx.core.view.ViewCompat;
 import androidx.test.core.app.ApplicationProvider;
+import com.google.android.material.color.MaterialColors;
+import com.google.android.material.resources.MaterialAttributes;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.annotation.Config;
 import org.robolectric.annotation.internal.DoNotInstrument;
 
 /** Tests for {@link ElevationOverlayProvider}. */
 @RunWith(RobolectricTestRunner.class)
+@Config(sdk = VERSION_CODES.P)
 @DoNotInstrument
 public class ElevationOverlayProviderTest {
 
   private static final float ELEVATION_ZERO = 0;
   private static final float ELEVATION_NON_ZERO = 4;
+  private static final float ELEVATION_OVERLAY_VIEW_PARENT = 8;
+  private static final int ALPHA_TRANSLUCENT = 75;
+  private static final int ALPHA_TRANSPARENT = 0;
   private static final String EXPECTED_ELEVATION_NON_ZERO_COLOR_WITH_OVERLAY = "ff181818";
+  private static final String EXPECTED_ELEVATION_NON_ZERO_COLOR_WITH_OVERLAY_AND_VIEW = "ff232323";
   private static final float EXPECTED_ELEVATION_NON_ZERO_ALPHA_FRACTION = 0.09f;
   private static final int EXPECTED_ELEVATION_NON_ZERO_ALPHA = 24;
 
   private final Context context = ApplicationProvider.getApplicationContext();
 
   private ElevationOverlayProvider provider;
+  private View overlayView;
 
   @Before
   public void initContextThemeWithElevationOverlay() {
     context.setTheme(R.style.Theme_MaterialComponents_NoActionBar);
+  }
+
+  @Before
+  public void initOverlayView() {
+    overlayView = new View(context);
+    ViewGroup overlayViewParent = new FrameLayout(context);
+    ViewCompat.setElevation(overlayViewParent, ELEVATION_OVERLAY_VIEW_PARENT);
+    overlayViewParent.addView(overlayView);
   }
 
   @Test
@@ -57,6 +80,44 @@ public class ElevationOverlayProviderTest {
     int backgroundColor = provider.getThemeSurfaceColor();
     assertThat(provider.compositeOverlayIfNeeded(backgroundColor, ELEVATION_NON_ZERO))
         .isEqualTo(provider.compositeOverlay(backgroundColor, ELEVATION_NON_ZERO));
+  }
+
+  @Test
+  public void
+      givenOverlayEnabledAndTranslucentSurfaceColorAndElevation_whenCompositeOverlayIfNeeded_returnsColorWithOverlay() {
+    provider = new ElevationOverlayProvider(context);
+
+    int backgroundColor =
+        ColorUtils.setAlphaComponent(provider.getThemeSurfaceColor(), ALPHA_TRANSLUCENT);
+    int actualOverlayColor = provider.compositeOverlayIfNeeded(backgroundColor, ELEVATION_NON_ZERO);
+    assertThat(actualOverlayColor)
+        .isEqualTo(provider.compositeOverlay(backgroundColor, ELEVATION_NON_ZERO));
+    assertThat(Color.alpha(actualOverlayColor)).isEqualTo(ALPHA_TRANSLUCENT);
+  }
+
+  @Test
+  public void
+      givenOverlayEnabledAndTransparentSurfaceColorAndElevation_whenCompositeOverlayIfNeeded_returnsColorWithOverlay() {
+    provider = new ElevationOverlayProvider(context);
+
+    int backgroundColor =
+        ColorUtils.setAlphaComponent(provider.getThemeSurfaceColor(), ALPHA_TRANSPARENT);
+    int actualOverlayColor = provider.compositeOverlayIfNeeded(backgroundColor, ELEVATION_NON_ZERO);
+    assertThat(actualOverlayColor)
+        .isEqualTo(provider.compositeOverlay(backgroundColor, ELEVATION_NON_ZERO));
+    assertThat(Color.alpha(actualOverlayColor)).isEqualTo(ALPHA_TRANSPARENT);
+  }
+
+  @Test
+  public void
+      givenOverlayEnabledAndSurfaceColorAndElevationAndOverlayView_whenCompositeOverlayIfNeeded_returnsColorWithOverlay() {
+    provider = new ElevationOverlayProvider(context);
+
+    int backgroundColor = provider.getThemeSurfaceColor();
+    assertThat(provider.compositeOverlayIfNeeded(backgroundColor, ELEVATION_NON_ZERO, overlayView))
+        .isEqualTo(
+            provider.compositeOverlay(
+                backgroundColor, ELEVATION_NON_ZERO + ELEVATION_OVERLAY_VIEW_PARENT));
   }
 
   @Test
@@ -96,6 +157,17 @@ public class ElevationOverlayProviderTest {
 
     assertThat(Integer.toHexString(provider.compositeOverlay(Color.BLACK, ELEVATION_NON_ZERO)))
         .isEqualTo(EXPECTED_ELEVATION_NON_ZERO_COLOR_WITH_OVERLAY);
+  }
+
+  @Test
+  public void
+      givenBackgroundColorAndElevationAndOverlayView_whenCompositeOverlay_returnsColorWithOverlay() {
+    provider = new ElevationOverlayProvider(context);
+
+    assertThat(
+            Integer.toHexString(
+                provider.compositeOverlay(Color.BLACK, ELEVATION_NON_ZERO, overlayView)))
+        .isEqualTo(EXPECTED_ELEVATION_NON_ZERO_COLOR_WITH_OVERLAY_AND_VIEW);
   }
 
   @Test
@@ -155,5 +227,18 @@ public class ElevationOverlayProviderTest {
     provider = new ElevationOverlayProvider(context);
 
     assertThat(provider.calculateOverlayAlpha(Float.MAX_VALUE)).isEqualTo(255);
+  }
+
+  @Test
+  public void givenManuallyConstructedObject_whenGetThemeSurfaceColor_returnsExplicitValue() {
+    provider =
+        new ElevationOverlayProvider(
+            MaterialAttributes.resolveBoolean(context, R.attr.elevationOverlayEnabled, false),
+            MaterialColors.getColor(context, R.attr.elevationOverlayColor, Color.TRANSPARENT),
+            MaterialColors.getColor(context, R.attr.elevationOverlayAccentColor, Color.TRANSPARENT),
+            /* colorSurface= */ Color.RED,
+            context.getResources().getDisplayMetrics().density);
+
+    assertThat(provider.getThemeSurfaceColor()).isEqualTo(Color.RED);
   }
 }

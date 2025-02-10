@@ -18,56 +18,72 @@ package io.material.catalog.datepicker;
 import io.material.catalog.R;
 
 import android.content.Context;
+import android.graphics.Typeface;
 import android.os.Bundle;
-import androidx.annotation.AttrRes;
-import androidx.annotation.Nullable;
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.snackbar.Snackbar;
-import androidx.core.util.Pair;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.RadioGroup;
+import androidx.annotation.AttrRes;
+import androidx.annotation.Nullable;
+import androidx.core.util.Pair;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.datepicker.CalendarConstraints;
+import com.google.android.material.datepicker.CompositeDateValidator;
+import com.google.android.material.datepicker.DateValidatorPointBackward;
 import com.google.android.material.datepicker.DateValidatorPointForward;
 import com.google.android.material.datepicker.MaterialDatePicker;
-import com.google.android.material.datepicker.Month;
+import com.google.android.material.snackbar.Snackbar;
 import io.material.catalog.feature.DemoFragment;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
+import java.util.TimeZone;
 
 /** A fragment that displays the main Picker demos for the Catalog app. */
 public class DatePickerMainDemoFragment extends DemoFragment {
 
   private Snackbar snackbar;
-  private static final long TODAY;
-  private static final long NEXT_MONTH;
-  private static final Month JAN_THIS_YEAR;
-  private static final Month DEC_THIS_YEAR;
-  private static final Month ONE_YEAR_FORWARD;
-  private static final Pair<Long, Long> TODAY_PAIR;
-  private static final Pair<Long, Long> NEXT_MONTH_PAIR;
+  private long today;
+  private long nextMonth;
+  private long janThisYear;
+  private long decThisYear;
+  private long oneYearForward;
+  private Pair<Long, Long> todayPair;
+  private Pair<Long, Long> nextMonthPair;
 
-  static {
-    Calendar calToday = Calendar.getInstance();
-    TODAY = calToday.getTimeInMillis();
-    Calendar calNextMonth = Calendar.getInstance();
-    calNextMonth.roll(Calendar.MONTH, 1);
-    NEXT_MONTH = calNextMonth.getTimeInMillis();
+  private static Calendar getClearedUtc() {
+    Calendar utc = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+    utc.clear();
+    return utc;
+  }
 
-    Calendar calJanThisYear = Calendar.getInstance();
-    calJanThisYear.set(Calendar.MONTH, Calendar.JANUARY);
-    JAN_THIS_YEAR = Month.create(calJanThisYear.getTimeInMillis());
-    Calendar calDecThisYear = Calendar.getInstance();
-    calDecThisYear.set(Calendar.MONTH, Calendar.DECEMBER);
-    DEC_THIS_YEAR = Month.create(calDecThisYear.getTimeInMillis());
-    Calendar calOneYearForward = Calendar.getInstance();
-    calOneYearForward.roll(Calendar.YEAR, 1);
-    ONE_YEAR_FORWARD = Month.create(calOneYearForward.getTimeInMillis());
+  private void initSettings() {
+    today = MaterialDatePicker.todayInUtcMilliseconds();
+    Calendar calendar = getClearedUtc();
+    calendar.setTimeInMillis(today);
+    calendar.add(Calendar.MONTH, 1);
+    nextMonth = calendar.getTimeInMillis();
 
-    TODAY_PAIR = new Pair<>(TODAY, TODAY);
-    NEXT_MONTH_PAIR = new Pair<>(NEXT_MONTH, NEXT_MONTH);
+    calendar.setTimeInMillis(today);
+    calendar.set(Calendar.MONTH, Calendar.JANUARY);
+    janThisYear = calendar.getTimeInMillis();
+    calendar.setTimeInMillis(today);
+    calendar.set(Calendar.MONTH, Calendar.DECEMBER);
+    decThisYear = calendar.getTimeInMillis();
+
+    calendar.setTimeInMillis(today);
+    calendar.add(Calendar.YEAR, 1);
+    oneYearForward = calendar.getTimeInMillis();
+
+    todayPair = new Pair<>(today, today);
+    nextMonthPair = new Pair<>(nextMonth, nextMonth);
   }
 
   @Override
@@ -88,9 +104,15 @@ public class DatePickerMainDemoFragment extends DemoFragment {
     final RadioGroup title = root.findViewById(R.id.cat_picker_title_group);
     final RadioGroup opening = root.findViewById(R.id.cat_picker_opening_month_group);
     final RadioGroup selection = root.findViewById(R.id.cat_picker_selection_group);
+    final RadioGroup inputMode = root.findViewById(R.id.cat_picker_input_mode_group);
+    final RadioGroup dayViewDecoratorGroup =
+        root.findViewById(R.id.cat_picker_day_view_decorator_group);
+    final RadioGroup positiveButton = root.findViewById(R.id.cat_picker_positive_button_group);
+    final RadioGroup negativeButton = root.findViewById(R.id.cat_picker_negative_button_group);
 
     launcher.setOnClickListener(
         v -> {
+          initSettings();
           int selectionModeChoice = selectionMode.getCheckedRadioButtonId();
           int themeChoice = theme.getCheckedRadioButtonId();
           int boundsChoice = bounds.getCheckedRadioButtonId();
@@ -98,9 +120,13 @@ public class DatePickerMainDemoFragment extends DemoFragment {
           int titleChoice = title.getCheckedRadioButtonId();
           int openingChoice = opening.getCheckedRadioButtonId();
           int selectionChoice = selection.getCheckedRadioButtonId();
+          int inputModeChoices = inputMode.getCheckedRadioButtonId();
+          int dayViewDecoratorChoice = dayViewDecoratorGroup.getCheckedRadioButtonId();
+          int positiveButtonChoice = positiveButton.getCheckedRadioButtonId();
+          int negativeButtonChoice = negativeButton.getCheckedRadioButtonId();
 
           MaterialDatePicker.Builder<?> builder =
-              setupDateSelectorBuilder(selectionModeChoice, selectionChoice);
+              setupDateSelectorBuilder(selectionModeChoice, selectionChoice, inputModeChoices);
           CalendarConstraints.Builder constraintsBuilder =
               setupConstraintsBuilder(boundsChoice, openingChoice, validationChoice);
 
@@ -108,17 +134,36 @@ public class DatePickerMainDemoFragment extends DemoFragment {
             builder.setTheme(dialogTheme);
           } else if (themeChoice == R.id.cat_picker_theme_fullscreen) {
             builder.setTheme(fullscreenTheme);
+          } else if (themeChoice == R.id.cat_picker_theme_custom) {
+            builder.setTheme(R.style.ThemeOverlay_Catalog_MaterialCalendar_Custom);
           }
 
           if (titleChoice == R.id.cat_picker_title_custom) {
-            builder.setTitleTextResId(R.string.cat_picker_title_custom);
+            builder.setTitleText(R.string.cat_picker_title_custom);
+          } else if (titleChoice == R.id.cat_picker_title_with_description) {
+            builder.setTheme(R.style.ThemeOverlay_Catalog_MaterialCalendar_WithDescription);
+            builder.setTitleText(getTitleWithDescription());
           }
+
+          if (positiveButtonChoice == R.id.cat_picker_positive_button_custom) {
+            builder.setPositiveButtonText(R.string.cat_picker_positive_button_text);
+            builder.setPositiveButtonContentDescription(
+                R.string.cat_picker_positive_button_content_description);
+          }
+
+          if (negativeButtonChoice == R.id.cat_picker_negative_button_custom) {
+            builder.setNegativeButtonText(R.string.cat_picker_negative_button_text);
+            builder.setNegativeButtonContentDescription(
+                R.string.cat_picker_negative_button_content_description);
+          }
+
+          setupDayViewDecorator(builder, dayViewDecoratorChoice);
 
           try {
             builder.setCalendarConstraints(constraintsBuilder.build());
             MaterialDatePicker<?> picker = builder.build();
             addSnackBarListeners(picker);
-            picker.show(getFragmentManager(), picker.toString());
+            picker.show(getChildFragmentManager(), picker.toString());
           } catch (IllegalArgumentException e) {
             snackbar.setText(e.getMessage());
             snackbar.show();
@@ -128,50 +173,120 @@ public class DatePickerMainDemoFragment extends DemoFragment {
     return view;
   }
 
-  private static MaterialDatePicker.Builder<?> setupDateSelectorBuilder(
-      int selectionModeChoice, int selectionChoice) {
+  private MaterialDatePicker.Builder<?> setupDateSelectorBuilder(
+      int selectionModeChoice, int selectionChoice, int inputModeChoice) {
+
+    int inputMode =
+        inputModeChoice == R.id.cat_picker_input_mode_calendar
+            ? MaterialDatePicker.INPUT_MODE_CALENDAR
+            : MaterialDatePicker.INPUT_MODE_TEXT;
+
     if (selectionModeChoice == R.id.cat_picker_date_selector_single) {
       MaterialDatePicker.Builder<Long> builder = MaterialDatePicker.Builder.datePicker();
       if (selectionChoice == R.id.cat_picker_selection_today) {
-        builder.setSelection(TODAY);
+        builder.setSelection(today);
       } else if (selectionChoice == R.id.cat_picker_selection_next_month) {
-        builder.setSelection(NEXT_MONTH);
+        builder.setSelection(nextMonth);
       }
+      builder.setInputMode(inputMode);
       return builder;
     } else {
       MaterialDatePicker.Builder<Pair<Long, Long>> builder =
           MaterialDatePicker.Builder.dateRangePicker();
       if (selectionChoice == R.id.cat_picker_selection_today) {
-        builder.setSelection(TODAY_PAIR);
+        builder.setSelection(todayPair);
       } else if (selectionChoice == R.id.cat_picker_selection_next_month) {
-        builder.setSelection(NEXT_MONTH_PAIR);
+        builder.setSelection(nextMonthPair);
       }
+      builder.setInputMode(inputMode);
       return builder;
     }
   }
 
-  private static CalendarConstraints.Builder setupConstraintsBuilder(
+  private CalendarConstraints.Builder setupConstraintsBuilder(
       int boundsChoice, int openingChoice, int validationChoice) {
     CalendarConstraints.Builder constraintsBuilder = new CalendarConstraints.Builder();
     if (boundsChoice == R.id.cat_picker_bounds_this_year) {
-      constraintsBuilder.setStart(JAN_THIS_YEAR);
-      constraintsBuilder.setEnd(DEC_THIS_YEAR);
+      constraintsBuilder.setStart(janThisYear);
+      constraintsBuilder.setEnd(decThisYear);
     } else if (boundsChoice == R.id.cat_picker_bounds_one_year_forward) {
-      constraintsBuilder.setEnd(ONE_YEAR_FORWARD);
+      constraintsBuilder.setStart(today);
+      constraintsBuilder.setEnd(oneYearForward);
     }
 
     if (openingChoice == R.id.cat_picker_opening_month_today) {
-      constraintsBuilder.setOpening(Month.today());
+      constraintsBuilder.setOpenAt(today);
     } else if (openingChoice == R.id.cat_picker_opening_month_next) {
-      constraintsBuilder.setOpening(Month.create(NEXT_MONTH));
+      constraintsBuilder.setOpenAt(nextMonth);
     }
 
-    if (validationChoice == R.id.cat_picker_validation_future) {
-      constraintsBuilder.setValidator(new DateValidatorPointForward());
+    if (validationChoice == R.id.cat_picker_validation_today_onward) {
+      constraintsBuilder.setValidator(DateValidatorPointForward.now());
     } else if (validationChoice == R.id.cat_picker_validation_weekdays) {
       constraintsBuilder.setValidator(new DateValidatorWeekdays());
+    } else if ((validationChoice == R.id.cat_picker_validation_last_two_weeks)) {
+      Calendar lowerBoundCalendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+      lowerBoundCalendar.add(Calendar.DAY_OF_MONTH, -14);
+      long lowerBound = lowerBoundCalendar.getTimeInMillis();
+
+      List<CalendarConstraints.DateValidator> validators = new ArrayList<>();
+      validators.add(DateValidatorPointForward.from(lowerBound));
+      validators.add(DateValidatorPointBackward.now());
+
+      constraintsBuilder.setValidator(CompositeDateValidator.allOf(validators));
+    } else if ((validationChoice == R.id.cat_picker_validation_multiple_range)) {
+      List<CalendarConstraints.DateValidator> validatorsMultple = new ArrayList<>();
+      Calendar utc = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+      utc.setTimeInMillis(today);
+      utc.set(Calendar.DATE, 10);
+      DateValidatorPointBackward pointBackward =
+          DateValidatorPointBackward.before(utc.getTimeInMillis());
+      utc.set(Calendar.DATE, 20);
+
+      List<CalendarConstraints.DateValidator> validatorsComposite = new ArrayList<>();
+      DateValidatorPointForward pointForwardComposite =
+          DateValidatorPointForward.from(utc.getTimeInMillis());
+      utc.set(Calendar.DATE, 26);
+      DateValidatorPointBackward pointBackwardComposite =
+          DateValidatorPointBackward.before(utc.getTimeInMillis());
+      validatorsComposite.add(pointForwardComposite);
+      validatorsComposite.add(pointBackwardComposite);
+      CalendarConstraints.DateValidator compositeDateValidator =
+          CompositeDateValidator.allOf(validatorsComposite);
+
+      validatorsMultple.add(pointBackward);
+      validatorsMultple.add(compositeDateValidator);
+      constraintsBuilder.setValidator(CompositeDateValidator.anyOf(validatorsMultple));
     }
     return constraintsBuilder;
+  }
+
+  private CharSequence getTitleWithDescription() {
+    Context context = requireContext();
+    String alarmTimes = context.getString(R.string.cat_picker_title_description_colored);
+    String titleAndDescriptionText =
+        context.getString(R.string.cat_picker_title_description_main) + alarmTimes;
+    SpannableString spannable = new SpannableString(titleAndDescriptionText);
+    int alarmTimesColor = resolveOrThrow(context, R.attr.colorPrimary);
+    int spanStart = titleAndDescriptionText.indexOf(alarmTimes);
+    int spanEnd = spanStart + alarmTimes.length();
+    spannable.setSpan(
+        new ForegroundColorSpan(alarmTimesColor),
+        spanStart,
+        spanEnd,
+        Spannable.SPAN_EXCLUSIVE_INCLUSIVE);
+    spannable.setSpan(
+        new StyleSpan(Typeface.BOLD), spanStart, spanEnd, Spannable.SPAN_EXCLUSIVE_INCLUSIVE);
+    return spannable;
+  }
+
+  private void setupDayViewDecorator(
+      MaterialDatePicker.Builder<?> builder, int dayViewDecoratorChoice) {
+    if (dayViewDecoratorChoice == R.id.cat_picker_day_view_decorator_dots) {
+      builder.setDayViewDecorator(new CircleIndicatorDecorator());
+    } else if (dayViewDecoratorChoice == R.id.cat_picker_day_view_decorator_highlights) {
+      builder.setDayViewDecorator(new BackgroundHighlightDecorator());
+    }
   }
 
   private static int resolveOrThrow(Context context, @AttrRes int attributeResId) {

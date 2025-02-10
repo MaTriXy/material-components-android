@@ -18,14 +18,15 @@ package io.material.catalog.feature;
 
 import android.app.Activity;
 import android.content.Context;
-import com.google.android.material.snackbar.Snackbar;
-import androidx.core.view.ViewCompat;
-import androidx.core.widget.NestedScrollView;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnLayoutChangeListener;
 import android.view.ViewGroup;
 import android.widget.ScrollView;
+import androidx.core.view.ViewCompat;
+import androidx.core.widget.NestedScrollView;
+import com.google.android.material.internal.ContextUtils;
+import com.google.android.material.snackbar.Snackbar;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -118,6 +119,7 @@ public class DemoUtils {
     return Math.max(calculatedInset, 0);
   }
 
+  @SuppressWarnings("RestrictTo")
   private static boolean shouldApplyBottomInset(ViewGroup scrollView, int systemWindowInsetBottom) {
     View scrollableContent = scrollView.getChildAt(0);
     int scrollableContentHeight = scrollableContent.getHeight();
@@ -126,7 +128,8 @@ public class DemoUtils {
     scrollView.getLocationOnScreen(scrollViewLocation);
     Context context = scrollView.getContext();
 
-    return scrollViewHeight + scrollViewLocation[1] >= getContentViewHeight((Activity) context)
+    Activity activity = ContextUtils.getActivity(context);
+    return scrollViewHeight + scrollViewLocation[1] >= getContentViewHeight(activity)
         && scrollableContentHeight + systemWindowInsetBottom >= scrollViewHeight;
   }
 

@@ -5,6 +5,8 @@ dependencies {
   api compatibility("core")
 
   api project(fromPath("lib"))
+
+  implementation "com.google.errorprone:error_prone_annotations:${errorproneVersion}"
 }
 
 android {
@@ -19,7 +21,7 @@ android {
     main.res.srcDirs = [ 'res' ]
   }
   defaultConfig {
-    minSdkVersion 14
-    targetSdkVersion 27
+    minSdkVersion 21
+    targetSdkVersion 33
   }
 }

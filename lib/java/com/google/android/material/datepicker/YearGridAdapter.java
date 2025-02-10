@@ -17,13 +17,13 @@ package com.google.android.material.datepicker;
 
 import com.google.android.material.R;
 
-import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import androidx.annotation.NonNull;
 import com.google.android.material.datepicker.MaterialCalendar.CalendarSelector;
 import java.util.Calendar;
 import java.util.Locale;
@@ -59,15 +59,11 @@ class YearGridAdapter extends RecyclerView.Adapter<YearGridAdapter.ViewHolder> {
   @Override
   public void onBindViewHolder(@NonNull YearGridAdapter.ViewHolder viewHolder, int position) {
     int year = getYearForPosition(position);
-    String navigateYear =
-        viewHolder
-            .textView
-            .getContext()
-            .getString(R.string.mtrl_picker_navigate_to_year_description);
     viewHolder.textView.setText(String.format(Locale.getDefault(), "%d", year));
-    viewHolder.textView.setContentDescription(String.format(navigateYear, year));
+    viewHolder.textView.setContentDescription(
+        DateStrings.getYearContentDescription(viewHolder.textView.getContext(), year));
     CalendarStyle styles = materialCalendar.getCalendarStyle();
-    Calendar calendar = Calendar.getInstance();
+    Calendar calendar = UtcDates.getTodayCalendar();
     CalendarItemStyle style = calendar.get(Calendar.YEAR) == year ? styles.todayYear : styles.year;
     for (Long day : materialCalendar.getDateSelector().getSelectedDays()) {
       calendar.setTimeInMillis(day);
@@ -76,6 +72,7 @@ class YearGridAdapter extends RecyclerView.Adapter<YearGridAdapter.ViewHolder> {
       }
     }
     style.styleItem(viewHolder.textView);
+    viewHolder.textView.setSelected(style == styles.selectedYear);
     viewHolder.textView.setOnClickListener(createYearClickListener(year));
   }
 
@@ -84,7 +81,9 @@ class YearGridAdapter extends RecyclerView.Adapter<YearGridAdapter.ViewHolder> {
     return new OnClickListener() {
       @Override
       public void onClick(View view) {
-        Month moveTo = Month.create(year, materialCalendar.getCurrentMonth().month);
+        Month current = Month.create(year, materialCalendar.getCurrentMonth().month);
+        CalendarConstraints calendarConstraints = materialCalendar.getCalendarConstraints();
+        Month moveTo = calendarConstraints.clamp(current);
         materialCalendar.setCurrentMonth(moveTo);
         materialCalendar.setSelector(CalendarSelector.DAY);
       }

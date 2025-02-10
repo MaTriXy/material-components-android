@@ -15,6 +15,8 @@
  */
 package com.google.android.material.math;
 
+import androidx.annotation.NonNull;
+
 /** A class that contains utility methods related to numbers. */
 public final class MathUtils {
 
@@ -31,7 +33,7 @@ public final class MathUtils {
   }
 
   /**
-   * Returns the linear interpolation of {@param amount} between {@param start} and {@param stop}.
+   * Returns the linear interpolation of {@code amount} between {@code start} and {@code stop}.
    */
   public static float lerp(float start, float stop, float amount) {
     return (1 - amount) * start + amount * stop;
@@ -72,5 +74,49 @@ public final class MathUtils {
   /** Returns the maximum of the input values. */
   private static float max(float a, float b, float c, float d) {
     return a > b && a > c && a > d ? a : b > c && b > d ? b : c > d ? c : d;
+  }
+
+  /**
+   * This returns as similar as {@link Math#floorMod(int, int)}. Instead it works for float type
+   * values. And the re-implementation makes it back compatible to API<24.
+   */
+  public static float floorMod(float x, int y) {
+    int r = (int) (x / y);
+    // if the signs are different and modulo not zero, round down
+    if (Math.signum(x) * y < 0 && (r * y != x)) {
+      r--;
+    }
+    return x - r * y;
+  }
+
+  /**
+   * This is same as {@link Math#floorMod(int, int)}. Re-implementation makes it back compatible to
+   * API<24.
+   */
+  public static int floorMod(int x, int y) {
+    int r = x / y;
+    // if the signs are different and modulo not zero, round down
+    if ((x ^ y) < 0 && (r * y != x)) {
+      r--;
+    }
+    return x - r * y;
+  }
+
+  /**
+   * Returns whether the array contains all same elements.
+   *
+   * @param array Input array of floats.
+   */
+  public static boolean areAllElementsEqual(@NonNull float[] array) {
+    if (array.length <= 1) {
+      return true;
+    }
+    float sample = array[0];
+    for (int i = 1; i < array.length; i++) {
+      if (array[i] != sample) {
+        return false;
+      }
+    }
+    return true;
   }
 }

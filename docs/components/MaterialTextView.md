@@ -9,13 +9,17 @@ path: /catalog/material-text-view/
 
 # Material Text View
 
+## Using text views
+
 A MaterialTextView is a derivative of AppCompatTextView that displays text to
-the user. To provide user-editable text, see {@link EditText}.
+the user. To provide user-editable text, see
+[EditText](https://developer.android.com/reference/android/widget/EditText).
 
-## Design & API Documentation
+## Design and API Documentation
 
--   [Class definition](https://github.com/material-components/material-components-android/tree/master/lib/java/com/google/android/material/textview/MaterialTextView.java)
-    <!--{: .icon-list-item.icon-list-item--link }-->
+*   `MaterialTextView`
+    *   [Class description](https://developer.android.com/reference/com/google/android/material/textview/MaterialTextView)
+    *   [Class source](https://github.com/material-components/material-components-android/tree/master/lib/java/com/google/android/material/textview/MaterialTextView.java)
 
 ## Usage
 
@@ -35,9 +39,9 @@ reference.
 </LinearLayout>
 ```
 
-Note: If you use our full themes (which we recommend), `TextView` will
+**Note:** If you use our full themes (which we recommend), `TextView` will
 auto-inflate to `MaterialTextView`, otherwise, you will need to specify
-`<com.google.android.material.textview` in your xml.
+`<com.google.android.material.textview.MaterialTextView` in your xml.
 
 ### Attributes
 
@@ -54,5 +58,5 @@ The following additional attributes can be changed in `TextAppearance` and
 applied to a `MaterialTextView`:
 
 Feature     | Relevant attributes
-:---------- | :-------------------
+----------- | --------------------
 Line Height | `android:lineHeight`

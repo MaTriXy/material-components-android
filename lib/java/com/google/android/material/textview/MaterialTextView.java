@@ -18,15 +18,17 @@ package com.google.android.material.textview;
 
 import com.google.android.material.R;
 
+import static com.google.android.material.theme.overlay.MaterialThemeOverlay.wrap;
+
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.Resources.Theme;
 import android.content.res.TypedArray;
+import androidx.appcompat.widget.AppCompatTextView;
+import android.util.AttributeSet;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StyleableRes;
-import androidx.appcompat.widget.AppCompatTextView;
-import android.util.AttributeSet;
 import com.google.android.material.resources.MaterialAttributes;
 import com.google.android.material.resources.MaterialResources;
 
@@ -70,6 +72,10 @@ import com.google.android.material.resources.MaterialResources;
  *
  * <p>To customize the appearance of MaterialTextView, see <a
  * href="https://developer.android.com/guide/topics/ui/themes.html">Styles and Themes</a>.
+ *
+ * <p>For more information, see the <a
+ * href="https://github.com/material-components/material-components-android/blob/master/docs/components/MaterialTextView.md">component
+ * developer guidance</a>.
  */
 public class MaterialTextView extends AppCompatTextView {
 
@@ -83,12 +89,34 @@ public class MaterialTextView extends AppCompatTextView {
 
   public MaterialTextView(
       @NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
-    this(context, attrs, defStyleAttr, 0);
+    super(wrap(context, attrs, defStyleAttr, /* defStyleRes= */ 0), attrs, defStyleAttr);
+    initialize(attrs, defStyleAttr, /* defStyleRes= */ 0);
   }
 
+  /**
+   * @deprecated Since {@link AppCompatTextView} does not provide a 4 arg constructor, the
+   *     defStyleRes argument will be ignored. Please use the 3 arg constructor instead. see
+   *     {@link #MaterialTextView(Context, AttributeSet, int)}
+   */
+  @Deprecated
   public MaterialTextView(
       @NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr, int defStyleRes) {
-    super(context, attrs, defStyleAttr);
+    super(wrap(context, attrs, defStyleAttr, defStyleRes), attrs, defStyleAttr);
+    initialize(attrs, defStyleAttr, defStyleRes);
+  }
+
+  @Override
+  public void setTextAppearance(@NonNull Context context, int resId) {
+    super.setTextAppearance(context, resId);
+
+    if (canApplyTextAppearanceLineHeight(context)) {
+      applyLineHeightFromViewAppearance(context.getTheme(), resId);
+    }
+  }
+
+  private void initialize(@Nullable AttributeSet attrs, int defStyleAttr, int defStyleRes) {
+    // Ensure we are using the correctly themed context rather than the context that was passed in.
+    Context context = getContext();
 
     if (canApplyTextAppearanceLineHeight(context)) {
       final Resources.Theme theme = context.getTheme();
@@ -99,15 +127,6 @@ public class MaterialTextView extends AppCompatTextView {
           applyLineHeightFromViewAppearance(theme, resId);
         }
       }
-    }
-  }
-
-  @Override
-  public void setTextAppearance(@NonNull Context context, int resId) {
-    super.setTextAppearance(context, resId);
-
-    if (canApplyTextAppearanceLineHeight(context)) {
-      applyLineHeightFromViewAppearance(context.getTheme(), resId);
     }
   }
 

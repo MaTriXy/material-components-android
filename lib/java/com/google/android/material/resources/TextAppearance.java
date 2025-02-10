@@ -18,15 +18,23 @@ package com.google.android.material.resources;
 
 import com.google.android.material.R;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.os.Build.VERSION;
+import android.os.Build.VERSION_CODES;
+import android.text.TextPaint;
+import android.util.AttributeSet;
+import android.util.Log;
+import android.util.Xml;
 import androidx.annotation.FontRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.annotation.RestrictTo;
 import androidx.annotation.RestrictTo.Scope;
 import androidx.annotation.StyleRes;
@@ -34,8 +42,7 @@ import androidx.annotation.VisibleForTesting;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.core.content.res.ResourcesCompat.FontCallback;
 import androidx.core.provider.FontsContractCompat.FontRequestCallback;
-import android.text.TextPaint;
-import android.util.Log;
+import org.xmlpull.v1.XmlPullParser;
 
 /**
  * Utility class that contains the data from parsing a TextAppearance style resource.
@@ -52,32 +59,39 @@ public class TextAppearance {
   private static final int TYPEFACE_SERIF = 2;
   private static final int TYPEFACE_MONOSPACE = 3;
 
-  public final float textSize;
-  @Nullable public final ColorStateList textColor;
   @Nullable public final ColorStateList textColorHint;
   @Nullable public final ColorStateList textColorLink;
+  @Nullable public final ColorStateList shadowColor;
+  @Nullable public final String fontFamily;
+  @Nullable public String fontVariationSettings;
+
   public final int textStyle;
   public final int typeface;
-  @Nullable public final String fontFamily;
   public final boolean textAllCaps;
-  @Nullable public final ColorStateList shadowColor;
   public final float shadowDx;
   public final float shadowDy;
   public final float shadowRadius;
+  public final boolean hasLetterSpacing;
+  public final float letterSpacing;
+
+  @Nullable
+  private ColorStateList textColor;
+  private float textSize;
 
   @FontRes private final int fontFamilyResourceId;
 
   private boolean fontResolved = false;
+  private boolean systemFontLoadAttempted = false;
   private Typeface font;
 
   /** Parses the given TextAppearance style resource. */
   public TextAppearance(@NonNull Context context, @StyleRes int id) {
     TypedArray a = context.obtainStyledAttributes(id, R.styleable.TextAppearance);
 
-    textSize = a.getDimension(R.styleable.TextAppearance_android_textSize, 0f);
-    textColor =
+    setTextSize(a.getDimension(R.styleable.TextAppearance_android_textSize, 0f));
+    setTextColor(
         MaterialResources.getColorStateList(
-            context, a, R.styleable.TextAppearance_android_textColor);
+            context, a, R.styleable.TextAppearance_android_textColor));
     textColorHint =
         MaterialResources.getColorStateList(
             context, a, R.styleable.TextAppearance_android_textColorHint);
@@ -101,6 +115,18 @@ public class TextAppearance {
     shadowDy = a.getFloat(R.styleable.TextAppearance_android_shadowDy, 0);
     shadowRadius = a.getFloat(R.styleable.TextAppearance_android_shadowRadius, 0);
 
+    a.recycle();
+
+    a = context.obtainStyledAttributes(id, R.styleable.MaterialTextAppearance);
+    hasLetterSpacing = a.hasValue(R.styleable.MaterialTextAppearance_android_letterSpacing);
+    letterSpacing = a.getFloat(R.styleable.MaterialTextAppearance_android_letterSpacing, 0);
+    if (VERSION.SDK_INT >= VERSION_CODES.O) {
+      int fontVariationSettingsIndex = MaterialResources.getIndexWithValue(
+          a,
+          R.styleable.MaterialTextAppearance_fontVariationSettings,
+          R.styleable.MaterialTextAppearance_android_fontVariationSettings);
+      fontVariationSettings = a.getString(fontVariationSettingsIndex);
+    }
     a.recycle();
   }
 
@@ -152,9 +178,7 @@ public class TextAppearance {
    */
   public void getFontAsync(
       @NonNull Context context, @NonNull final TextAppearanceFontCallback callback) {
-    if (TextAppearanceConfig.shouldLoadFontSynchronously()) {
-      getFont(context);
-    } else {
+    if (!maybeLoadFontSynchronously(context)) {
       // No-op if font already resolved.
       createFallbackFont();
     }
@@ -211,11 +235,11 @@ public class TextAppearance {
    * @see #getFontAsync(Context, TextAppearanceFontCallback)
    */
   public void getFontAsync(
-      @NonNull Context context,
+      @NonNull final Context context,
       @NonNull final TextPaint textPaint,
       @NonNull final TextAppearanceFontCallback callback) {
     // Updates text paint using fallback font while waiting for font to be requested.
-    updateTextPaintMeasureState(textPaint, getFallbackFont());
+    updateTextPaintMeasureState(context, textPaint, getFallbackFont());
 
     getFontAsync(
         context,
@@ -223,7 +247,7 @@ public class TextAppearance {
           @Override
           public void onFontRetrieved(
               @NonNull Typeface typeface, boolean fontResolvedSynchronously) {
-            updateTextPaintMeasureState(textPaint, typeface);
+            updateTextPaintMeasureState(context, textPaint, typeface);
             callback.onFontRetrieved(typeface, fontResolvedSynchronously);
           }
 
@@ -308,8 +332,8 @@ public class TextAppearance {
       @NonNull Context context,
       @NonNull TextPaint textPaint,
       @NonNull TextAppearanceFontCallback callback) {
-    if (TextAppearanceConfig.shouldLoadFontSynchronously()) {
-      updateTextPaintMeasureState(textPaint, getFont(context));
+    if (maybeLoadFontSynchronously(context) && fontResolved && font != null) {
+      updateTextPaintMeasureState(context, textPaint, font);
     } else {
       getFontAsync(context, textPaint, callback);
     }
@@ -321,7 +345,11 @@ public class TextAppearance {
    * @see android.text.style.TextAppearanceSpan#updateMeasureState(TextPaint)
    */
   public void updateTextPaintMeasureState(
-      @NonNull TextPaint textPaint, @NonNull Typeface typeface) {
+      @NonNull Context context, @NonNull TextPaint textPaint, @NonNull Typeface typeface) {
+    Typeface boldTypeface = TypefaceUtils.maybeCopyWithFontWeightAdjustment(context, typeface);
+    if (boldTypeface != null) {
+      typeface = boldTypeface;
+    }
     textPaint.setTypeface(typeface);
 
     int fake = textStyle & ~typeface.getStyle();
@@ -329,5 +357,119 @@ public class TextAppearance {
     textPaint.setTextSkewX((fake & Typeface.ITALIC) != 0 ? -0.25f : 0f);
 
     textPaint.setTextSize(textSize);
+
+    if (VERSION.SDK_INT >= VERSION_CODES.O) {
+      textPaint.setFontVariationSettings(fontVariationSettings);
+    }
+
+    if (hasLetterSpacing) {
+      textPaint.setLetterSpacing(letterSpacing);
+    }
+  }
+
+  @Nullable
+  public ColorStateList getTextColor() {
+    return textColor;
+  }
+
+  public void setTextColor(@Nullable ColorStateList textColor) {
+    this.textColor = textColor;
+  }
+
+  public float getTextSize() {
+    return textSize;
+  }
+
+  public void setTextSize(float textSize) {
+    this.textSize = textSize;
+  }
+
+  @RequiresApi(VERSION_CODES.O)
+  @Nullable
+  public String getFontVariationSettings() {
+    return fontVariationSettings;
+  }
+
+  @RequiresApi(VERSION_CODES.O)
+  public void setFontVariationSettings(@Nullable String fontVariationSettings) {
+    this.fontVariationSettings = fontVariationSettings;
+  }
+
+  private boolean maybeLoadFontSynchronously(Context context) {
+    if (TextAppearanceConfig.shouldLoadFontSynchronously()) {
+      getFont(context);
+      return true;
+    }
+    if (fontResolved) {
+      return true;
+    }
+    if (fontFamilyResourceId == 0) {
+      return false;
+    }
+    Typeface cachedFont = ResourcesCompat.getCachedFont(context, fontFamilyResourceId);
+    if (cachedFont != null) {
+      font = cachedFont;
+      fontResolved = true;
+      return true;
+    }
+    Typeface systemFont = getSystemTypeface(context);
+    if (systemFont != null) {
+      font = systemFont;
+      fontResolved = true;
+      return true;
+    }
+    return false;
+  }
+
+  @Nullable
+  private Typeface getSystemTypeface(Context context) {
+    if (systemFontLoadAttempted) {
+      // Only attempt to load the system font once.
+      return null;
+    }
+    systemFontLoadAttempted = true;
+
+    String systemFontFamily = readFontProviderSystemFontFamily(context, fontFamilyResourceId);
+    if (systemFontFamily == null) {
+      return null;
+    }
+
+    Typeface regularSystemTypeface = Typeface.create(systemFontFamily, Typeface.NORMAL);
+    if (regularSystemTypeface == Typeface.DEFAULT) {
+      // If Typeface#create returned Typeface.DEFAULT then systemFontFamily is not present on the
+      // device as a system font, so we will have to load the font asynchronously.
+      return null;
+    }
+
+    return Typeface.create(regularSystemTypeface, textStyle);
+  }
+
+  @SuppressLint("ResourceType")
+  @Nullable
+  private static String readFontProviderSystemFontFamily(
+      Context context, @FontRes int fontFamilyResourceId) {
+    Resources resources = context.getResources();
+    if (fontFamilyResourceId == 0
+        || !resources.getResourceTypeName(fontFamilyResourceId).equals("font")) {
+      return null;
+    }
+
+    try {
+      XmlPullParser xpp = resources.getXml(fontFamilyResourceId);
+      while (xpp.getEventType() != XmlPullParser.END_DOCUMENT) {
+        if (xpp.getEventType() == XmlPullParser.START_TAG && xpp.getName().equals("font-family")) {
+          AttributeSet attrs = Xml.asAttributeSet(xpp);
+          TypedArray a = resources.obtainAttributes(attrs, androidx.core.R.styleable.FontFamily);
+          String systemFontFamily =
+              a.getString(androidx.core.R.styleable.FontFamily_fontProviderSystemFontFamily);
+          a.recycle();
+          return systemFontFamily;
+        }
+        xpp.next();
+      }
+    } catch (Throwable t) {
+      // Fail silently if we can't find fontProviderSystemFontFamily for any reason.
+    }
+    return null;
   }
 }

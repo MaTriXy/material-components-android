@@ -15,17 +15,22 @@
  */
 package com.google.android.material.chip;
 
-import com.google.android.material.R;
+import com.google.android.material.test.R;
 
 import static com.google.android.material.internal.ViewUtils.dpToPx;
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
 
 import android.content.Context;
+import android.graphics.RectF;
 import androidx.appcompat.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.text.TextUtils.TruncateAt;
 import android.view.View;
 import android.view.View.MeasureSpec;
+import android.view.View.OnClickListener;
+import androidx.core.view.AccessibilityDelegateCompat;
+import androidx.core.view.ViewCompat;
 import androidx.test.core.app.ApplicationProvider;
 import org.junit.Before;
 import org.junit.Rule;
@@ -50,12 +55,13 @@ public class ChipTest {
   private static final int MIN_SIZE_FOR_ALLY_DP = 48;
 
   private Chip chip;
+  private AppCompatActivity activity;
 
   @Before
   public void themeApplicationContext() {
     ApplicationProvider.getApplicationContext()
         .setTheme(R.style.Theme_MaterialComponents_Light_NoActionBar_Bridge);
-    AppCompatActivity activity = Robolectric.buildActivity(AppCompatActivity.class).setup().get();
+    activity = Robolectric.buildActivity(AppCompatActivity.class).setup().get();
     View inflated = activity.getLayoutInflater().inflate(R.layout.test_action_chip, null);
     chip = inflated.findViewById(R.id.chip);
   }
@@ -164,14 +170,71 @@ public class ChipTest {
     assertThat(TextUtils.equals(resultChip.getText(), "foo")).isTrue();
   }
 
+  @Test
+  public void testHasCustomAccessibilityDelegate() {
+    chip.setCloseIconResource(R.drawable.ic_mtrl_chip_close_circle);
+    chip.setCloseIconVisible(true);
+    chip.setOnCloseIconClickListener(
+        new OnClickListener() {
+          @Override
+          public void onClick(View v) {
+            /* Do something */
+          }
+        });
+    AccessibilityDelegateCompat accessibilityDelegate = ViewCompat.getAccessibilityDelegate(chip);
+    assertThat(accessibilityDelegate).isNotNull();
+  }
+
+  @Test
+  public void testNoCustomAccessibilityDelegate() {
+    chip.setCloseIconResource(R.drawable.ic_mtrl_chip_close_circle);
+    AccessibilityDelegateCompat accessibilityDelegate = ViewCompat.getAccessibilityDelegate(chip);
+    assertThat(accessibilityDelegate).isNull();
+  }
+
   private static float getMinTouchTargetSize() {
     return dpToPx(ApplicationProvider.getApplicationContext(), MIN_SIZE_FOR_ALLY_DP);
   }
 
-  private void setupAndMeasureChip(boolean shouldEnsureMinTouchTargeSize) {
-    chip.setEnsureMinTouchTargetSize(shouldEnsureMinTouchTargeSize);
+  private void setupAndMeasureChip(boolean shouldEnsureMinTouchTargetSize) {
+    chip.setEnsureMinTouchTargetSize(shouldEnsureMinTouchTargetSize);
     int measureSpec =
         MeasureSpec.makeMeasureSpec((int) (getMinTouchTargetSize() * 2), MeasureSpec.AT_MOST);
     chip.measure(measureSpec, measureSpec);
+  }
+
+  @Test
+  public void testZeroChipCornerRadius() {
+    View inflated =
+        activity.getLayoutInflater().inflate(R.layout.test_chip_zero_corner_radius, null);
+    chip = inflated.findViewById(R.id.zero_corner_chip);
+    RectF bounds = new RectF();
+    bounds.bottom = 0;
+    bounds.top = 100;
+    bounds.left = 0;
+    bounds.right = 100;
+    assertThat(chip.getShapeAppearanceModel().getTopLeftCornerSize().getCornerSize(bounds))
+        .isWithin(DELTA)
+        .of(0);
+    assertThat(chip.getShapeAppearanceModel().getTopRightCornerSize().getCornerSize(bounds))
+        .isWithin(DELTA)
+        .of(0);
+    assertThat(chip.getShapeAppearanceModel().getBottomLeftCornerSize().getCornerSize(bounds))
+        .isWithin(DELTA)
+        .of(0);
+    assertThat(chip.getShapeAppearanceModel().getBottomRightCornerSize().getCornerSize(bounds))
+        .isWithin(DELTA)
+        .of(0);
+  }
+
+  @Test
+  public void getChipAccessibilityClassName_clickable_buttonName() {
+    assertEquals("android.widget.Button", chip.getAccessibilityClassName().toString());
+  }
+
+  @Test
+  public void getChipAccessibilityClassName_nonClickable_viewName() {
+    chip.setClickable(false);
+    assertEquals("android.view.View", chip.getAccessibilityClassName().toString());
   }
 }

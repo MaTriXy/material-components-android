@@ -18,22 +18,22 @@ package com.google.android.material.floatingactionbutton;
 
 import com.google.android.material.R;
 
+import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
+import static android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
+import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
+import static com.google.android.material.theme.overlay.MaterialThemeOverlay.wrap;
+import static java.lang.Math.min;
+
 import android.animation.Animator;
 import android.animation.Animator.AnimatorListener;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.animation.PropertyValuesHolder;
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
+import android.graphics.Color;
 import android.graphics.Rect;
-import androidx.annotation.AnimatorRes;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.VisibleForTesting;
-import com.google.android.material.appbar.AppBarLayout;
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.shape.ShapeAppearanceModel;
-import androidx.core.view.ViewCompat;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.Property;
@@ -41,13 +41,25 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
+import android.view.ViewGroup.MarginLayoutParams;
+import androidx.annotation.AnimatorRes;
+import androidx.annotation.IntDef;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.VisibleForTesting;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.coordinatorlayout.widget.CoordinatorLayout.AttachedBehavior;
 import androidx.coordinatorlayout.widget.CoordinatorLayout.Behavior;
 import com.google.android.material.animation.MotionSpec;
+import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.internal.DescendantOffsetUtils;
 import com.google.android.material.internal.ThemeEnforcement;
+import com.google.android.material.shape.ShapeAppearanceModel;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.List;
 
 /**
@@ -62,9 +74,14 @@ import java.util.List;
  * displayed via {@link #setIcon(android.graphics.drawable.Drawable)}, and the text via {@link
  * #setText(CharSequence)}.
  *
- * <p>The background color of this view defaults to the your theme's {@code colorPrimary}. If you
- * wish to change this at runtime then you can do so via
- * {@link #setBackgroundTintList(android.content.res.ColorStateList)}.
+ * <p>The background color of this view defaults to the your theme's {@code colorSecondary}. If you
+ * wish to change this at runtime then you can do so via {@link
+ * #setBackgroundTintList(android.content.res.ColorStateList)}.
+ *
+ * <p>For more information, see the <a
+ * href="https://github.com/material-components/material-components-android/blob/master/docs/components/FloatingActionButton.md">component
+ * developer guidance</a> and <a href="https://material.io/components/extended-fab/overview">design
+ * guidelines</a>.
  */
 public class ExtendedFloatingActionButton extends MaterialButton implements AttachedBehavior {
 
@@ -75,19 +92,67 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
   private static final int ANIM_STATE_HIDING = 1;
   private static final int ANIM_STATE_SHOWING = 2;
 
-  private final Rect shadowPadding = new Rect();
   private int animState = ANIM_STATE_NONE;
+
+  /** Strategy to show the FAB. */
+  private static final int SHOW = 0;
+  /** Strategy to hide the FAB. */
+  private static final int HIDE = 1;
+  /** Strategy to shrink the FAB. */
+  private static final int SHRINK = 2;
+  /** Strategy to extend the FAB. */
+  private static final int EXTEND = 3;
+
+  private boolean animationEnabled = true;
+
+  /**
+   * The strategy type determines what motion strategy to apply on the FAB.
+   *
+   * @hide
+   */
+  @RestrictTo(LIBRARY_GROUP)
+  @IntDef({SHOW, HIDE, SHRINK, EXTEND})
+  @Retention(RetentionPolicy.SOURCE)
+  private @interface StrategyType {}
 
   private final AnimatorTracker changeVisibilityTracker = new AnimatorTracker();
   @NonNull private final MotionStrategy shrinkStrategy;
   @NonNull private final MotionStrategy extendStrategy;
   private final MotionStrategy showStrategy = new ShowStrategy(changeVisibilityTracker);
   private final MotionStrategy hideStrategy = new HideStrategy(changeVisibilityTracker);
+  private final int collapsedSize;
+
+  private int extendedPaddingStart;
+  private int extendedPaddingEnd;
 
   @NonNull private final Behavior<ExtendedFloatingActionButton> behavior;
 
   private boolean isExtended = true;
-  private boolean isUsingPillCorner = true;
+  private boolean isTransforming = false;
+  private boolean animateShowBeforeLayout = false;
+
+  @NonNull protected ColorStateList originalTextCsl;
+
+  /** Extend strategy to extend FAB back to the width from which it shrunk. */
+  private static final int EXTEND_STRATEGY_AUTO = 0;
+  /** Extend strategy to extend FAB to wrap its content. */
+  private static final int EXTEND_STRATEGY_WRAP_CONTENT = 1;
+  /** Extend strategy to extend FAB to match parent. */
+  private static final int EXTEND_STRATEGY_MATCH_PARENT = 2;
+
+  /**
+   * Extend strategy to choose how to extend the fab.
+   *
+   * @hide
+   */
+  @RestrictTo(LIBRARY_GROUP)
+  @IntDef({EXTEND_STRATEGY_AUTO, EXTEND_STRATEGY_WRAP_CONTENT, EXTEND_STRATEGY_MATCH_PARENT})
+  @Retention(RetentionPolicy.SOURCE)
+  private @interface ExtendStrategy {}
+
+  private int originalWidth;
+  private int originalHeight;
+  @ExtendStrategy private final int extendStrategyType;
 
   /**
    * Callback to be invoked when the visibility or the state of an ExtendedFloatingActionButton
@@ -137,10 +202,12 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
     this(context, attrs, R.attr.extendedFloatingActionButtonStyle);
   }
 
-  @SuppressWarnings("initialization")
+  @SuppressWarnings("nullness")
   public ExtendedFloatingActionButton(
       @NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
-    super(context, attrs, defStyleAttr);
+    super(wrap(context, attrs, defStyleAttr, DEF_STYLE_RES), attrs, defStyleAttr);
+    // Ensure we are using the correctly themed context rather than the context that was passed in.
+    context = getContext();
     behavior = new ExtendedFloatingActionButtonBehavior<>(context, attrs);
     TypedArray a =
         ThemeEnforcement.obtainStyledAttributes(
@@ -159,36 +226,52 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
         MotionSpec.createFromAttribute(
             context, a, R.styleable.ExtendedFloatingActionButton_shrinkMotionSpec);
 
+    collapsedSize =
+        a.getDimensionPixelSize(R.styleable.ExtendedFloatingActionButton_collapsedSize, -1);
+
+    extendStrategyType =
+        a.getInt(
+            R.styleable.ExtendedFloatingActionButton_extendStrategy, EXTEND_STRATEGY_WRAP_CONTENT);
+    extendedPaddingStart = getPaddingStart();
+    extendedPaddingEnd = getPaddingEnd();
+
     AnimatorTracker changeSizeTracker = new AnimatorTracker();
-    extendStrategy = new ChangeSizeStrategy(
-        changeSizeTracker,
-        new Size() {
-          @Override
-          public int getWidth() {
-            return getMeasuredWidth();
-          }
+    extendStrategy =
+        new ChangeSizeStrategy(
+            changeSizeTracker,
+            getSizeFromExtendStrategyType(extendStrategyType),
+            /* extending= */ true);
 
-          @Override
-          public int getHeight() {
-            return getMeasuredHeight();
-          }
-        },
-        /* extending= */ true);
+    shrinkStrategy =
+        new ChangeSizeStrategy(
+            changeSizeTracker,
+            new Size() {
+              @Override
+              public int getWidth() {
+                return getCollapsedSize();
+              }
 
-    shrinkStrategy = new ChangeSizeStrategy(
-        changeSizeTracker,
-        new Size() {
-          @Override
-          public int getWidth() {
-            return getCollapsedSize();
-          }
+              @Override
+              public int getHeight() {
+                return getCollapsedSize();
+              }
 
-          @Override
-          public int getHeight() {
-            return getCollapsedSize();
-          }
-        },
-        /* extending= */ false);
+              @Override
+              public int getPaddingStart() {
+                return getCollapsedPadding();
+              }
+
+              @Override
+              public int getPaddingEnd() {
+                return getCollapsedPadding();
+              }
+
+              @Override
+              public LayoutParams getLayoutParams() {
+                return new LayoutParams(getWidth(), getHeight());
+              }
+            },
+            /* extending= */ false);
 
     showStrategy.setMotionSpec(showMotionSpec);
     hideStrategy.setMotionSpec(hideMotionSpec);
@@ -198,9 +281,191 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
 
     ShapeAppearanceModel shapeAppearanceModel =
         ShapeAppearanceModel.builder(
-                context, attrs, defStyleAttr, DEF_STYLE_RES, ShapeAppearanceModel.PILL)
-            .build();
+            context, attrs, defStyleAttr, DEF_STYLE_RES, ShapeAppearanceModel.PILL
+        ).build();
     setShapeAppearanceModel(shapeAppearanceModel);
+    saveOriginalTextCsl();
+  }
+
+  private Size getSizeFromExtendStrategyType(@ExtendStrategy int extendStrategyType) {
+    Size wrapContentSize =
+        new Size() {
+          @Override
+          public int getWidth() {
+            return getMeasuredWidth()
+                - getCollapsedPadding() * 2
+                + extendedPaddingStart
+                + extendedPaddingEnd;
+          }
+
+          @Override
+          public int getHeight() {
+            return getMeasuredHeight();
+          }
+
+          @Override
+          public int getPaddingStart() {
+            return extendedPaddingStart;
+          }
+
+          @Override
+          public int getPaddingEnd() {
+            return extendedPaddingEnd;
+          }
+
+          @Override
+          public LayoutParams getLayoutParams() {
+            return new LayoutParams(WRAP_CONTENT, WRAP_CONTENT);
+          }
+        };
+    Size matchParentSize =
+        new Size() {
+          @Override
+          public int getWidth() {
+            int padding = 0;
+            int margins = 0;
+            if (!(getParent() instanceof View)) {
+              return wrapContentSize.getWidth();
+            }
+            View parent = (View) getParent();
+            // If the parent's width is wrap content and the fab's width is match parent,
+            // we return the wrap content width.
+            LayoutParams parentLayoutParams = parent.getLayoutParams();
+            if (parentLayoutParams != null && parentLayoutParams.width == WRAP_CONTENT) {
+              return wrapContentSize.getWidth();
+            }
+            padding += parent.getPaddingLeft() + parent.getPaddingRight();
+            if (ExtendedFloatingActionButton.this.getLayoutParams() instanceof MarginLayoutParams) {
+              MarginLayoutParams layoutParams =
+                  (MarginLayoutParams) ExtendedFloatingActionButton.this.getLayoutParams();
+              if (layoutParams != null) {
+                margins += layoutParams.leftMargin + layoutParams.rightMargin;
+              }
+            }
+            return parent.getWidth() - margins - padding;
+          }
+
+          @Override
+          public int getHeight() {
+            // If the extend strategy is MATCH_PARENT, we will extend the height to the original
+            // height.
+            if (originalHeight == MATCH_PARENT) {
+              if (!(getParent() instanceof View)) {
+                return wrapContentSize.getHeight();
+              }
+              int padding = 0;
+              int margins = 0;
+              View parent = (View) getParent();
+              // If the parent's height is wrap content and the fab's height is match parent,
+              // we return the wrap content height.
+              LayoutParams parentLayoutParams = parent.getLayoutParams();
+              if (parentLayoutParams != null && parentLayoutParams.height == WRAP_CONTENT) {
+                return wrapContentSize.getHeight();
+              }
+              padding += parent.getPaddingTop() + parent.getPaddingBottom();
+              if (ExtendedFloatingActionButton.this.getLayoutParams()
+                  instanceof MarginLayoutParams) {
+                MarginLayoutParams layoutParams =
+                    (MarginLayoutParams) ExtendedFloatingActionButton.this.getLayoutParams();
+                if (layoutParams != null) {
+                  margins += layoutParams.topMargin + layoutParams.bottomMargin;
+                }
+              }
+              return parent.getHeight() - margins - padding;
+            } else if (originalHeight == 0 || originalHeight == WRAP_CONTENT) {
+              return wrapContentSize.getHeight();
+            }
+            return originalHeight;
+          }
+
+          @Override
+          public int getPaddingStart() {
+            return extendedPaddingStart;
+          }
+
+          @Override
+          public int getPaddingEnd() {
+            return extendedPaddingEnd;
+          }
+
+          @Override
+          public LayoutParams getLayoutParams() {
+            return new LayoutParams(
+                MATCH_PARENT, originalHeight == 0 ? WRAP_CONTENT : originalHeight);
+          }
+        };
+    Size autoSize =
+        new Size() {
+          @Override
+          public int getWidth() {
+            if (originalWidth == MATCH_PARENT) {
+              return matchParentSize.getWidth();
+            } else if (originalWidth == 0 || originalWidth == WRAP_CONTENT) {
+              return wrapContentSize.getWidth();
+            }
+            return originalWidth;
+          }
+
+          @Override
+          public int getHeight() {
+            if (originalHeight == MATCH_PARENT) {
+              return matchParentSize.getHeight();
+            } else if (originalHeight == 0 || originalHeight == WRAP_CONTENT) {
+              return wrapContentSize.getHeight();
+            }
+            return originalHeight;
+          }
+
+          @Override
+          public int getPaddingStart() {
+            return extendedPaddingStart;
+          }
+
+          @Override
+          public int getPaddingEnd() {
+            return extendedPaddingEnd;
+          }
+
+          @Override
+          public LayoutParams getLayoutParams() {
+            return new LayoutParams(
+                originalWidth == 0 ? WRAP_CONTENT : originalWidth,
+                originalHeight == 0 ? WRAP_CONTENT : originalHeight);
+          }
+        };
+    switch (extendStrategyType) {
+      case EXTEND_STRATEGY_WRAP_CONTENT:
+        return wrapContentSize;
+      case EXTEND_STRATEGY_MATCH_PARENT:
+        return matchParentSize;
+      case EXTEND_STRATEGY_AUTO:
+      default:
+        return autoSize;
+    }
+  }
+
+  @Override
+  public void setTextColor(int color) {
+    super.setTextColor(color);
+    saveOriginalTextCsl();
+  }
+
+  @Override
+  public void setTextColor(@NonNull ColorStateList colors) {
+    super.setTextColor(colors);
+    saveOriginalTextCsl();
+  }
+
+  private void saveOriginalTextCsl() {
+    originalTextCsl = getTextColors();
+  }
+
+  /**
+   * Update the text color without affecting the original, client-set color.
+   */
+  protected void silentlyUpdateTextColor(@NonNull  ColorStateList csl) {
+    // Call super to avoid saving this silent update through extended FAB's setTextColor overrides.
+    super.setTextColor(csl);
   }
 
   @Override
@@ -213,45 +478,12 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
     }
   }
 
-  @Override
-  protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-    super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-
-    if (isUsingPillCorner) {
-      setShapeAppearanceModel(createPillCornerShapeAppearance());
-    }
-  }
-
   @NonNull
   @Override
   public Behavior<ExtendedFloatingActionButton> getBehavior() {
     return behavior;
   }
 
-  @Override
-  public void setShapeAppearanceModel(@NonNull ShapeAppearanceModel shapeAppearanceModel) {
-    if (shapeAppearanceModel.isUsingPillCorner()) {
-      isUsingPillCorner = true;
-      shapeAppearanceModel = createPillCornerShapeAppearance();
-    }
-    super.setShapeAppearanceModel(shapeAppearanceModel);
-  }
-
-  @NonNull
-  private ShapeAppearanceModel createPillCornerShapeAppearance() {
-    return getShapeAppearanceModel().withCornerRadius(getAdjustedRadius(getMeasuredHeight()));
-  }
-
-  @Override
-  public void setCornerRadius(int cornerRadius) {
-    isUsingPillCorner = cornerRadius == ShapeAppearanceModel.PILL;
-    if (isUsingPillCorner) {
-      cornerRadius = getAdjustedRadius(getMeasuredHeight());
-    } else if (cornerRadius < 0) {
-      cornerRadius = 0;
-    }
-    super.setCornerRadius(cornerRadius);
-  }
 
   /**
    * Extends or shrinks the fab depending on the value of {@param extended}.
@@ -271,6 +503,40 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
 
   public final boolean isExtended() {
     return isExtended;
+  }
+
+  /**
+   * Sets whether to enable animation for a call to show {@link #show} even if the view has not been
+   * laid out yet.
+   *
+   * <p>This may be set to {@code true} if the button is initially hidden but should animate when
+   * later shown. The default is {@code false}.
+   */
+  public void setAnimateShowBeforeLayout(boolean animateShowBeforeLayout) {
+    this.animateShowBeforeLayout = animateShowBeforeLayout;
+  }
+
+  @Override
+  public void setPaddingRelative(int start, int top, int end, int bottom) {
+    super.setPaddingRelative(start, top, end, bottom);
+    if (isExtended && !isTransforming) {
+      extendedPaddingStart = start;
+      extendedPaddingEnd = end;
+    }
+  }
+
+  @Override
+  public void setPadding(int left, int top, int right, int bottom) {
+    super.setPadding(left, top, right, bottom);
+    if (isExtended && !isTransforming) {
+      extendedPaddingStart = getPaddingStart();
+      extendedPaddingEnd = getPaddingEnd();
+    }
+  }
+
+  @Override
+  public CharSequence getAccessibilityClassName() {
+    return FloatingActionButton.ACCESSIBIILTY_FAB_ROLE;
   }
 
   /**
@@ -371,7 +637,7 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
    * <p>This method will animate the button hide if the view has already been laid out.
    */
   public void hide() {
-    performMotion(hideStrategy, null);
+    performMotion(HIDE, null);
   }
 
   /**
@@ -382,27 +648,29 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
    * @param callback the callback to notify when this view is hidden
    */
   public void hide(@NonNull OnChangedCallback callback) {
-    performMotion(hideStrategy, callback);
+    performMotion(HIDE, callback);
   }
 
   /**
    * Shows the button.
    *
-   * <p>This method will animate the button show if the view has already been laid out.
+   * <p>This method will animate the button show if the view has already been laid out, or if {@link
+   * #setAnimateShowBeforeLayout} is {@code true}.
    */
   public void show() {
-    performMotion(showStrategy, null);
+    performMotion(SHOW, null);
   }
 
   /**
    * Shows the button.
    *
-   * <p>This method will animate the button show if the view has already been laid out.
+   * <p>This method will animate the button show if the view has already been laid out, or if {@link
+   * #setAnimateShowBeforeLayout} is {@code true}.
    *
    * @param callback the callback to notify when this view is shown
    */
   public void show(@NonNull OnChangedCallback callback) {
-    performMotion(showStrategy, callback);
+    performMotion(SHOW, callback);
   }
 
   /**
@@ -414,7 +682,7 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
    * @see #extend(OnChangedCallback)
    */
   public void extend() {
-    performMotion(extendStrategy, null);
+    performMotion(EXTEND, null);
   }
 
   /**
@@ -426,7 +694,7 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
    * @param callback the callback to notify when the FAB is extended
    */
   public void extend(@NonNull final OnChangedCallback callback) {
-    performMotion(extendStrategy, callback);
+    performMotion(EXTEND, callback);
   }
 
 
@@ -439,7 +707,7 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
    * @see #shrink(OnChangedCallback)
    */
   public void shrink() {
-    performMotion(shrinkStrategy, null);
+    performMotion(SHRINK, null);
   }
 
   /**
@@ -451,7 +719,7 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
    * @param callback the callback to notify when the FAB shrank
    */
   public void shrink(@NonNull final OnChangedCallback callback) {
-    performMotion(shrinkStrategy, callback);
+    performMotion(SHRINK, callback);
   }
 
   /** Returns the motion spec for the show animation. */
@@ -552,12 +820,26 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
     setShrinkMotionSpec(MotionSpec.createFromResource(getContext(), id));
   }
 
-  boolean isUsingPillCorner() {
-    return isUsingPillCorner;
-  }
-
   private void performMotion(
-      @NonNull final MotionStrategy strategy, @Nullable final OnChangedCallback callback) {
+      @StrategyType final int strategyType, @Nullable final OnChangedCallback callback) {
+    MotionStrategy strategy;
+    switch (strategyType) {
+      case SHOW:
+        strategy = showStrategy;
+        break;
+      case HIDE:
+        strategy = hideStrategy;
+        break;
+      case SHRINK:
+        strategy = shrinkStrategy;
+        break;
+      case EXTEND:
+        strategy = extendStrategy;
+        break;
+      default:
+        throw new IllegalStateException("Unknown strategy type: " + strategyType);
+    }
+
     if (strategy.shouldCancel()) {
       return;
     }
@@ -567,6 +849,18 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
       strategy.performNow();
       strategy.onChange(callback);
       return;
+    }
+
+    // If shrinking, we should remember what width to re-expand at.
+    if (strategyType == SHRINK) {
+      LayoutParams lp = getLayoutParams();
+      if (lp != null) {
+        originalWidth = lp.width;
+        originalHeight = lp.height;
+      } else {
+        originalWidth = getWidth();
+        originalHeight = getHeight();
+      }
     }
 
     measure(MeasureSpec.UNSPECIFIED, MeasureSpec.UNSPECIFIED);
@@ -623,8 +917,22 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
     }
   }
 
+  /**
+   * Set whether or not animations are enabled.
+   */
+  public void setAnimationEnabled(boolean animationEnabled) {
+    this.animationEnabled = animationEnabled;
+  }
+
+  /** Return whether or not animations are enabled. */
+  public boolean isAnimationEnabled() {
+    return animationEnabled;
+  }
+
   private boolean shouldAnimateVisibilityChange() {
-    return ViewCompat.isLaidOut(this) && !isInEditMode();
+    return animationEnabled
+        && (isLaidOut() || (!isOrWillBeShown() && animateShowBeforeLayout))
+        && !isInEditMode();
   }
 
   /**
@@ -633,12 +941,16 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
    */
   static final Property<View, Float> WIDTH =
       new Property<View, Float>(Float.class, "width") {
+        // dereference of possibly-null reference object.getLayoutParams()
+        @SuppressWarnings("nullness:dereference.of.nullable")
         @Override
         public void set(@NonNull View object, @NonNull Float value) {
           object.getLayoutParams().width = value.intValue();
           object.requestLayout();
         }
 
+        // dereference of possibly-null reference object.getLayoutParams()
+        @SuppressWarnings("nullness:dereference.of.nullable")
         @NonNull
         @Override
         public Float get(@NonNull View object) {
@@ -652,12 +964,16 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
    */
   static final Property<View, Float> HEIGHT =
       new Property<View, Float>(Float.class, "height") {
+        // dereference of possibly-null reference object.getLayoutParams()
+        @SuppressWarnings("nullness:dereference.of.nullable")
         @Override
         public void set(@NonNull View object, @NonNull Float value) {
           object.getLayoutParams().height = value.intValue();
           object.requestLayout();
         }
 
+        // dereference of possibly-null reference object.getLayoutParams()
+        @SuppressWarnings("nullness:dereference.of.nullable")
         @NonNull
         @Override
         public Float get(@NonNull View object) {
@@ -666,36 +982,48 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
       };
 
   /**
-   * A Property wrapper around the <code>cornerRadius</code> functionality handled by the {@link
-   * ExtendedFloatingActionButton#setCornerRadius(int)} and {@link
-   * ExtendedFloatingActionButton#getCornerRadius()} methods.
+   * A Property wrapper around the <code>paddingStart</code> functionality handled by the {@link
+   * View#setPaddingRelative(int, int, int, int)}.
    */
-  static final Property<View, Float> CORNER_RADIUS =
-      new Property<View, Float>(Float.class, "cornerRadius") {
+  static final Property<View, Float> PADDING_START =
+      new Property<View, Float>(Float.class, "paddingStart") {
         @Override
         public void set(@NonNull View object, @NonNull Float value) {
-          ExtendedFloatingActionButton efab = ((ExtendedFloatingActionButton) object);
-          efab.setShapeAppearanceModel(
-              efab.getShapeAppearanceModel().withCornerRadius(value.intValue()));
+          object.setPaddingRelative(
+              value.intValue(),
+              object.getPaddingTop(),
+              object.getPaddingEnd(),
+              object.getPaddingBottom());
         }
 
+        @NonNull
         @Override
         public Float get(@NonNull View object) {
-          return ((ExtendedFloatingActionButton) object)
-              .getShapeAppearanceModel()
-              .getTopRightCorner()
-              .getCornerSize();
+          return (float) object.getPaddingStart();
         }
       };
 
   /**
-   * Returns an adjusted radius value that corrects any rounding errors.
-   *
-   * <p>TODO(b/121352029): Remove this method once this bug is fixed.
+   * A Property wrapper around the <code>paddingEnd</code> functionality handled by the {@link
+   * View#setPaddingRelative(int, int, int, int)}.
    */
-  private int getAdjustedRadius(int value) {
-    return (value - 1) / 2;
-  }
+  static final Property<View, Float> PADDING_END =
+      new Property<View, Float>(Float.class, "paddingEnd") {
+        @Override
+        public void set(@NonNull View object, @NonNull Float value) {
+          object.setPaddingRelative(
+              object.getPaddingStart(),
+              object.getPaddingTop(),
+              value.intValue(),
+              object.getPaddingBottom());
+        }
+
+        @NonNull
+        @Override
+        public Float get(@NonNull View object) {
+          return (float) object.getPaddingEnd();
+        }
+      };
 
   /**
    * Shrink to the smaller value between paddingStart and paddingEnd, such that when shrunk the icon
@@ -703,8 +1031,13 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
    */
   @VisibleForTesting
   int getCollapsedSize() {
-    return Math.min(ViewCompat.getPaddingStart(this), ViewCompat.getPaddingEnd(this)) * 2
-        + getIconSize();
+    return collapsedSize < 0
+        ? min(getPaddingStart(), getPaddingEnd()) * 2 + getIconSize()
+        : collapsedSize;
+  }
+
+  int getCollapsedPadding() {
+    return (getCollapsedSize() - getIconSize()) / 2;
   }
 
   /**
@@ -731,7 +1064,7 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
     }
 
     // Behavior attrs should be nullable in the framework
-    @SuppressWarnings("argument.type.incompatible")
+    @SuppressWarnings("nullness:argument")
     public ExtendedFloatingActionButtonBehavior(
         @NonNull Context context, @Nullable AttributeSet attrs) {
       super(context, attrs);
@@ -802,6 +1135,17 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
     }
 
     @Override
+    @SuppressWarnings("unchecked")
+    // TODO: remove this stub method. Adding now to maintain compatibility since the override is
+    // not correct.
+    public boolean getInsetDodgeRect(
+        @NonNull CoordinatorLayout parent,
+        @NonNull ExtendedFloatingActionButton child,
+        @NonNull Rect rect) {
+      return super.getInsetDodgeRect(parent, (T) child, rect);
+    }
+
+    @Override
     public void onAttachedToLayoutParams(@NonNull CoordinatorLayout.LayoutParams lp) {
       if (lp.dodgeInsetEdges == Gravity.NO_GRAVITY) {
         // If the developer hasn't set dodgeInsetEdges, lets set it to BOTTOM so that
@@ -841,6 +1185,8 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
       internalAutoShrinkCallback = callback;
     }
 
+    // dereference of possibly-null reference lp
+    @SuppressWarnings("nullness:dereference.of.nullable")
     private boolean shouldUpdateVisibility(
         @NonNull View dependency, @NonNull ExtendedFloatingActionButton child) {
       final CoordinatorLayout.LayoutParams lp =
@@ -884,6 +1230,8 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
       return true;
     }
 
+    // dereference of possibly-null reference lp
+    @SuppressWarnings("nullness:dereference.of.nullable")
     private boolean updateFabVisibilityForBottomSheet(
         @NonNull View bottomSheet, @NonNull ExtendedFloatingActionButton child) {
       if (!shouldUpdateVisibility(bottomSheet, child)) {
@@ -914,11 +1262,8 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
       OnChangedCallback callback = autoShrinkEnabled
           ? internalAutoShrinkCallback
           : internalAutoHideCallback;
-      MotionStrategy strategy = autoShrinkEnabled
-          ? fab.shrinkStrategy
-          : fab.hideStrategy;
 
-      fab.performMotion(strategy, callback);
+      fab.performMotion(autoShrinkEnabled ? SHRINK : HIDE, callback);
     }
 
     /**
@@ -937,11 +1282,8 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
       OnChangedCallback callback = autoShrinkEnabled
           ? internalAutoShrinkCallback
           : internalAutoHideCallback;
-      MotionStrategy strategy = autoShrinkEnabled
-          ? fab.extendStrategy
-          : fab.showStrategy;
 
-      fab.performMotion(strategy, callback);
+      fab.performMotion(autoShrinkEnabled ? EXTEND : SHOW, callback);
     }
 
     @Override
@@ -965,71 +1307,19 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
       }
       // Now let the CoordinatorLayout lay out the FAB
       parent.onLayoutChild(child, layoutDirection);
-      // Now offset it if needed
-      offsetIfNeeded(parent, child);
       return true;
-    }
-
-    @Override
-    public boolean getInsetDodgeRect(
-        @NonNull CoordinatorLayout parent,
-        @NonNull ExtendedFloatingActionButton child,
-        @NonNull Rect rect) {
-      // Since we offset so that any internal shadow padding isn't shown, we need to make
-      // sure that the shadow isn't used for any dodge inset calculations
-      final Rect shadowPadding = child.shadowPadding;
-      rect.set(
-          child.getLeft() + shadowPadding.left,
-          child.getTop() + shadowPadding.top,
-          child.getRight() - shadowPadding.right,
-          child.getBottom() - shadowPadding.bottom);
-      return true;
-    }
-
-    /**
-     * Pre-Lollipop we use padding so that the shadow has enough space to be drawn. This method
-     * offsets our layout position so that we're positioned correctly if we're on one of our
-     * parent's edges.
-     */
-    private void offsetIfNeeded(
-        @NonNull CoordinatorLayout parent, @NonNull ExtendedFloatingActionButton fab) {
-      final Rect padding = fab.shadowPadding;
-
-      if (padding != null && padding.centerX() > 0 && padding.centerY() > 0) {
-        final CoordinatorLayout.LayoutParams lp =
-            (CoordinatorLayout.LayoutParams) fab.getLayoutParams();
-
-        int offsetTB = 0;
-        int offsetLR = 0;
-
-        if (fab.getRight() >= parent.getWidth() - lp.rightMargin) {
-          // If we're on the right edge, shift it the right
-          offsetLR = padding.right;
-        } else if (fab.getLeft() <= lp.leftMargin) {
-          // If we're on the left edge, shift it the left
-          offsetLR = -padding.left;
-        }
-        if (fab.getBottom() >= parent.getHeight() - lp.bottomMargin) {
-          // If we're on the bottom edge, shift it down
-          offsetTB = padding.bottom;
-        } else if (fab.getTop() <= lp.topMargin) {
-          // If we're on the top edge, shift it up
-          offsetTB = -padding.top;
-        }
-
-        if (offsetTB != 0) {
-          ViewCompat.offsetTopAndBottom(fab, offsetTB);
-        }
-        if (offsetLR != 0) {
-          ViewCompat.offsetLeftAndRight(fab, offsetLR);
-        }
-      }
     }
   }
 
   interface Size {
     int getWidth();
     int getHeight();
+
+    int getPaddingStart();
+
+    int getPaddingEnd();
+
+    LayoutParams getLayoutParams();
   }
 
   class ChangeSizeStrategy extends BaseMotionStrategy {
@@ -1051,12 +1341,29 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
         return;
       }
 
-      if (extending) {
-        measure(MeasureSpec.UNSPECIFIED, MeasureSpec.UNSPECIFIED);
+      // If shrinking, save the original width and height.
+      if (!extending) {
+        originalWidth = layoutParams.width;
+        originalHeight = layoutParams.height;
+      }
+      layoutParams.width = size.getLayoutParams().width;
+      layoutParams.height = size.getLayoutParams().height;
+
+      if (extending) { // extending
+        silentlyUpdateTextColor(originalTextCsl);
+      } else if (getText() != null && getText() != "") { // shrinking
+        // We only update the text to transparent if it exists, otherwise, updating the
+        // text color to transparent affects the elevation of the view.
+        // It's okay for the text to be set afterwards and not be transparent, as it is cut off
+        // by forcing the layout param dimens.
+        silentlyUpdateTextColor(ColorStateList.valueOf(Color.TRANSPARENT));
       }
 
-      layoutParams.width = size.getWidth();
-      layoutParams.height = size.getHeight();
+      setPaddingRelative(
+          size.getPaddingStart(),
+          getPaddingTop(),
+          size.getPaddingEnd(),
+          getPaddingBottom());
       requestLayout();
     }
 
@@ -1075,7 +1382,9 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
 
     @Override
     public int getDefaultMotionSpecResource() {
-      return R.animator.mtrl_extended_fab_change_size_motion_spec;
+      return extending
+          ? R.animator.mtrl_extended_fab_change_size_expand_motion_spec
+          : R.animator.mtrl_extended_fab_change_size_collapse_motion_spec;
     }
 
     @NonNull
@@ -1094,6 +1403,26 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
         spec.setPropertyValues("height", heightValues);
       }
 
+      if (spec.hasPropertyValues("paddingStart")) {
+        PropertyValuesHolder[] paddingValues = spec.getPropertyValues("paddingStart");
+        paddingValues[0].setFloatValues(getPaddingStart(), size.getPaddingStart());
+        spec.setPropertyValues("paddingStart", paddingValues);
+      }
+
+      if (spec.hasPropertyValues("paddingEnd")) {
+        PropertyValuesHolder[] paddingValues = spec.getPropertyValues("paddingEnd");
+        paddingValues[0].setFloatValues(getPaddingEnd(), size.getPaddingEnd());
+        spec.setPropertyValues("paddingEnd", paddingValues);
+      }
+
+      if (spec.hasPropertyValues("labelOpacity")) {
+        PropertyValuesHolder[] labelOpacityValues = spec.getPropertyValues("labelOpacity");
+        float startValue = extending ? 0F : 1F;
+        float endValue = extending ? 1F : 0F;
+        labelOpacityValues[0].setFloatValues(startValue, endValue);
+        spec.setPropertyValues("labelOpacity", labelOpacityValues);
+      }
+
       return super.createAnimator(spec);
     }
 
@@ -1101,13 +1430,22 @@ public class ExtendedFloatingActionButton extends MaterialButton implements Atta
     public void onAnimationStart(Animator animator) {
       super.onAnimationStart(animator);
       isExtended = extending;
+      isTransforming = true;
       setHorizontallyScrolling(true);
     }
 
     @Override
     public void onAnimationEnd() {
       super.onAnimationEnd();
+      isTransforming = false;
       setHorizontallyScrolling(false);
+
+      LayoutParams layoutParams = getLayoutParams();
+      if (layoutParams == null) {
+        return;
+      }
+      layoutParams.width = size.getLayoutParams().width;
+      layoutParams.height = size.getLayoutParams().height;
     }
 
     @Override

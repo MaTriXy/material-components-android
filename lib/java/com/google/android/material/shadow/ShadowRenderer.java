@@ -28,6 +28,7 @@ import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.Region.Op;
 import android.graphics.Shader;
+import android.graphics.Shader.TileMode;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
@@ -65,19 +66,19 @@ public class ShadowRenderer {
   private static final float[] cornerPositions = new float[] {0f, 0f, .5f, 1f};
 
   private final Path scratch = new Path();
+  private final Paint transparentPaint = new Paint();
 
   public ShadowRenderer() {
     this(Color.BLACK);
   }
 
   public ShadowRenderer(int color) {
+    shadowPaint = new Paint();
     setShadowColor(color);
 
+    transparentPaint.setColor(Color.TRANSPARENT);
     cornerShadowPaint = new Paint(Paint.DITHER_FLAG);
     cornerShadowPaint.setStyle(Paint.Style.FILL);
-
-    shadowPaint = new Paint();
-    shadowPaint.setColor(shadowStartColor);
 
     edgeShadowPaint = new Paint(cornerShadowPaint);
   }
@@ -86,6 +87,7 @@ public class ShadowRenderer {
     shadowStartColor = ColorUtils.setAlphaComponent(color, COLOR_ALPHA_START);
     shadowMiddleColor = ColorUtils.setAlphaComponent(color, COLOR_ALPHA_MIDDLE);
     shadowEndColor = ColorUtils.setAlphaComponent(color, COLOR_ALPHA_END);
+    shadowPaint.setColor(shadowStartColor);
   }
 
   /** Draws an edge shadow on the canvas in the current bounds with the matrix transform applied. */
@@ -148,30 +150,66 @@ public class ShadowRenderer {
       cornerColors[3] = shadowEndColor;
     }
 
-    float startRatio = 1f - (elevation / (bounds.width() / 2f));
+    float radius = bounds.width() / 2f;
+    // The shadow is not big enough to draw.
+    if (radius <= 0) {
+      return;
+    }
+
+    float startRatio = 1f - (elevation / radius);
     float midRatio = startRatio + ((1f - startRatio) / 2f);
     cornerPositions[1] = startRatio;
     cornerPositions[2] = midRatio;
-
-    cornerShadowPaint.setShader(
+    RadialGradient shader =
         new RadialGradient(
             bounds.centerX(),
             bounds.centerY(),
-            bounds.width() / 2,
+            radius,
             cornerColors,
             cornerPositions,
-            Shader.TileMode.CLAMP));
-
-    // TODO(b/117606382): handle oval bounds by scaling the canvas.
-
+            TileMode.CLAMP);
+    cornerShadowPaint.setShader(shader);
     canvas.save();
     canvas.concat(matrix);
+    canvas.scale(1, bounds.height() / bounds.width());
 
     if (!drawShadowInsideBounds) {
       canvas.clipPath(arcBounds, Op.DIFFERENCE);
+      // This line is required for the next drawArc to work correctly, I think.
+      canvas.drawPath(arcBounds, transparentPaint);
     }
 
     canvas.drawArc(bounds, startAngle, sweepAngle, true, cornerShadowPaint);
+    canvas.restore();
+  }
+
+  public void drawInnerCornerShadow(
+      @NonNull Canvas canvas,
+      @Nullable Matrix matrix,
+      @NonNull RectF bounds,
+      int elevation,
+      float startAngle,
+      float sweepAngle,
+      @NonNull float[] cornerPosition) {
+    // Draws the radial gradient corner shadow.
+    if (sweepAngle > 0) {
+      startAngle += sweepAngle;
+      sweepAngle = -sweepAngle;
+    }
+    drawCornerShadow(canvas, matrix, bounds, elevation, startAngle, sweepAngle);
+    // Draws the patched area between the corner and the arc.
+    Path shapeBounds = scratch;
+    shapeBounds.rewind();
+    shapeBounds.moveTo(cornerPosition[0], cornerPosition[1]);
+    shapeBounds.arcTo(bounds, startAngle, sweepAngle);
+    shapeBounds.close();
+
+    canvas.save();
+    canvas.concat(matrix);
+    canvas.scale(1, bounds.height() / bounds.width());
+
+    canvas.drawPath(shapeBounds, transparentPaint);
+    canvas.drawPath(shapeBounds, shadowPaint);
     canvas.restore();
   }
 

@@ -16,19 +16,23 @@
 
 package com.google.android.material.bottomsheet;
 
-import com.google.android.material.R;
-
+import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.os.Bundle;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.DialogFragment;
 import androidx.appcompat.app.AppCompatDialogFragment;
 import android.view.View;
+import androidx.annotation.LayoutRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 /**
- * Modal bottom sheet. This is a version of {@link DialogFragment} that shows a bottom sheet using
- * {@link BottomSheetDialog} instead of a floating dialog.
+ * Modal bottom sheet. This is a version of {@link androidx.fragment.app.DialogFragment} that shows
+ * a bottom sheet using {@link BottomSheetDialog} instead of a floating dialog.
+ *
+ * <p>For more information, see the <a
+ * href="https://github.com/material-components/material-components-android/blob/master/docs/components/BottomSheet.md">component
+ * developer guidance</a> and <a
+ * href="https://material.io/components/bottom-sheets/overview">design guidelines</a>.
  */
 public class BottomSheetDialogFragment extends AppCompatDialogFragment {
 
@@ -38,9 +42,16 @@ public class BottomSheetDialogFragment extends AppCompatDialogFragment {
    */
   private boolean waitingForDismissAllowingStateLoss;
 
+  public BottomSheetDialogFragment() {}
+
+  @SuppressLint("ValidFragment")
+  public BottomSheetDialogFragment(@LayoutRes int contentLayoutId) {
+    super(contentLayoutId);
+  }
+
   @NonNull
   @Override
-  public Dialog onCreateDialog(Bundle savedInstanceState) {
+  public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
     return new BottomSheetDialog(getContext(), getTheme());
   }
 
@@ -58,52 +69,35 @@ public class BottomSheetDialogFragment extends AppCompatDialogFragment {
     }
   }
 
-  @NonNull
-  @Override
-  public BottomSheetDialog getDialog() {
-    return (BottomSheetDialog) super.getDialog();
-  }
-
   /**
    * Tries to dismiss the dialog fragment with the bottom sheet animation. Returns true if possible,
    * false otherwise.
    */
   private boolean tryDismissWithAnimation(boolean allowingStateLoss) {
-    BottomSheetBehavior<View> behavior = getBottomSheetBehavior();
-    if (behavior != null && behavior.isHideable() && getDialog().getDismissWithAnimation()) {
-      dismissWithAnimation(behavior, allowingStateLoss);
-      return true;
+    Dialog baseDialog = getDialog();
+    if (baseDialog instanceof BottomSheetDialog) {
+      BottomSheetDialog dialog = (BottomSheetDialog) baseDialog;
+      BottomSheetBehavior<?> behavior = dialog.getBehavior();
+      if (behavior.isHideable() && dialog.getDismissWithAnimation()) {
+        dismissWithAnimation(behavior, allowingStateLoss);
+        return true;
+      }
     }
 
     return false;
   }
 
-  @Nullable
-  private BottomSheetBehavior<View> getBottomSheetBehavior() {
-    Dialog dialog = getDialog();
-    if (dialog != null) {
-      View bottomSheet = dialog.findViewById(R.id.design_bottom_sheet);
-      if (bottomSheet != null) {
-        return BottomSheetBehavior.from(bottomSheet);
-      }
-    }
-    return null;
-  }
-
   private void dismissWithAnimation(
-      @NonNull BottomSheetBehavior<View> behavior, boolean allowingStateLoss) {
+      @NonNull BottomSheetBehavior<?> behavior, boolean allowingStateLoss) {
     waitingForDismissAllowingStateLoss = allowingStateLoss;
 
     if (behavior.getState() == BottomSheetBehavior.STATE_HIDDEN) {
       dismissAfterAnimation();
     } else {
-      // Wrap the old callback in a BottomSheetDismissCallback to pass along the state change.
-      if (!(behavior.getBottomSheetCallback() instanceof BottomSheetDismissCallback)) {
-        BottomSheetDismissCallback dismissCallback =
-            new BottomSheetDismissCallback(behavior.getBottomSheetCallback());
-        behavior.setBottomSheetCallback(dismissCallback);
+      if (getDialog() instanceof BottomSheetDialog) {
+        ((BottomSheetDialog) getDialog()).removeDefaultCallback();
       }
-
+      behavior.addBottomSheetCallback(new BottomSheetDismissCallback());
       behavior.setState(BottomSheetBehavior.STATE_HIDDEN);
     }
   }
@@ -118,24 +112,14 @@ public class BottomSheetDialogFragment extends AppCompatDialogFragment {
 
   private class BottomSheetDismissCallback extends BottomSheetBehavior.BottomSheetCallback {
 
-    private final BottomSheetBehavior.BottomSheetCallback originalCallback;
-
-    public BottomSheetDismissCallback(BottomSheetBehavior.BottomSheetCallback originalCallback) {
-      this.originalCallback = originalCallback;
-    }
-
     @Override
     public void onStateChanged(@NonNull View bottomSheet, int newState) {
       if (newState == BottomSheetBehavior.STATE_HIDDEN) {
         dismissAfterAnimation();
       }
-
-      originalCallback.onStateChanged(bottomSheet, newState);
     }
 
     @Override
-    public void onSlide(@NonNull View bottomSheet, float slideOffset) {
-      originalCallback.onSlide(bottomSheet, slideOffset);
-    }
+    public void onSlide(@NonNull View bottomSheet, float slideOffset) {}
   }
 }

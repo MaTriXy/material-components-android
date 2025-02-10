@@ -18,10 +18,15 @@ package com.google.android.material.datepicker;
 import static com.google.android.material.datepicker.MaterialDatePickerTestUtils.findFirstVisibleItem;
 import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 
 import androidx.fragment.app.FragmentManager;
 import androidx.appcompat.app.AppCompatActivity;
+import android.view.View;
+import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import androidx.test.espresso.IdlingRegistry;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.rule.ActivityTestRule;
@@ -35,11 +40,14 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 public class MaterialDatePickerPagesTest {
 
-  private static final Month start = Month.create(2000, Calendar.JANUARY);
-  private static final Month end = Month.create(2000, Calendar.MAY);
-  private static final Month opening = Month.create(2000, Calendar.FEBRUARY);
+  private static final Month START = Month.create(2000, Calendar.JANUARY);
+  private static final Month END = Month.create(2000, Calendar.MAY);
+  private static final Month OPEN_AT = Month.create(2000, Calendar.FEBRUARY);
 
   private ListenerIdlingResource listenerIdlingResource;
+
+  @Rule
+  public final InstantTaskExecutorRule instantTaskExecutorRule = new InstantTaskExecutorRule();
 
   @Rule
   public final ActivityTestRule<AppCompatActivity> activityTestRule =
@@ -50,7 +58,11 @@ public class MaterialDatePickerPagesTest {
   @Before
   public void setupDatePickerDialogForSwiping() {
     CalendarConstraints calendarConstraints =
-        new CalendarConstraints.Builder().setStart(start).setEnd(end).setOpening(opening).build();
+        new CalendarConstraints.Builder()
+            .setStart(START.timeInMillis)
+            .setEnd(END.timeInMillis)
+            .setOpenAt(OPEN_AT.timeInMillis)
+            .build();
     FragmentManager fragmentManager = activityTestRule.getActivity().getSupportFragmentManager();
     String tag = "Date DialogFragment";
 
@@ -72,7 +84,7 @@ public class MaterialDatePickerPagesTest {
     MaterialDatePickerTestUtils.swipeEarlier(dialogFragment);
     MaterialDatePickerTestUtils.swipeEarlier(dialogFragment);
 
-    assertEquals(start, findFirstVisibleItem(dialogFragment));
+    assertEquals(START, findFirstVisibleItem(dialogFragment));
   }
 
   @Test
@@ -81,12 +93,12 @@ public class MaterialDatePickerPagesTest {
     MaterialDatePickerTestUtils.swipeLater(dialogFragment);
     MaterialDatePickerTestUtils.swipeLater(dialogFragment);
     MaterialDatePickerTestUtils.swipeLater(dialogFragment);
-    assertEquals(end, findFirstVisibleItem(dialogFragment));
+    assertEquals(END, findFirstVisibleItem(dialogFragment));
   }
 
   @Test
   public void calendarOpensOnCurrent() {
-    assertEquals(opening, findFirstVisibleItem(dialogFragment));
+    assertEquals(OPEN_AT, findFirstVisibleItem(dialogFragment));
   }
 
   @Test
@@ -101,7 +113,7 @@ public class MaterialDatePickerPagesTest {
         });
     Calendar startingTimeOfMonth = Calendar.getInstance();
     startingTimeOfMonth.clear();
-    startingTimeOfMonth.set(opening.year, opening.month, 1);
+    startingTimeOfMonth.set(OPEN_AT.year, OPEN_AT.month, 1);
     MaterialDatePickerTestUtils.swipeEarlier(dialogFragment);
     MaterialDatePickerTestUtils.clickDialogVisibleDay(5);
 
@@ -118,6 +130,15 @@ public class MaterialDatePickerPagesTest {
     MaterialDatePickerTestUtils.clickNext();
     MaterialDatePickerTestUtils.clickSelectorToggle();
     MaterialDatePickerTestUtils.clickSelectorToggle();
-    assertEquals(findFirstVisibleItem(dialogFragment), opening.monthsLater(1));
+    assertEquals(findFirstVisibleItem(dialogFragment), OPEN_AT.monthsLater(1));
+  }
+
+  @Test
+  public void accessibility_daySelection_notScrollable() {
+    View view = dialogFragment.getView().findViewById(R.id.mtrl_calendar_months);
+    AccessibilityNodeInfoCompat nodeInfo = AccessibilityNodeInfoCompat.obtain();
+    ViewCompat.onInitializeAccessibilityNodeInfo(view, nodeInfo);
+
+    assertFalse(nodeInfo.isScrollable());
   }
 }

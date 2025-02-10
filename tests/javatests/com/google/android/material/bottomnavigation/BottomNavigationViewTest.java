@@ -33,6 +33,7 @@ import static org.hamcrest.core.AllOf.allOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -47,26 +48,38 @@ import android.app.Activity;
 import android.content.res.Resources;
 import android.os.Build;
 import android.os.Parcelable;
-import androidx.annotation.ColorInt;
-import androidx.core.content.res.ResourcesCompat;
+import android.util.SparseArray;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
-import android.view.PointerIcon;
 import android.view.View;
 import android.view.ViewGroup;
+import androidx.annotation.ColorInt;
+import androidx.core.content.res.ResourcesCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat.AccessibilityActionCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat.CollectionInfoCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat.CollectionItemInfoCompat;
 import androidx.test.annotation.UiThreadTest;
 import androidx.test.filters.LargeTest;
 import androidx.test.filters.SdkSuppress;
 import androidx.test.filters.SmallTest;
 import androidx.test.rule.ActivityTestRule;
 import androidx.test.runner.AndroidJUnit4;
+import com.google.android.material.navigation.NavigationBarItemView;
+import com.google.android.material.navigation.NavigationBarMenuView;
+import com.google.android.material.navigation.NavigationBarView;
+import com.google.android.material.navigation.NavigationBarView.OnItemReselectedListener;
+import com.google.android.material.navigation.NavigationBarView.OnItemSelectedListener;
 import com.google.android.material.testapp.BottomNavigationViewActivity;
 import com.google.android.material.testapp.R;
+import com.google.android.material.testutils.AccessibilityUtils;
 import com.google.android.material.testutils.TestDrawable;
 import com.google.android.material.testutils.TestUtilsMatchers;
 import java.util.HashMap;
 import java.util.Map;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -128,9 +141,8 @@ public class BottomNavigationViewTest {
   @Test
   @LargeTest
   public void testNavigationSelectionListener() {
-    BottomNavigationView.OnNavigationItemSelectedListener mockedListener =
-        mock(BottomNavigationView.OnNavigationItemSelectedListener.class);
-    bottomNavigation.setOnNavigationItemSelectedListener(mockedListener);
+    OnItemSelectedListener mockedListener = mock(OnItemSelectedListener.class);
+    bottomNavigation.setOnItemSelectedListener(mockedListener);
 
     // Make the listener return true to allow selecting the item.
     when(mockedListener.onNavigationItemSelected(any(MenuItem.class))).thenReturn(true);
@@ -176,7 +188,7 @@ public class BottomNavigationViewTest {
 
     // Set null listener to test that the next click is not going to notify the
     // previously set listener and will allow selecting items.
-    bottomNavigation.setOnNavigationItemSelectedListener(null);
+    bottomNavigation.setOnItemSelectedListener(null);
 
     // Click one of our items
     onView(
@@ -195,9 +207,8 @@ public class BottomNavigationViewTest {
   @Test
   @SmallTest
   public void testSetSelectedItemId() {
-    BottomNavigationView.OnNavigationItemSelectedListener mockedListener =
-        mock(BottomNavigationView.OnNavigationItemSelectedListener.class);
-    bottomNavigation.setOnNavigationItemSelectedListener(mockedListener);
+    OnItemSelectedListener mockedListener = mock(OnItemSelectedListener.class);
+    bottomNavigation.setOnItemSelectedListener(mockedListener);
 
     // Make the listener return true to allow selecting the item.
     when(mockedListener.onNavigationItemSelected(any(MenuItem.class))).thenReturn(true);
@@ -230,7 +241,7 @@ public class BottomNavigationViewTest {
 
     // Set null listener to test that the next click is not going to notify the
     // previously set listener and will allow selecting items.
-    bottomNavigation.setOnNavigationItemSelectedListener(null);
+    bottomNavigation.setOnItemSelectedListener(null);
 
     // Select one of our items
     bottomNavigation.setSelectedItemId(R.id.destination_home);
@@ -243,10 +254,10 @@ public class BottomNavigationViewTest {
   @Test
   @SmallTest
   public void testNavigationReselectionListener() {
-    // Add an OnNavigationItemReselectedListener
-    BottomNavigationView.OnNavigationItemReselectedListener reselectedListener =
-        mock(BottomNavigationView.OnNavigationItemReselectedListener.class);
-    bottomNavigation.setOnNavigationItemReselectedListener(reselectedListener);
+    // Add an OnItemReselectedListener
+    OnItemReselectedListener reselectedListener =
+        mock(NavigationBarView.OnItemReselectedListener.class);
+    bottomNavigation.setOnItemReselectedListener(reselectedListener);
 
     // Select an item
     onView(
@@ -273,10 +284,9 @@ public class BottomNavigationViewTest {
     verify(reselectedListener, times(1))
         .onNavigationItemReselected(bottomNavigation.getMenu().findItem(R.id.destination_profile));
 
-    // Add an OnNavigationItemSelectedListener
-    BottomNavigationView.OnNavigationItemSelectedListener selectedListener =
-        mock(BottomNavigationView.OnNavigationItemSelectedListener.class);
-    bottomNavigation.setOnNavigationItemSelectedListener(selectedListener);
+    // Add an OnItemSelectedListener
+    OnItemSelectedListener selectedListener = mock(OnItemSelectedListener.class);
+    bottomNavigation.setOnItemSelectedListener(selectedListener);
     // Make the listener return true to allow selecting the item.
     when(selectedListener.onNavigationItemSelected(any(MenuItem.class))).thenReturn(true);
 
@@ -309,8 +319,8 @@ public class BottomNavigationViewTest {
     verify(reselectedListener, times(1))
         .onNavigationItemReselected(bottomNavigation.getMenu().findItem(R.id.destination_people));
 
-    // Remove the OnNavigationItemReselectedListener
-    bottomNavigation.setOnNavigationItemReselectedListener(null);
+    // Remove the OnItemReselectedListener
+    bottomNavigation.setOnItemReselectedListener(null);
 
     // Select the same item again
     onView(
@@ -385,13 +395,23 @@ public class BottomNavigationViewTest {
 
     // Note that here we're tying ourselves to the implementation details of the internal
     // structure of the BottomNavigationView. Specifically, we're checking the drawable the
-    // ImageView with id R.id.icon. If the internal implementation of BottomNavigationView
+    // ImageView with id R.id.navigation_bar_item_icon_view. If the internal implementation of
+    // BottomNavigationView
     // changes, the second Matcher in the lookups below will need to be tweaked.
-    onView(allOf(withId(R.id.icon), isDescendantOfA(withId(R.id.destination_home))))
+    onView(
+            allOf(
+                withId(R.id.navigation_bar_item_icon_view),
+                isDescendantOfA(withId(R.id.destination_home))))
         .check(matches(TestUtilsMatchers.drawable(defaultTintColor, allowedComponentVariance)));
-    onView(allOf(withId(R.id.icon), isDescendantOfA(withId(R.id.destination_profile))))
+    onView(
+            allOf(
+                withId(R.id.navigation_bar_item_icon_view),
+                isDescendantOfA(withId(R.id.destination_profile))))
         .check(matches(TestUtilsMatchers.drawable(defaultTintColor, allowedComponentVariance)));
-    onView(allOf(withId(R.id.icon), isDescendantOfA(withId(R.id.destination_people))))
+    onView(
+            allOf(
+                withId(R.id.navigation_bar_item_icon_view),
+                isDescendantOfA(withId(R.id.destination_people))))
         .check(matches(TestUtilsMatchers.drawable(defaultTintColor, allowedComponentVariance)));
 
     @ColorInt final int newTintColor = ResourcesCompat.getColor(res, R.color.red_translucent, null);
@@ -401,11 +421,20 @@ public class BottomNavigationViewTest {
                 ResourcesCompat.getColorStateList(
                     res, R.color.color_state_list_red_translucent, null)));
     // Check that all menu items with icons now have icons tinted with the newly set color
-    onView(allOf(withId(R.id.icon), isDescendantOfA(withId(R.id.destination_home))))
+    onView(
+            allOf(
+                withId(R.id.navigation_bar_item_icon_view),
+                isDescendantOfA(withId(R.id.destination_home))))
         .check(matches(TestUtilsMatchers.drawable(newTintColor, allowedComponentVariance)));
-    onView(allOf(withId(R.id.icon), isDescendantOfA(withId(R.id.destination_profile))))
+    onView(
+            allOf(
+                withId(R.id.navigation_bar_item_icon_view),
+                isDescendantOfA(withId(R.id.destination_profile))))
         .check(matches(TestUtilsMatchers.drawable(newTintColor, allowedComponentVariance)));
-    onView(allOf(withId(R.id.icon), isDescendantOfA(withId(R.id.destination_people))))
+    onView(
+            allOf(
+                withId(R.id.navigation_bar_item_icon_view),
+                isDescendantOfA(withId(R.id.destination_people))))
         .check(matches(TestUtilsMatchers.drawable(newTintColor, allowedComponentVariance)));
 
     // And now remove all icon tinting
@@ -413,11 +442,20 @@ public class BottomNavigationViewTest {
     // And verify that all menu items with icons now have the original colors for their icons.
     // Note that since there is no tinting at this point, we don't allow any color variance
     // in these checks.
-    onView(allOf(withId(R.id.icon), isDescendantOfA(withId(R.id.destination_home))))
+    onView(
+            allOf(
+                withId(R.id.navigation_bar_item_icon_view),
+                isDescendantOfA(withId(R.id.destination_home))))
         .check(matches(TestUtilsMatchers.drawable(redFill, allowedComponentVariance)));
-    onView(allOf(withId(R.id.icon), isDescendantOfA(withId(R.id.destination_profile))))
+    onView(
+            allOf(
+                withId(R.id.navigation_bar_item_icon_view),
+                isDescendantOfA(withId(R.id.destination_profile))))
         .check(matches(TestUtilsMatchers.drawable(greenFill, allowedComponentVariance)));
-    onView(allOf(withId(R.id.icon), isDescendantOfA(withId(R.id.destination_people))))
+    onView(
+            allOf(
+                withId(R.id.navigation_bar_item_icon_view),
+                isDescendantOfA(withId(R.id.destination_people))))
         .check(matches(TestUtilsMatchers.drawable(blueFill, allowedComponentVariance)));
   }
 
@@ -635,19 +673,29 @@ public class BottomNavigationViewTest {
     onView(withId(R.id.bottom_navigation))
         .perform(showBadgeNumberForMenuItem(R.id.destination_home, 75));
     assertTrue(bottomNavigation.getMenu().findItem(R.id.destination_profile).isChecked());
-    // Save the state
-    final Parcelable state = bottomNavigation.onSaveInstanceState();
+
+    // Save the current state
+    SparseArray<Parcelable> container = new SparseArray<>();
+    bottomNavigation.saveHierarchyState(container);
 
     // Restore the state into a fresh BottomNavigationView
     activityTestRule.runOnUiThread(
         () -> {
           BottomNavigationView testView = new BottomNavigationView(activityTestRule.getActivity());
+          testView.setId(R.id.bottom_navigation);
           testView.inflateMenu(R.menu.bottom_navigation_view_content);
-          testView.onRestoreInstanceState(state);
+          testView.restoreHierarchyState(container);
           assertTrue(testView.getMenu().findItem(R.id.destination_profile).isChecked());
+
+          assertTrue(
+              ((NavigationBarMenuView) testView.getMenuView())
+                  .findItemView(R.id.destination_home)
+                  .getBadge()
+                  .isVisible());
+
           assertTrue(testView.getBadge(R.id.destination_home).isVisible());
           assertEquals(75, testView.getBadge(R.id.destination_home).getNumber());
-          assertEquals(4, testView.getBadge(R.id.destination_home).getMaxCharacterCount());
+          assertEquals(999, testView.getBadge(R.id.destination_home).getMaxNumber());
         });
   }
 
@@ -658,18 +706,17 @@ public class BottomNavigationViewTest {
   @TargetApi(Build.VERSION_CODES.N)
   public void testPointerIcon() throws Throwable {
     final Activity activity = activityTestRule.getActivity();
-    final PointerIcon expectedIcon = PointerIcon.getSystemIcon(activity, PointerIcon.TYPE_HAND);
     final MotionEvent event = MotionEvent.obtain(0, 0, MotionEvent.ACTION_HOVER_MOVE, 0, 0, 0);
     final Menu menu = bottomNavigation.getMenu();
     for (int i = 0; i < menu.size(); i++) {
       final MenuItem item = menu.getItem(i);
       assertTrue(item.isEnabled());
       final View itemView = activity.findViewById(item.getItemId());
-      assertEquals(expectedIcon, itemView.onResolvePointerIcon(event, 0));
+      assertNull(itemView.onResolvePointerIcon(event, 0));
       item.setEnabled(false);
-      assertEquals(null, itemView.onResolvePointerIcon(event, 0));
+      assertNull(itemView.onResolvePointerIcon(event, 0));
       item.setEnabled(true);
-      assertEquals(expectedIcon, itemView.onResolvePointerIcon(event, 0));
+      assertNull(itemView.onResolvePointerIcon(event, 0));
     }
   }
 
@@ -686,6 +733,36 @@ public class BottomNavigationViewTest {
     }
 
     menuView.getChildAt(0).getContentDescription();
+  }
+
+  @UiThreadTest
+  @Test
+  @SmallTest
+  @SdkSuppress(minSdkVersion = Build.VERSION_CODES.M)
+  public void testOnInitializeAccessibilityNodeInfo() {
+    NavigationBarMenuView menuView = (NavigationBarMenuView) bottomNavigation.getMenuView();
+
+    AccessibilityNodeInfoCompat groupInfoCompat = AccessibilityNodeInfoCompat.obtain();
+    ViewCompat.onInitializeAccessibilityNodeInfo(menuView, groupInfoCompat);
+
+    CollectionInfoCompat collectionInfo = groupInfoCompat.getCollectionInfo();
+    Assert.assertEquals(3, collectionInfo.getColumnCount());
+    Assert.assertEquals(1, collectionInfo.getRowCount());
+
+    NavigationBarItemView secondChild = (NavigationBarItemView) menuView.getChildAt(1);
+    secondChild.setSelected(true);
+    AccessibilityNodeInfoCompat buttonInfoCompat = AccessibilityNodeInfoCompat.obtain();
+    ViewCompat.onInitializeAccessibilityNodeInfo(secondChild, buttonInfoCompat);
+
+    // A tab that is currently selected won't be clickable by a11y
+    assertFalse(buttonInfoCompat.isClickable());
+    assertFalse(
+        AccessibilityUtils.hasAction(buttonInfoCompat, AccessibilityActionCompat.ACTION_CLICK));
+
+    CollectionItemInfoCompat itemInfo = buttonInfoCompat.getCollectionItemInfo();
+    Assert.assertEquals(1, itemInfo.getColumnIndex());
+    Assert.assertEquals(0, itemInfo.getRowIndex());
+    assertTrue(itemInfo.isSelected());
   }
 
   private void checkAndVerifyExclusiveItem(final Menu menu, final int id) throws Throwable {
@@ -729,17 +806,23 @@ public class BottomNavigationViewTest {
   }
 
   private void checkSmallLabelIsShown(String label) {
-    onView(allOf(withId(R.id.largeLabel), withText(label))).check(matches(not(isDisplayed())));
-    onView(allOf(withId(R.id.smallLabel), withText(label))).check(matches(isDisplayed()));
+    onView(allOf(withId(R.id.navigation_bar_item_large_label_view), withText(label)))
+        .check(matches(not(isDisplayed())));
+    onView(allOf(withId(R.id.navigation_bar_item_small_label_view), withText(label)))
+        .check(matches(isDisplayed()));
   }
 
   private void checkLargeLabelIsShown(String label) {
-    onView(allOf(withId(R.id.largeLabel), withText(label))).check(matches(isDisplayed()));
-    onView(allOf(withId(R.id.smallLabel), withText(label))).check(matches(not(isDisplayed())));
+    onView(allOf(withId(R.id.navigation_bar_item_large_label_view), withText(label)))
+        .check(matches(isDisplayed()));
+    onView(allOf(withId(R.id.navigation_bar_item_small_label_view), withText(label)))
+        .check(matches(not(isDisplayed())));
   }
 
   private void checkNoLabelIsShown(String label) {
-    onView(allOf(withId(R.id.largeLabel), withText(label))).check(matches(not(isDisplayed())));
-    onView(allOf(withId(R.id.smallLabel), withText(label))).check(matches(not(isDisplayed())));
+    onView(allOf(withId(R.id.navigation_bar_item_large_label_view), withText(label)))
+        .check(matches(not(isDisplayed())));
+    onView(allOf(withId(R.id.navigation_bar_item_small_label_view), withText(label)))
+        .check(matches(not(isDisplayed())));
   }
 }

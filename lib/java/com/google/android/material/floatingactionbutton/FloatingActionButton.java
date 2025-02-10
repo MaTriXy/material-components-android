@@ -20,7 +20,7 @@ import com.google.android.material.R;
 
 import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
 import static androidx.core.util.Preconditions.checkNotNull;
-import static com.google.android.material.internal.ThemeEnforcement.createThemedContext;
+import static com.google.android.material.theme.overlay.MaterialThemeOverlay.wrap;
 
 import android.animation.Animator.AnimatorListener;
 import android.content.Context;
@@ -32,28 +32,8 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuff.Mode;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
-import android.os.Build;
-import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
 import android.os.Parcelable;
-import androidx.annotation.AnimatorRes;
-import androidx.annotation.ColorInt;
-import androidx.annotation.DimenRes;
-import androidx.annotation.DrawableRes;
-import androidx.annotation.IdRes;
-import androidx.annotation.IntDef;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.Px;
-import androidx.annotation.RequiresApi;
-import androidx.annotation.RestrictTo;
-import androidx.annotation.VisibleForTesting;
-import com.google.android.material.appbar.AppBarLayout;
-import com.google.android.material.shape.ShapeAppearanceModel;
-import androidx.core.graphics.drawable.DrawableCompat;
-import androidx.core.view.TintableBackgroundView;
-import androidx.core.view.ViewCompat;
-import androidx.core.widget.TintableImageSourceView;
 import androidx.appcompat.widget.AppCompatDrawableManager;
 import androidx.appcompat.widget.AppCompatImageHelper;
 import android.util.AttributeSet;
@@ -63,9 +43,25 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import androidx.annotation.AnimatorRes;
+import androidx.annotation.ColorInt;
+import androidx.annotation.DimenRes;
+import androidx.annotation.DrawableRes;
+import androidx.annotation.IdRes;
+import androidx.annotation.IntDef;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.Px;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.VisibleForTesting;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.graphics.drawable.DrawableCompat;
+import androidx.core.view.TintableBackgroundView;
+import androidx.core.view.ViewCompat;
+import androidx.core.widget.TintableImageSourceView;
 import com.google.android.material.animation.MotionSpec;
 import com.google.android.material.animation.TransformationCallback;
+import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.expandable.ExpandableTransformationWidget;
 import com.google.android.material.expandable.ExpandableWidgetHelper;
@@ -77,6 +73,8 @@ import com.google.android.material.internal.ViewUtils;
 import com.google.android.material.internal.VisibilityAwareImageButton;
 import com.google.android.material.resources.MaterialResources;
 import com.google.android.material.shadow.ShadowViewDelegate;
+import com.google.android.material.shape.ShapeAppearanceModel;
+import com.google.android.material.shape.Shapeable;
 import com.google.android.material.stateful.ExtendableSavedState;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -93,14 +91,24 @@ import java.util.List;
  * <p>As this class descends from {@link ImageView}, you can control the icon which is displayed via
  * {@link #setImageDrawable(Drawable)}.
  *
- * <p>The background color of this view defaults to the your theme's {@code colorAccent}. If you
+ * <p>The background color of this view defaults to the your theme's {@code colorSecondary}. If you
  * wish to change this at runtime then you can do so via {@link
  * #setBackgroundTintList(ColorStateList)}.
+ *
+ * <p>For more information, see the <a
+ * href="https://github.com/material-components/material-components-android/blob/master/docs/components/FloatingActionButton.md">component
+ * developer guidance</a> and <a
+ * href="https://material.io/components/floating-action-button/overview">design guidelines</a>.
  */
-@CoordinatorLayout.DefaultBehavior(FloatingActionButton.Behavior.class)
 public class FloatingActionButton extends VisibilityAwareImageButton
-    implements TintableBackgroundView, TintableImageSourceView, ExpandableTransformationWidget {
+    implements TintableBackgroundView,
+        TintableImageSourceView,
+        ExpandableTransformationWidget,
+        Shapeable,
+        CoordinatorLayout.AttachedBehavior {
 
+  static final String ACCESSIBIILTY_FAB_ROLE =
+      "com.google.android.material.floatingactionbutton.FloatingActionButton";
   private static final String LOG_TAG = "FloatingActionButton";
   private static final String EXPANDABLE_WIDGET_HELPER_KEY = "expandableWidgetHelper";
   private static final int DEF_STYLE_RES = R.style.Widget_Design_FloatingActionButton;
@@ -197,10 +205,10 @@ public class FloatingActionButton extends VisibilityAwareImageButton
     this(context, attrs, R.attr.floatingActionButtonStyle);
   }
 
-  @SuppressWarnings("initialization")
+  @SuppressWarnings("nullness")
   public FloatingActionButton(
       @NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
-    super(createThemedContext(context, attrs, defStyleAttr, DEF_STYLE_RES), attrs, defStyleAttr);
+    super(wrap(context, attrs, defStyleAttr, DEF_STYLE_RES), attrs, defStyleAttr);
     // Ensure we are using the correctly themed context rather than the context that was passed in.
     context = getContext();
 
@@ -229,18 +237,22 @@ public class FloatingActionButton extends VisibilityAwareImageButton
     compatPadding = a.getBoolean(R.styleable.FloatingActionButton_useCompatPadding, false);
     int minTouchTargetSize =
         getResources().getDimensionPixelSize(R.dimen.mtrl_fab_min_touch_target);
-    maxImageSize = a.getDimensionPixelSize(R.styleable.FloatingActionButton_maxImageSize, 0);
+
+    setMaxImageSize(a.getDimensionPixelSize(R.styleable.FloatingActionButton_maxImageSize, 0));
 
     MotionSpec showMotionSpec =
         MotionSpec.createFromAttribute(context, a, R.styleable.FloatingActionButton_showMotionSpec);
     MotionSpec hideMotionSpec =
         MotionSpec.createFromAttribute(context, a, R.styleable.FloatingActionButton_hideMotionSpec);
     ShapeAppearanceModel shapeAppearance =
-        ShapeAppearanceModel.builder(context, attrs, defStyleAttr, DEF_STYLE_RES, -1).build();
+        ShapeAppearanceModel.builder(
+                context, attrs, defStyleAttr, DEF_STYLE_RES, ShapeAppearanceModel.PILL)
+            .build();
 
-    boolean usingDefaultCorner = isUsingDefaultCorner(shapeAppearance);
-    boolean ensureMinTouchTargetSize = a
-        .getBoolean(R.styleable.FloatingActionButton_ensureMinTouchTargetSize, false);
+    boolean ensureMinTouchTargetSize =
+        a.getBoolean(R.styleable.FloatingActionButton_ensureMinTouchTargetSize, false);
+
+    setEnabled(a.getBoolean(R.styleable.FloatingActionButton_android_enabled, true));
 
     a.recycle();
 
@@ -249,14 +261,13 @@ public class FloatingActionButton extends VisibilityAwareImageButton
 
     expandableWidgetHelper = new ExpandableWidgetHelper(this);
 
-    getImpl().setShapeAppearance(shapeAppearance, usingDefaultCorner);
+    getImpl().setShapeAppearance(shapeAppearance);
     getImpl()
         .initializeBackgroundDrawable(backgroundTint, backgroundTintMode, rippleColor, borderWidth);
     getImpl().setMinTouchTargetSize(minTouchTargetSize);
     getImpl().setElevation(elevation);
     getImpl().setHoveredFocusedTranslationZ(hoveredFocusedTranslationZ);
     getImpl().setPressedTranslationZ(pressedTranslationZ);
-    getImpl().setMaxImageSize(maxImageSize);
     getImpl().setShowMotionSpec(showMotionSpec);
     getImpl().setHideMotionSpec(hideMotionSpec);
     getImpl().setEnsureMinTouchTargetSize(ensureMinTouchTargetSize);
@@ -271,8 +282,8 @@ public class FloatingActionButton extends VisibilityAwareImageButton
     imagePadding = (preferredSize - maxImageSize) / 2;
     getImpl().updatePadding();
 
-    final int w = resolveAdjustedSize(preferredSize, widthMeasureSpec);
-    final int h = resolveAdjustedSize(preferredSize, heightMeasureSpec);
+    final int w = View.resolveSize(preferredSize, widthMeasureSpec);
+    final int h = View.resolveSize(preferredSize, heightMeasureSpec);
 
     // As we want to stay circular, we set both dimensions to be the
     // smallest resolved dimension
@@ -280,7 +291,8 @@ public class FloatingActionButton extends VisibilityAwareImageButton
 
     // We add the shadow's padding to the measured dimension
     setMeasuredDimension(
-        d + shadowPadding.left + shadowPadding.right, d + shadowPadding.top + shadowPadding.bottom);
+        d + shadowPadding.left + shadowPadding.right,
+        d + shadowPadding.top + shadowPadding.bottom);
   }
 
   /**
@@ -310,7 +322,7 @@ public class FloatingActionButton extends VisibilityAwareImageButton
   /**
    * Sets the ripple color for this button.
    *
-   * <p>When running on devices with KitKat or below, we draw this color as a filled circle rather
+   * <p>When running on devices with KitKat, we draw this color as a filled circle rather
    * than a ripple.
    *
    * @param color ARGB color to use for the ripple
@@ -324,7 +336,7 @@ public class FloatingActionButton extends VisibilityAwareImageButton
   /**
    * Sets the ripple color for this button.
    *
-   * <p>When running on devices with KitKat or below, we draw this color as a filled circle rather
+   * <p>When running on devices with KitKat, we draw this color as a filled circle rather
    * than a ripple.
    *
    * @param color color state list to use for the ripple
@@ -336,6 +348,12 @@ public class FloatingActionButton extends VisibilityAwareImageButton
       rippleColor = color;
       getImpl().setRippleColor(rippleColor);
     }
+  }
+
+  @Override
+  @NonNull
+  public CoordinatorLayout.Behavior<FloatingActionButton> getBehavior() {
+    return new FloatingActionButton.Behavior();
   }
 
   /**
@@ -513,12 +531,15 @@ public class FloatingActionButton extends VisibilityAwareImageButton
   }
 
   /** Sets the {@link ShapeAppearanceModel} for this {@link FloatingActionButton}. */
-  public void setShapeAppearance(@NonNull ShapeAppearanceModel shapeAppearance) {
-    getImpl().setShapeAppearance(shapeAppearance, isUsingDefaultCorner(shapeAppearance));
+  @Override
+  public void setShapeAppearanceModel(@NonNull ShapeAppearanceModel shapeAppearance) {
+    getImpl().setShapeAppearance(shapeAppearance);
   }
 
   /** Returns the {@link ShapeAppearanceModel} for this {@link FloatingActionButton}. */
-  public ShapeAppearanceModel getShapeAppearance() {
+  @Override
+  @NonNull
+  public ShapeAppearanceModel getShapeAppearanceModel() {
     return checkNotNull(getImpl().getShapeAppearance());
   }
 
@@ -546,10 +567,20 @@ public class FloatingActionButton extends VisibilityAwareImageButton
     }
   }
 
-
   @Override
   public void setVisibility(int visibility) {
     super.setVisibility(visibility);
+  }
+
+  /**
+   * Sets the max image size for this button.
+   *
+   * @param imageSize maximum icon image size
+   * @attr ref com.google.android.material.R.styleable#FloatingActionButton_maxImageSize
+   */
+  public void setMaxImageSize(int imageSize) {
+    maxImageSize = imageSize;
+    getImpl().setMaxImageSize(imageSize);
   }
 
   /**
@@ -681,7 +712,6 @@ public class FloatingActionButton extends VisibilityAwareImageButton
     customSize = NO_CUSTOM_SIZE;
     if (size != this.size) {
       this.size = size;
-      getImpl().updateSize();
       requestLayout();
     }
   }
@@ -733,7 +763,7 @@ public class FloatingActionButton extends VisibilityAwareImageButton
    * calculated based on the value set using {@link #setSize(int)} or the {@code fabSize} attribute.
    *
    * @param size preferred size in pixels, or {@link #NO_CUSTOM_SIZE}
-   * @attr ref com.google.android.material.R.styleable.FloatingActionButton_fabCustomSize
+   * @attr ref com.google.android.material.R.styleable#FloatingActionButton_fabCustomSize
    */
   public void setCustomSize(@Px int size) {
     if (size < 0) {
@@ -742,7 +772,6 @@ public class FloatingActionButton extends VisibilityAwareImageButton
 
     if (size != customSize) {
       customSize = size;
-      getImpl().updateSize();
       requestLayout();
     }
   }
@@ -832,7 +861,7 @@ public class FloatingActionButton extends VisibilityAwareImageButton
   }
 
   @Override
-  @SuppressWarnings("argument.type.incompatible")
+  @SuppressWarnings("nullness:argument")
   // onRestoreInstanceState should accept nullable
   protected void onRestoreInstanceState(Parcelable state) {
     if (!(state instanceof ExtendableSavedState)) {
@@ -857,7 +886,7 @@ public class FloatingActionButton extends VisibilityAwareImageButton
    */
   @Deprecated
   public boolean getContentRect(@NonNull Rect rect) {
-    if (ViewCompat.isLaidOut(this)) {
+    if (isLaidOut()) {
       rect.set(0, 0, getWidth(), getHeight());
       offsetRectWithShadow(rect);
       return true;
@@ -875,6 +904,12 @@ public class FloatingActionButton extends VisibilityAwareImageButton
     offsetRectWithShadow(rect);
   }
 
+  private void getTouchTargetRect(@NonNull Rect rect) {
+    getMeasuredContentRect(rect);
+    int touchTargetPadding = impl.getTouchTargetPadding();
+    rect.inset(-touchTargetPadding, -touchTargetPadding);
+  }
+
   private void offsetRectWithShadow(@NonNull Rect rect) {
     rect.left += shadowPadding.left;
     rect.top += shadowPadding.top;
@@ -888,41 +923,21 @@ public class FloatingActionButton extends VisibilityAwareImageButton
     return getImpl().getContentBackground();
   }
 
-  private static int resolveAdjustedSize(int desiredSize, int measureSpec) {
-    int result = desiredSize;
-    int specMode = MeasureSpec.getMode(measureSpec);
-    int specSize = MeasureSpec.getSize(measureSpec);
-    switch (specMode) {
-      case MeasureSpec.UNSPECIFIED:
-        // Parent says we can be as big as we want. Just don't be larger
-        // than max size imposed on ourselves.
-        result = desiredSize;
-        break;
-      case MeasureSpec.AT_MOST:
-        // Parent says we can be as big as we want, up to specSize.
-        // Don't be larger than specSize, and don't be larger than
-        // the max size imposed on ourselves.
-        result = Math.min(desiredSize, specSize);
-        break;
-      case MeasureSpec.EXACTLY:
-        // No choice. Do what we are told.
-        result = specSize;
-        break;
-      default:
-        throw new IllegalArgumentException();
-    }
-    return result;
-  }
-
   @Override
   public boolean onTouchEvent(@NonNull MotionEvent ev) {
     if (ev.getAction() == MotionEvent.ACTION_DOWN) {
       // Skipping the gesture if it doesn't start in the FAB 'content' area
-      if (getContentRect(touchArea) && !touchArea.contains((int) ev.getX(), (int) ev.getY())) {
+      getTouchTargetRect(touchArea);
+      if (!touchArea.contains((int) ev.getX(), (int) ev.getY())) {
         return false;
       }
     }
     return super.onTouchEvent(ev);
+  }
+
+  @Override
+  public CharSequence getAccessibilityClassName() {
+    return ACCESSIBIILTY_FAB_ROLE;
   }
 
   /**
@@ -1031,6 +1046,8 @@ public class FloatingActionButton extends VisibilityAwareImageButton
       internalAutoHideListener = listener;
     }
 
+    // dereference of possibly-null reference lp
+    @SuppressWarnings("nullness:dereference.of.nullable")
     private boolean shouldUpdateVisibility(
         @NonNull View dependency, @NonNull FloatingActionButton child) {
       final CoordinatorLayout.LayoutParams lp =
@@ -1080,6 +1097,8 @@ public class FloatingActionButton extends VisibilityAwareImageButton
       return true;
     }
 
+    // dereference of possibly-null reference lp
+    @SuppressWarnings("nullness:dereference.of.nullable")
     private boolean updateFabVisibilityForBottomSheet(
         @NonNull View bottomSheet, @NonNull FloatingActionButton child) {
       if (!shouldUpdateVisibility(bottomSheet, child)) {
@@ -1141,6 +1160,8 @@ public class FloatingActionButton extends VisibilityAwareImageButton
      * offsets our layout position so that we're positioned correctly if we're on one of our
      * parent's edges.
      */
+    // dereference of possibly-null reference lp
+    @SuppressWarnings("nullness:dereference.of.nullable")
     private void offsetIfNeeded(
         @NonNull CoordinatorLayout parent, @NonNull FloatingActionButton fab) {
       final Rect padding = fab.shadowPadding;
@@ -1177,7 +1198,6 @@ public class FloatingActionButton extends VisibilityAwareImageButton
     }
   }
 
-  @RequiresApi(VERSION_CODES.LOLLIPOP)
   @Override
   public void setElevation(float elevation) {
     super.setElevation(elevation);
@@ -1223,7 +1243,8 @@ public class FloatingActionButton extends VisibilityAwareImageButton
    * Returns the backward compatible hovered/focused translationZ of the FloatingActionButton.
    *
    * @return the backward compatible hovered/focused translationZ in pixels.
-   * @attr ref com.google.android.material.R.styleable#FloatingActionButton_hoveredFocusedTranslationZ
+   * @attr ref
+   *     com.google.android.material.R.styleable#FloatingActionButton_hoveredFocusedTranslationZ
    * @see #setCompatHoveredFocusedTranslationZ(float)
    */
   public float getCompatHoveredFocusedTranslationZ() {
@@ -1234,7 +1255,8 @@ public class FloatingActionButton extends VisibilityAwareImageButton
    * Updates the backward compatible hovered/focused translationZ of the FloatingActionButton.
    *
    * @param translationZ The backward compatible hovered/focused translationZ in pixels.
-   * @attr ref com.google.android.material.R.styleable#FloatingActionButton_hoveredFocusedTranslationZ
+   * @attr ref
+   *     com.google.android.material.R.styleable#FloatingActionButton_hoveredFocusedTranslationZ
    * @see #getCompatHoveredFocusedTranslationZ()
    * @see #setUseCompatPadding(boolean)
    */
@@ -1246,7 +1268,8 @@ public class FloatingActionButton extends VisibilityAwareImageButton
    * Updates the backward compatible hovered/focused translationZ of the FloatingActionButton.
    *
    * @param id The resource id of the backward compatible hovered/focused translationZ.
-   * @attr ref com.google.android.material.R.styleable#FloatingActionButton_hoveredFocusedTranslationZ
+   * @attr ref
+   *     com.google.android.material.R.styleable#FloatingActionButton_hoveredFocusedTranslationZ
    * @see #getCompatHoveredFocusedTranslationZ()
    * @see #setUseCompatPadding(boolean)
    */
@@ -1352,10 +1375,6 @@ public class FloatingActionButton extends VisibilityAwareImageButton
     getImpl().removeTransformationCallback(new TransformationCallbackWrapper(listener));
   }
 
-  private boolean isUsingDefaultCorner(@NonNull ShapeAppearanceModel shapeAppearance) {
-    return shapeAppearance.getTopRightCorner().getCornerSize() == -1;
-  }
-
   class TransformationCallbackWrapper<T extends FloatingActionButton>
       implements InternalTransformationCallback {
 
@@ -1430,18 +1449,9 @@ public class FloatingActionButton extends VisibilityAwareImageButton
 
   private FloatingActionButtonImpl getImpl() {
     if (impl == null) {
-      impl = createImpl();
+      impl = new FloatingActionButtonImplLollipop(this, new ShadowDelegateImpl());
     }
     return impl;
-  }
-
-  @NonNull
-  private FloatingActionButtonImpl createImpl() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-      return new FloatingActionButtonImplLollipop(this, new ShadowDelegateImpl());
-    } else {
-      return new FloatingActionButtonImpl(this, new ShadowDelegateImpl());
-    }
   }
 
   private class ShadowDelegateImpl implements ShadowViewDelegate {

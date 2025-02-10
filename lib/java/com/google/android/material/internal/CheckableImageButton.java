@@ -21,18 +21,18 @@ import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
 import android.content.Context;
 import android.os.Parcel;
 import android.os.Parcelable;
-import androidx.annotation.NonNull;
-import androidx.annotation.RestrictTo;
-import androidx.customview.view.AbsSavedState;
-import androidx.core.view.AccessibilityDelegateCompat;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.accessibility.AccessibilityEventCompat;
-import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import androidx.appcompat.widget.AppCompatImageButton;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.Checkable;
+import androidx.annotation.NonNull;
+import androidx.annotation.RestrictTo;
+import androidx.core.view.AccessibilityDelegateCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.accessibility.AccessibilityEventCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
+import androidx.customview.view.AbsSavedState;
 
 /** @hide */
 @RestrictTo(LIBRARY_GROUP)
@@ -42,6 +42,7 @@ public class CheckableImageButton extends AppCompatImageButton implements Checka
 
   private boolean checked;
   private boolean checkable = true;
+  private boolean pressable = true;
 
   public CheckableImageButton(Context context) {
     this(context, null);
@@ -78,7 +79,7 @@ public class CheckableImageButton extends AppCompatImageButton implements Checka
     if (checkable && this.checked != checked) {
       this.checked = checked;
       refreshDrawableState();
-      sendAccessibilityEvent(AccessibilityEventCompat.TYPE_WINDOW_CONTENT_CHANGED);
+      sendAccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED);
     }
   }
 
@@ -90,6 +91,13 @@ public class CheckableImageButton extends AppCompatImageButton implements Checka
   @Override
   public void toggle() {
     setChecked(!checked);
+  }
+
+  @Override
+  public void setPressed(boolean pressed) {
+    if (pressable) {
+      super.setPressed(pressed);
+    }
   }
 
   @Override
@@ -134,6 +142,16 @@ public class CheckableImageButton extends AppCompatImageButton implements Checka
   /** Returns whether the image button is checkable. */
   public boolean isCheckable() {
     return checkable;
+  }
+
+  /** Sets image button to be pressable or not. */
+  public void setPressable(boolean pressable) {
+    this.pressable = pressable;
+  }
+
+  /** Returns whether the image button is pressable. */
+  public boolean isPressable() {
+    return pressable;
   }
 
   static class SavedState extends AbsSavedState {

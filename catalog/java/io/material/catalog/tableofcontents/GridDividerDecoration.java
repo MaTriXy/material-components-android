@@ -20,13 +20,12 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
 import android.graphics.Rect;
-import androidx.annotation.ColorInt;
-import androidx.annotation.Px;
-import androidx.core.view.ViewCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.RecyclerView.ItemDecoration;
 import android.view.View;
+import androidx.annotation.ColorInt;
+import androidx.annotation.Px;
 
 /**
  * An {@link ItemDecoration} that adds Material-style dividers between grid items. This is meant to
@@ -36,7 +35,7 @@ import android.view.View;
  * will only draw dividers that are internal to the grid, meaning it will not draw lines for the
  * outermost left, top, right, or bottom edges.
  */
-public class GridDividerDecoration extends RecyclerView.ItemDecoration {
+public final class GridDividerDecoration extends RecyclerView.ItemDecoration {
 
   private final int spanCount;
   private final Paint dividerPaint;
@@ -58,15 +57,9 @@ public class GridDividerDecoration extends RecyclerView.ItemDecoration {
   }
 
   private void drawHorizontal(Canvas canvas, RecyclerView parent) {
-    final int itemCount = parent.getAdapter().getItemCount();
     final int childCount = parent.getChildCount();
-    final int lastRowChildCount = getLastRowChildCount(itemCount);
     for (int i = 0; i < childCount; i++) {
       final View child = parent.getChildAt(i);
-
-      if (isChildInLastRow(parent, child, itemCount, lastRowChildCount)) {
-        continue;
-      }
 
       parent.getDecoratedBoundsWithMargins(child, bounds);
       final int y = bounds.bottom;
@@ -78,8 +71,7 @@ public class GridDividerDecoration extends RecyclerView.ItemDecoration {
 
   private void drawVertical(Canvas canvas, RecyclerView parent) {
     final int childCount = parent.getChildCount();
-    final boolean isRTL =
-        ViewCompat.getLayoutDirection(parent) == ViewCompat.LAYOUT_DIRECTION_RTL;
+    final boolean isRTL = parent.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
     for (int i = 0; i < childCount; i++) {
       final View child = parent.getChildAt(i);
 
@@ -93,16 +85,6 @@ public class GridDividerDecoration extends RecyclerView.ItemDecoration {
       final int stopY = bounds.bottom;
       canvas.drawLine(x, startY, x, stopY, dividerPaint);
     }
-  }
-
-  private int getLastRowChildCount(int itemCount) {
-    final int gridChildRemainder = itemCount % spanCount;
-    return gridChildRemainder == 0 ? spanCount : gridChildRemainder;
-  }
-
-  private boolean isChildInLastRow(
-      RecyclerView parent, View child, int itemCount, int lastRowChildCount) {
-    return parent.getChildAdapterPosition(child) >= itemCount - lastRowChildCount;
   }
 
   private boolean isChildInLastColumn(RecyclerView parent, View child) {

@@ -20,11 +20,10 @@ import com.google.android.material.R;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.view.View;
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.core.graphics.ColorUtils;
-import android.view.View;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.internal.ViewUtils;
 import com.google.android.material.resources.MaterialAttributes;
@@ -34,47 +33,69 @@ public class ElevationOverlayProvider {
 
   private static final float FORMULA_MULTIPLIER = 4.5f;
   private static final float FORMULA_OFFSET = 2f;
+  private static final int OVERLAY_ACCENT_COLOR_ALPHA = (int) Math.round(0.02 * 255);
 
   private final boolean elevationOverlayEnabled;
   private final int elevationOverlayColor;
+  private final int elevationOverlayAccentColor;
   private final int colorSurface;
   private final float displayDensity;
 
   public ElevationOverlayProvider(@NonNull Context context) {
-    this.elevationOverlayEnabled =
-        MaterialAttributes.resolveBoolean(context, R.attr.elevationOverlayEnabled, false);
-    this.elevationOverlayColor =
-        MaterialColors.getColor(context, R.attr.elevationOverlayColor, Color.TRANSPARENT);
-    this.colorSurface = MaterialColors.getColor(context, R.attr.colorSurface, Color.TRANSPARENT);
-    this.displayDensity = context.getResources().getDisplayMetrics().density;
+    this(
+        MaterialAttributes.resolveBoolean(context, R.attr.elevationOverlayEnabled, false),
+        MaterialColors.getColor(context, R.attr.elevationOverlayColor, Color.TRANSPARENT),
+        MaterialColors.getColor(context, R.attr.elevationOverlayAccentColor, Color.TRANSPARENT),
+        MaterialColors.getColor(context, R.attr.colorSurface, Color.TRANSPARENT),
+        context.getResources().getDisplayMetrics().density);
   }
 
-  /** See {@link #compositeOverlayIfNeeded(int, float, View)}. */
+  public ElevationOverlayProvider(
+      boolean elevationOverlayEnabled,
+      @ColorInt int elevationOverlayColor,
+      @ColorInt int elevationOverlayAccentColor,
+      @ColorInt int colorSurface,
+      float displayDensity) {
+    this.elevationOverlayEnabled = elevationOverlayEnabled;
+    this.elevationOverlayColor = elevationOverlayColor;
+    this.elevationOverlayAccentColor = elevationOverlayAccentColor;
+    this.colorSurface = colorSurface;
+    this.displayDensity = displayDensity;
+  }
+
+  /**
+   * See {@link #compositeOverlayWithThemeSurfaceColorIfNeeded(float)}.
+   *
+   * <p>The absolute elevation of the parent of the provided {@code overlayView} will also be
+   * factored in when determining the overlay color.
+   */
   @ColorInt
-  public int compositeOverlayWithThemeSurfaceColorIfNeeded(float elevation) {
-    return compositeOverlayWithThemeSurfaceColorIfNeeded(elevation, null);
+  public int compositeOverlayWithThemeSurfaceColorIfNeeded(
+      float elevation, @NonNull View overlayView) {
+    elevation += getParentAbsoluteElevation(overlayView);
+    return compositeOverlayWithThemeSurfaceColorIfNeeded(elevation);
   }
 
   /**
    * Blends the calculated elevation overlay color (@see #compositeOverlayIfNeeded(int, float)) with
    * the current theme's color int value for {@code R.attr.colorSurface} if needed.
-   *
-   * <p>If the provided {@code overlayView} is not null, the absolute elevation of it's parent will
-   * be factored in when determining the overlay color.
    */
   @ColorInt
-  public int compositeOverlayWithThemeSurfaceColorIfNeeded(
-      float elevation, @Nullable View overlayView) {
-    if (overlayView != null) {
-      elevation += getParentAbsoluteElevation(overlayView);
-    }
+  public int compositeOverlayWithThemeSurfaceColorIfNeeded(float elevation) {
     return compositeOverlayIfNeeded(colorSurface, elevation);
   }
 
-  /** See {@link #compositeOverlayIfNeeded(int, float, View)}. */
+  /**
+   * See {@link #compositeOverlayIfNeeded(int, float)}.
+   *
+   * <p>The absolute elevation of the parent of the provided {@code overlayView} will also be
+   * factored in when determining the overlay color.
+   */
   @ColorInt
-  public int compositeOverlayIfNeeded(@ColorInt int backgroundColor, float elevation) {
-    return compositeOverlayIfNeeded(backgroundColor, elevation, null);
+  public int compositeOverlayIfNeeded(
+      @ColorInt int backgroundColor, float elevation, @NonNull View overlayView) {
+    elevation += getParentAbsoluteElevation(overlayView);
+    return compositeOverlayIfNeeded(backgroundColor, elevation);
   }
 
   /**
@@ -82,16 +103,9 @@ public class ElevationOverlayProvider {
    * {@code backgroundColor}, only if the current theme's {@code R.attr.elevationOverlayEnabled} is
    * true and the {@code backgroundColor} matches the theme's surface color ({@code
    * R.attr.colorSurface}); otherwise returns the {@code backgroundColor}.
-   *
-   * <p>If the provided {@code overlayView} is not null, the absolute elevation of it's parent will
-   * be factored in when determining the overlay color.
    */
   @ColorInt
-  public int compositeOverlayIfNeeded(
-      @ColorInt int backgroundColor, float elevation, @Nullable View overlayView) {
-    if (overlayView != null) {
-      elevation += getParentAbsoluteElevation(overlayView);
-    }
+  public int compositeOverlayIfNeeded(@ColorInt int backgroundColor, float elevation) {
     if (elevationOverlayEnabled && isThemeSurfaceColor(backgroundColor)) {
       return compositeOverlay(backgroundColor, elevation);
     } else {
@@ -99,28 +113,33 @@ public class ElevationOverlayProvider {
     }
   }
 
-  /** See {@link #compositeOverlay(int, float, View)}. */
+  /** See {@link #compositeOverlay(int, float)}. */
   @ColorInt
-  public int compositeOverlay(@ColorInt int backgroundColor, float elevation) {
-    return compositeOverlay(backgroundColor, elevation, null);
+  public int compositeOverlay(
+      @ColorInt int backgroundColor, float elevation, @NonNull View overlayView) {
+    elevation += getParentAbsoluteElevation(overlayView);
+    return compositeOverlay(backgroundColor, elevation);
   }
 
   /**
    * Blends the calculated elevation overlay color with the provided {@code backgroundColor}.
    *
    * <p>An alpha level is applied to the theme's {@code R.attr.elevationOverlayColor} by using a
-   * formula that is based on the provided {@code elevation} value. If the provided {@code
-   * overlayView} is not null, the absolute elevation of it's parent will be factored in when
-   * determining the overlay color.
+   * formula that is based on the provided {@code elevation} value.
    */
   @ColorInt
-  public int compositeOverlay(
-      @ColorInt int backgroundColor, float elevation, @Nullable View overlayView) {
-    if (overlayView != null) {
-      elevation += getParentAbsoluteElevation(overlayView);
+  public int compositeOverlay(@ColorInt int backgroundColor, float elevation) {
+    float overlayAlphaFraction = calculateOverlayAlphaFraction(elevation);
+    int backgroundAlpha = Color.alpha(backgroundColor);
+    int backgroundColorOpaque = ColorUtils.setAlphaComponent(backgroundColor, 255);
+    int overlayColorOpaque =
+        MaterialColors.layer(backgroundColorOpaque, elevationOverlayColor, overlayAlphaFraction);
+    if (overlayAlphaFraction > 0 && elevationOverlayAccentColor != Color.TRANSPARENT) {
+      int overlayAccentColor =
+          ColorUtils.setAlphaComponent(elevationOverlayAccentColor, OVERLAY_ACCENT_COLOR_ALPHA);
+      overlayColorOpaque = MaterialColors.layer(overlayColorOpaque, overlayAccentColor);
     }
-    float overlayAlpha = calculateOverlayAlphaFraction(elevation);
-    return MaterialColors.layer(backgroundColor, elevationOverlayColor, overlayAlpha);
+    return ColorUtils.setAlphaComponent(overlayColorOpaque, backgroundAlpha);
   }
 
   /**

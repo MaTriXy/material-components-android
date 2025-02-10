@@ -24,18 +24,9 @@ import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.RippleDrawable;
 import android.os.Bundle;
 import android.os.Parcelable;
-import androidx.annotation.Dimension;
-import androidx.annotation.LayoutRes;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.RestrictTo;
-import androidx.annotation.StyleRes;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
-import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
-import androidx.core.view.accessibility.AccessibilityNodeInfoCompat.CollectionInfoCompat;
 import androidx.appcompat.view.menu.MenuBuilder;
 import androidx.appcompat.view.menu.MenuItemImpl;
 import androidx.appcompat.view.menu.MenuPresenter;
@@ -50,11 +41,27 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import androidx.annotation.Dimension;
+import androidx.annotation.LayoutRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.Px;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.StyleRes;
+import androidx.core.view.AccessibilityDelegateCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat.CollectionInfoCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat.CollectionItemInfoCompat;
+import androidx.core.widget.TextViewCompat;
 import java.util.ArrayList;
 
 /** @hide */
 @RestrictTo(LIBRARY_GROUP)
 public class NavigationMenuPresenter implements MenuPresenter {
+
+  public static final int NO_TEXT_APPEARANCE_SET = 0;
 
   private static final String STATE_HIERARCHY = "android:menu:list";
   private static final String STATE_ADAPTER = "android:menu:adapter";
@@ -70,14 +77,22 @@ public class NavigationMenuPresenter implements MenuPresenter {
   NavigationMenuAdapter adapter;
   LayoutInflater layoutInflater;
 
-  int textAppearance;
-  boolean textAppearanceSet;
+  int subheaderTextAppearance = NO_TEXT_APPEARANCE_SET;
+  @Nullable ColorStateList subheaderColor;
+  int textAppearance = NO_TEXT_APPEARANCE_SET;
+  boolean textAppearanceActiveBoldEnabled = true;
   ColorStateList textColor;
   ColorStateList iconTintList;
   Drawable itemBackground;
+  RippleDrawable itemForeground;
   int itemHorizontalPadding;
+  @Px int itemVerticalPadding;
   int itemIconPadding;
   int itemIconSize;
+  @Px int dividerInsetStart;
+  @Px int dividerInsetEnd;
+  @Px int subheaderInsetStart;
+  @Px int subheaderInsetEnd;
   boolean hasCustomItemIconSize;
   boolean isBehindStatusBar = true;
   private int itemMaxLines;
@@ -90,6 +105,7 @@ public class NavigationMenuPresenter implements MenuPresenter {
 
   /** Padding for separators between items */
   int paddingSeparator;
+
   private int overScrollMode = -1;
 
   @Override
@@ -110,6 +126,9 @@ public class NavigationMenuPresenter implements MenuPresenter {
           new NavigationMenuViewAccessibilityDelegate(menuView));
       if (adapter == null) {
         adapter = new NavigationMenuAdapter();
+        // Prevent recreating all the Views when notifyDataSetChanged() is called causing issues
+        // with the a11y reader (see b/112931425)
+        adapter.setHasStableIds(true);
       }
       if (overScrollMode != -1) {
         menuView.setOverScrollMode(overScrollMode);
@@ -117,9 +136,28 @@ public class NavigationMenuPresenter implements MenuPresenter {
       headerLayout =
           (LinearLayout)
               layoutInflater.inflate(R.layout.design_navigation_item_header, menuView, false);
+      headerLayout.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
       menuView.setAdapter(adapter);
     }
     return menuView;
+  }
+
+  private void updateAllTextMenuItems() {
+    if (adapter != null) {
+      adapter.updateAllTextMenuItems();
+    }
+  }
+
+  private void updateAllSubHeaderMenuItems() {
+    if (adapter != null) {
+      adapter.updateAllSubHeaderMenuItems();
+    }
+  }
+
+  private void updateAllDividerMenuItems() {
+    if (adapter != null) {
+      adapter.updateAllDividerMenuItems();
+    }
   }
 
   @Override
@@ -232,7 +270,7 @@ public class NavigationMenuPresenter implements MenuPresenter {
 
   public void removeHeaderView(@NonNull View view) {
     headerLayout.removeView(view);
-    if (headerLayout.getChildCount() == 0) {
+    if (!hasHeader()) {
       menuView.setPadding(0, paddingTopDefault, 0, menuView.getPaddingBottom());
     }
   }
@@ -241,8 +279,22 @@ public class NavigationMenuPresenter implements MenuPresenter {
     return headerLayout.getChildCount();
   }
 
+  private boolean hasHeader() {
+    return getHeaderCount() > 0;
+  }
+
   public View getHeaderView(int index) {
     return headerLayout.getChildAt(index);
+  }
+
+  public void setSubheaderColor(@Nullable ColorStateList subheaderColor) {
+    this.subheaderColor = subheaderColor;
+    updateAllSubHeaderMenuItems();
+  }
+
+  public void setSubheaderTextAppearance(@StyleRes int resId) {
+    subheaderTextAppearance = resId;
+    updateAllSubHeaderMenuItems();
   }
 
   @Nullable
@@ -252,7 +304,7 @@ public class NavigationMenuPresenter implements MenuPresenter {
 
   public void setItemIconTintList(@Nullable ColorStateList tint) {
     iconTintList = tint;
-    updateMenuView(false);
+    updateAllTextMenuItems();
   }
 
   @Nullable
@@ -262,13 +314,17 @@ public class NavigationMenuPresenter implements MenuPresenter {
 
   public void setItemTextColor(@Nullable ColorStateList textColor) {
     this.textColor = textColor;
-    updateMenuView(false);
+    updateAllTextMenuItems();
   }
 
   public void setItemTextAppearance(@StyleRes int resId) {
     textAppearance = resId;
-    textAppearanceSet = true;
-    updateMenuView(false);
+    updateAllTextMenuItems();
+  }
+
+  public void setItemTextAppearanceActiveBoldEnabled(boolean isBold) {
+    textAppearanceActiveBoldEnabled = isBold;
+    updateAllTextMenuItems();
   }
 
   @Nullable
@@ -278,7 +334,12 @@ public class NavigationMenuPresenter implements MenuPresenter {
 
   public void setItemBackground(@Nullable Drawable itemBackground) {
     this.itemBackground = itemBackground;
-    updateMenuView(false);
+    updateAllTextMenuItems();
+  }
+
+  public void setItemForeground(@Nullable RippleDrawable itemForeground) {
+    this.itemForeground = itemForeground;
+    updateAllTextMenuItems();
   }
 
   public int getItemHorizontalPadding() {
@@ -287,7 +348,57 @@ public class NavigationMenuPresenter implements MenuPresenter {
 
   public void setItemHorizontalPadding(int itemHorizontalPadding) {
     this.itemHorizontalPadding = itemHorizontalPadding;
-    updateMenuView(false);
+    updateAllTextMenuItems();
+  }
+
+  @Px
+  public int getItemVerticalPadding() {
+    return itemVerticalPadding;
+  }
+
+  public void setItemVerticalPadding(@Px int itemVerticalPadding) {
+    this.itemVerticalPadding = itemVerticalPadding;
+    updateAllTextMenuItems();
+  }
+
+  @Px
+  public int getDividerInsetStart() {
+    return this.dividerInsetStart;
+  }
+
+  public void setDividerInsetStart(@Px int dividerInsetStart) {
+    this.dividerInsetStart = dividerInsetStart;
+    updateAllDividerMenuItems();
+  }
+
+  @Px
+  public int getDividerInsetEnd() {
+    return this.dividerInsetEnd;
+  }
+
+  public void setDividerInsetEnd(@Px int dividerInsetEnd) {
+    this.dividerInsetEnd = dividerInsetEnd;
+    updateAllDividerMenuItems();
+  }
+
+  @Px
+  public int getSubheaderInsetStart() {
+    return this.subheaderInsetStart;
+  }
+
+  public void setSubheaderInsetStart(@Px int subheaderInsetStart) {
+    this.subheaderInsetStart = subheaderInsetStart;
+    updateAllSubHeaderMenuItems();
+  }
+
+  @Px
+  public int getSubheaderInsetEnd() {
+    return this.subheaderInsetEnd;
+  }
+
+  public void setSubheaderInsetEnd(@Px int subheaderInsetEnd) {
+    this.subheaderInsetEnd = subheaderInsetEnd;
+    updateAllSubHeaderMenuItems();
   }
 
   public int getItemIconPadding() {
@@ -296,12 +407,12 @@ public class NavigationMenuPresenter implements MenuPresenter {
 
   public void setItemIconPadding(int itemIconPadding) {
     this.itemIconPadding = itemIconPadding;
-    updateMenuView(false);
+    updateAllTextMenuItems();
   }
 
   public void setItemMaxLines(int itemMaxLines) {
     this.itemMaxLines = itemMaxLines;
-    updateMenuView(false);
+    updateAllTextMenuItems();
   }
 
   public int getItemMaxLines() {
@@ -312,7 +423,7 @@ public class NavigationMenuPresenter implements MenuPresenter {
     if (this.itemIconSize != itemIconSize) {
       this.itemIconSize = itemIconSize;
       hasCustomItemIconSize = true;
-      updateMenuView(false);
+      updateAllTextMenuItems();
     }
   }
 
@@ -338,7 +449,7 @@ public class NavigationMenuPresenter implements MenuPresenter {
   private void updateTopPadding() {
     int topPadding = 0;
     // Set padding if there's no header and we are drawing behind the status bar.
-    if (headerLayout.getChildCount() == 0 && isBehindStatusBar) {
+    if (!hasHeader() && isBehindStatusBar) {
       topPadding = paddingTopDefault;
     }
 
@@ -495,24 +606,29 @@ public class NavigationMenuPresenter implements MenuPresenter {
           {
             NavigationMenuItemView itemView = (NavigationMenuItemView) holder.itemView;
             itemView.setIconTintList(iconTintList);
-            if (textAppearanceSet) {
-              itemView.setTextAppearance(textAppearance);
-            }
+            itemView.setTextAppearance(textAppearance);
             if (textColor != null) {
               itemView.setTextColor(textColor);
             }
-            ViewCompat.setBackground(
-                itemView,
+            itemView.setBackground(
                 itemBackground != null ? itemBackground.getConstantState().newDrawable() : null);
+            if (itemForeground != null) {
+              itemView.setForeground(itemForeground.getConstantState().newDrawable());
+            }
             NavigationMenuTextItem item = (NavigationMenuTextItem) items.get(position);
             itemView.setNeedsEmptyIcon(item.needsEmptyIcon);
-            itemView.setHorizontalPadding(itemHorizontalPadding);
+            itemView.setPadding(
+                itemHorizontalPadding,
+                itemVerticalPadding,
+                itemHorizontalPadding,
+                itemVerticalPadding);
             itemView.setIconPadding(itemIconPadding);
             if (hasCustomItemIconSize) {
               itemView.setIconSize(itemIconSize);
             }
             itemView.setMaxLines(itemMaxLines);
-            itemView.initialize(item.getMenuItem(), 0);
+            itemView.initialize(item.getMenuItem(), /* isBold= */ textAppearanceActiveBoldEnabled);
+            setAccessibilityDelegate(itemView, position, false);
             break;
           }
         case VIEW_TYPE_SUBHEADER:
@@ -520,19 +636,62 @@ public class NavigationMenuPresenter implements MenuPresenter {
             TextView subHeader = (TextView) holder.itemView;
             NavigationMenuTextItem item = (NavigationMenuTextItem) items.get(position);
             subHeader.setText(item.getMenuItem().getTitle());
+            TextViewCompat.setTextAppearance(subHeader, subheaderTextAppearance);
+            subHeader.setPaddingRelative(
+                subheaderInsetStart,
+                subHeader.getPaddingTop(),
+                subheaderInsetEnd,
+                subHeader.getPaddingBottom()
+            );
+            if (subheaderColor != null) {
+              subHeader.setTextColor(subheaderColor);
+            }
+            setAccessibilityDelegate(subHeader, position, true);
             break;
           }
         case VIEW_TYPE_SEPARATOR:
           {
             NavigationMenuSeparatorItem item = (NavigationMenuSeparatorItem) items.get(position);
-            holder.itemView.setPadding(0, item.getPaddingTop(), 0, item.getPaddingBottom());
-            break;
-          }
-        case VIEW_TYPE_HEADER:
-          {
+            holder.itemView.setPaddingRelative(
+                dividerInsetStart,
+                item.getPaddingTop(),
+                dividerInsetEnd,
+                item.getPaddingBottom());
             break;
           }
       }
+    }
+
+    private void setAccessibilityDelegate(View view, int position, boolean isHeader) {
+      ViewCompat.setAccessibilityDelegate(
+          view,
+          new AccessibilityDelegateCompat() {
+            @Override
+            public void onInitializeAccessibilityNodeInfo(
+                @NonNull View host, @NonNull AccessibilityNodeInfoCompat info) {
+              super.onInitializeAccessibilityNodeInfo(host, info);
+              info.setCollectionItemInfo(
+                  CollectionItemInfoCompat.obtain(
+                      /* rowIndex= */ adjustItemPositionForA11yDelegate(position),
+                      /* rowSpan= */ 1,
+                      /* columnIndex= */ 1,
+                      /* columnSpan= */ 1,
+                      /* heading= */ isHeader,
+                      /* selected= */ host.isSelected()));
+            }
+          });
+    }
+
+    /** Adjusts position based on the presence of separators and header. */
+    private int adjustItemPositionForA11yDelegate(int position) {
+      int adjustedPosition = position;
+      for (int i = 0; i < position; i++) {
+        if (adapter.getItemViewType(i) == VIEW_TYPE_SEPARATOR
+            || adapter.getItemViewType(i) == VIEW_TYPE_HEADER) {
+          adjustedPosition--;
+        }
+      }
+      return adjustedPosition;
     }
 
     @Override
@@ -543,8 +702,13 @@ public class NavigationMenuPresenter implements MenuPresenter {
     }
 
     public void update() {
+      int prevItemSize = items.size();
       prepareMenuItems();
       notifyDataSetChanged();
+      // If there were no structural changes, update the items due to the adapter having stable ids.
+      if (prevItemSize == items.size()) {
+        notifyItemRangeChanged(0, items.size());
+      }
     }
 
     /**
@@ -588,8 +752,8 @@ public class NavigationMenuPresenter implements MenuPresenter {
                 if (subMenuItem.isCheckable()) {
                   subMenuItem.setExclusiveCheckable(false);
                 }
-                if (item.isChecked()) {
-                  setCheckedItem(item);
+                if (subMenuItem.isChecked()) {
+                  setCheckedItem(subMenuItem);
                 }
                 items.add(new NavigationMenuTextItem(subMenuItem));
               }
@@ -715,13 +879,40 @@ public class NavigationMenuPresenter implements MenuPresenter {
 
     /** Returns the number of rows that will be used for accessibility. */
     int getRowCount() {
-      int itemCount = headerLayout.getChildCount() == 0 ? 0 : 1;
+      int itemCount = 0;
       for (int i = 0; i < adapter.getItemCount(); i++) {
-        if (adapter.getItemViewType(i) == VIEW_TYPE_NORMAL) {
+        int type = adapter.getItemViewType(i);
+        if (type == VIEW_TYPE_NORMAL || type == VIEW_TYPE_SUBHEADER) {
           itemCount++;
         }
       }
       return itemCount;
+    }
+
+    private void updateAllTextMenuItems() {
+      for (int i = 0; i < items.size(); i++) {
+        if (items.get(i) instanceof NavigationMenuTextItem
+            && getItemViewType(i) == VIEW_TYPE_NORMAL) {
+          notifyItemChanged(i);
+        }
+      }
+    }
+
+    private void updateAllSubHeaderMenuItems() {
+      for (int i = 0; i < items.size(); i++) {
+        if (items.get(i) instanceof NavigationMenuTextItem
+            && getItemViewType(i) == VIEW_TYPE_SUBHEADER) {
+          notifyItemChanged(i);
+        }
+      }
+    }
+
+    private void updateAllDividerMenuItems() {
+      for (int i = 0; i < items.size(); i++) {
+        if (items.get(i) instanceof NavigationMenuSeparatorItem) {
+          notifyItemChanged(i);
+        }
+      }
     }
   }
 
@@ -781,7 +972,9 @@ public class NavigationMenuPresenter implements MenuPresenter {
     public void onInitializeAccessibilityNodeInfo(
         View host, @NonNull AccessibilityNodeInfoCompat info) {
       super.onInitializeAccessibilityNodeInfo(host, info);
-      info.setCollectionInfo(CollectionInfoCompat.obtain(adapter.getRowCount(), 0, false));
+      info.setCollectionInfo(
+          CollectionInfoCompat.obtain(
+              adapter.getRowCount(), /* columnCount= */ 1, /* hierarchical= */ false));
     }
   }
 }

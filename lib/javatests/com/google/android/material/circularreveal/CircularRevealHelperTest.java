@@ -17,10 +17,9 @@ package com.google.android.material.circularreveal;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.ArgumentMatchers.anyFloat;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.app.Activity;
@@ -31,10 +30,10 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.drawable.Drawable;
 import android.os.Build.VERSION_CODES;
-import androidx.annotation.ColorInt;
-import androidx.annotation.Nullable;
 import android.view.View;
 import android.view.View.MeasureSpec;
+import androidx.annotation.ColorInt;
+import androidx.annotation.Nullable;
 import com.google.android.material.circularreveal.CircularRevealWidget.RevealInfo;
 import com.google.android.material.math.MathUtils;
 import org.junit.Before;
@@ -88,38 +87,6 @@ public class CircularRevealHelperTest {
   }
 
   @Test
-  @Config(sdk = VERSION_CODES.JELLY_BEAN)
-  public void jbUsesBitmapShaderStrategy() {
-    helper = new CircularRevealHelper(delegate);
-    helper.setRevealInfo(smallRevealInfo);
-
-    helper.buildCircularRevealCache();
-    helper.draw(canvas);
-    helper.destroyCircularRevealCache();
-
-    verify(canvas)
-        .drawCircle(
-            eq(smallRevealInfo.centerX),
-            eq(smallRevealInfo.centerY),
-            eq(smallRevealInfo.radius),
-            ArgumentMatchers.<Paint>any());
-    verify(canvas, never()).clipPath(ArgumentMatchers.<Path>any());
-  }
-
-  @Test
-  @Config(sdk = VERSION_CODES.JELLY_BEAN_MR2)
-  public void jbMr2UsesClipPathStrategy() {
-    helper = new CircularRevealHelper(delegate);
-    helper.setRevealInfo(smallRevealInfo);
-
-    helper.draw(canvas);
-
-    verify(canvas).clipPath(ArgumentMatchers.<Path>any());
-    verify(canvas, never())
-        .drawCircle(anyFloat(), anyFloat(), anyFloat(), ArgumentMatchers.<Paint>any());
-  }
-
-  @Test
   @Config(sdk = VERSION_CODES.LOLLIPOP)
   public void lUsesRevealAnimatorStrategy() {
     helper = new CircularRevealHelper(delegate);
@@ -130,45 +97,6 @@ public class CircularRevealHelperTest {
     verify(canvas, never()).clipPath(ArgumentMatchers.<Path>any());
     verify(canvas, never())
         .drawCircle(anyFloat(), anyFloat(), anyFloat(), ArgumentMatchers.<Paint>any());
-  }
-
-  @Test
-  @Config(sdk = VERSION_CODES.JELLY_BEAN)
-  public void jbDrawsScrim() {
-    helper = new CircularRevealHelper(delegate);
-    helper.setCircularRevealScrimColor(Color.RED);
-
-    helper.setRevealInfo(smallRevealInfo);
-
-    helper.buildCircularRevealCache();
-    helper.draw(canvas);
-    helper.destroyCircularRevealCache();
-
-    // Once for the BitmapShader, once for the scrim.
-    verify(canvas, times(2))
-        .drawCircle(
-            eq(smallRevealInfo.centerX),
-            eq(smallRevealInfo.centerY),
-            eq(smallRevealInfo.radius),
-            ArgumentMatchers.<Paint>any());
-  }
-
-  @Test
-  @Config(sdk = VERSION_CODES.JELLY_BEAN_MR2)
-  public void jbMr2DrawsScrim() {
-    helper = new CircularRevealHelper(delegate);
-    helper.setCircularRevealScrimColor(Color.RED);
-
-    helper.setRevealInfo(smallRevealInfo);
-    helper.draw(canvas);
-
-    verify(canvas)
-        .drawRect(
-            eq(0f),
-            eq(0f),
-            eq((float) DELEGATE_WIDTH),
-            eq((float) DELEGATE_HEIGHT),
-            ArgumentMatchers.<Paint>any());
   }
 
   @Test

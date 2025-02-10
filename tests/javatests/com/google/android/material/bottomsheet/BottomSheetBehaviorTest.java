@@ -22,22 +22,24 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.fail;
 
 import android.content.Context;
 import android.os.Build.VERSION;
 import android.os.SystemClock;
-import androidx.annotation.LayoutRes;
-import androidx.annotation.NonNull;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
-import androidx.core.widget.NestedScrollView;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
+import androidx.annotation.LayoutRes;
+import androidx.annotation.NonNull;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
+import androidx.core.widget.NestedScrollView;
 import androidx.test.espresso.Espresso;
 import androidx.test.espresso.IdlingResource;
 import androidx.test.espresso.UiController;
@@ -59,7 +61,7 @@ import androidx.test.runner.AndroidJUnit4;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.testapp.BottomSheetBehaviorActivity;
 import com.google.android.material.testapp.R;
-import com.google.android.material.testutils.CoordinatorLayoutUtils;
+import com.google.android.material.testutils.AccessibilityUtils;
 import com.google.android.material.testutils.DesignViewActions;
 import org.hamcrest.Matcher;
 import org.hamcrest.Matchers;
@@ -78,11 +80,12 @@ public class BottomSheetBehaviorTest {
       implements IdlingResource {
 
     private boolean isIdle;
+    private boolean idleWhileSettling;
 
     private IdlingResource.ResourceCallback resourceCallback;
 
-    public Callback(BottomSheetBehavior behavior) {
-      behavior.setBottomSheetCallback(this);
+    public Callback(BottomSheetBehavior<?> behavior) {
+      behavior.addBottomSheetCallback(this);
       int state = behavior.getState();
       isIdle = isIdleState(state);
     }
@@ -117,9 +120,13 @@ public class BottomSheetBehaviorTest {
       resourceCallback = callback;
     }
 
+    public void setIdleWhileSettling(boolean idleWhileSettling) {
+      this.idleWhileSettling = idleWhileSettling;
+    }
+
     private boolean isIdleState(int state) {
       return state != BottomSheetBehavior.STATE_DRAGGING
-          && state != BottomSheetBehavior.STATE_SETTLING;
+          && (idleWhileSettling || state != BottomSheetBehavior.STATE_SETTLING);
     }
   }
 
@@ -281,7 +288,7 @@ public class BottomSheetBehaviorTest {
   @Test
   @SmallTest
   public void testInitialSetup() {
-    BottomSheetBehavior behavior = getBehavior();
+    BottomSheetBehavior<?> behavior = getBehavior();
     assertThat(behavior.getState(), is(BottomSheetBehavior.STATE_COLLAPSED));
     assertThat(behavior.isFitToContents(), is(true));
     CoordinatorLayout coordinatorLayout = getCoordinatorLayout();
@@ -329,7 +336,7 @@ public class BottomSheetBehaviorTest {
                     // Manually calculate the ending coordinates to make sure that the bottom
                     // sheet is collapsed, not hidden
                     view -> {
-                      BottomSheetBehavior behavior = getBehavior();
+                      BottomSheetBehavior<?> behavior = getBehavior();
                       return new float[] {
                         // x: center of the bottom sheet
                         view.getWidth() / 2,
@@ -401,7 +408,7 @@ public class BottomSheetBehaviorTest {
                     // Manually calculate the ending coordinates to make sure that the bottom
                     // sheet is collapsed, not hidden
                     view -> {
-                      BottomSheetBehavior behavior = getBehavior();
+                      BottomSheetBehavior<?> behavior = getBehavior();
                       return new float[] {
                         // x: center of the bottom sheet
                         view.getWidth() / 2,
@@ -428,6 +435,79 @@ public class BottomSheetBehaviorTest {
     testSkipCollapsed();
   }
 
+  private void testSkipCollapsed_smallSwipe(int expectedState, float swipeViewHeightPercentage)
+      throws Throwable {
+    getBehavior().setSkipCollapsed(true);
+    checkSetState(BottomSheetBehavior.STATE_EXPANDED, ViewMatchers.isDisplayed());
+    Espresso.onView(ViewMatchers.withId(R.id.bottom_sheet))
+        .perform(
+            DesignViewActions.withCustomConstraints(
+                new GeneralSwipeAction(
+                    Swipe.SLOW,
+                    // Manually calculate the starting coordinates to make sure that the touch
+                    // actually falls onto the view on Gingerbread
+                    view -> {
+                      int[] location = new int[2];
+                      view.getLocationInWindow(location);
+                      return new float[] {view.getWidth() / 2, location[1] + 1};
+                    },
+                    // Manually calculate the ending coordinates to make sure that the bottom
+                    // sheet is collapsed, not hidden
+                    view -> {
+                      return new float[] {
+                        // x: center of the bottom sheet
+                        view.getWidth() / 2,
+                        // y: some percentage down the view
+                        view.getHeight() * swipeViewHeightPercentage,
+                      };
+                    },
+                    Press.FINGER),
+                ViewMatchers.isDisplayingAtLeast(5)));
+    registerIdlingResourceCallback();
+    try {
+      if (expectedState == BottomSheetBehavior.STATE_HIDDEN) {
+        Espresso.onView(ViewMatchers.withId(R.id.bottom_sheet))
+            .check(ViewAssertions.matches(not(ViewMatchers.isDisplayed())));
+      } else {
+        Espresso.onView(ViewMatchers.withId(R.id.bottom_sheet))
+            .check(ViewAssertions.matches(ViewMatchers.isDisplayed()));
+      }
+      assertThat(getBehavior().getState(), is(expectedState));
+    } finally {
+      unregisterIdlingResourceCallback();
+    }
+  }
+
+  @Test
+  @MediumTest
+  public void testSkipCollapsed_smallSwipe_remainsExpanded() throws Throwable {
+    testSkipCollapsed_smallSwipe(
+        BottomSheetBehavior.STATE_EXPANDED, /* swipeViewHeightPercentage = */ 0.5f);
+  }
+
+  @Test
+  @MediumTest
+  public void testSkipCollapsedFullyExpanded_smallSwipe_remainsExpanded() throws Throwable {
+    getBehavior().setFitToContents(false);
+    testSkipCollapsed_smallSwipe(
+        BottomSheetBehavior.STATE_HALF_EXPANDED, /* swipeViewHeightPercentage = */ 0.5f);
+  }
+
+  @Test
+  @MediumTest
+  public void testSkipCollapsed_smallSwipePastThreshold_getsHidden() throws Throwable {
+    testSkipCollapsed_smallSwipe(
+        BottomSheetBehavior.STATE_HIDDEN, /* swipeViewHeightPercentage = */ 0.75f);
+  }
+
+  @Test
+  @MediumTest
+  public void testSkipCollapsedFullyExpanded_smallSwipePastThreshold_getsHidden() throws Throwable {
+    getBehavior().setFitToContents(false);
+    testSkipCollapsed_smallSwipe(
+        BottomSheetBehavior.STATE_HIDDEN, /* swipeViewHeightPercentage = */ 0.75f);
+  }
+
   @Test
   @MediumTest
   public void testSwipeUpToExpand() {
@@ -448,6 +528,110 @@ public class BottomSheetBehaviorTest {
     } finally {
       unregisterIdlingResourceCallback();
     }
+  }
+
+  @Test
+  @MediumTest
+  public void testNoSwipeUpToExpand() {
+    getBehavior().setDraggable(false);
+    Espresso.onView(ViewMatchers.withId(R.id.bottom_sheet))
+        .perform(
+            DesignViewActions.withCustomConstraints(
+                new GeneralSwipeAction(
+                    Swipe.FAST,
+                    GeneralLocation.VISIBLE_CENTER,
+                    view -> new float[] {view.getWidth() / 2, 0},
+                    Press.FINGER),
+                ViewMatchers.isDisplayingAtLeast(5)));
+
+    Espresso.onView(ViewMatchers.withId(R.id.bottom_sheet))
+        .check(ViewAssertions.matches(ViewMatchers.isDisplayed()));
+    assertThat(getBehavior().getState(), is(BottomSheetBehavior.STATE_COLLAPSED));
+  }
+
+  @Test
+  @MediumTest
+  public void testNoSwipeDownToCollapse() throws Throwable {
+    checkSetState(BottomSheetBehavior.STATE_EXPANDED, ViewMatchers.isDisplayed());
+    getBehavior().setDraggable(false);
+    Espresso.onView(ViewMatchers.withId(R.id.bottom_sheet))
+        .perform(
+            DesignViewActions.withCustomConstraints(
+                new GeneralSwipeAction(
+                    Swipe.FAST,
+                    // Manually calculate the starting coordinates to make sure that the touch
+                    // actually falls onto the view on Gingerbread
+                    view -> {
+                      int[] location = new int[2];
+                      view.getLocationInWindow(location);
+                      return new float[] {view.getWidth() / 2, location[1] + 1};
+                    },
+                    // Manually calculate the ending coordinates to make sure that the bottom
+                    // sheet is collapsed, not hidden
+                    view -> {
+                      BottomSheetBehavior<?> behavior = getBehavior();
+                      return new float[] {
+                        // x: center of the bottom sheet
+                        view.getWidth() / 2,
+                        // y: just above the peek height
+                        view.getHeight() - behavior.getPeekHeight()
+                      };
+                    },
+                    Press.FINGER),
+                ViewMatchers.isDisplayingAtLeast(5)));
+
+    Espresso.onView(ViewMatchers.withId(R.id.bottom_sheet))
+        .check(ViewAssertions.matches(ViewMatchers.isDisplayed()));
+    assertThat(getBehavior().getState(), is(BottomSheetBehavior.STATE_EXPANDED));
+  }
+
+  @Test
+  @MediumTest
+  public void testNoDragging() {
+    getBehavior().setDraggable(false);
+    Espresso.onView(ViewMatchers.withId(R.id.bottom_sheet))
+        // Drag (and not release)
+        .perform(
+            new DragAction(
+                GeneralLocation.VISIBLE_CENTER, GeneralLocation.TOP_CENTER, Press.FINGER))
+        // Check that the bottom sheet is NOT in STATE_DRAGGING
+        .check(
+            (view, e) -> {
+              assertThat(view, is(ViewMatchers.isDisplayed()));
+              BottomSheetBehavior<?> behavior = BottomSheetBehavior.from(view);
+              assertThat(behavior.getState(), not(is(BottomSheetBehavior.STATE_DRAGGING)));
+            });
+  }
+
+  @Test
+  @MediumTest
+  public void testDraggableChange() {
+    getBehavior().setDraggable(false);
+    Espresso.onView(ViewMatchers.withId(R.id.bottom_sheet))
+        // Drag (and not release)
+        .perform(
+            new DragAction(
+                GeneralLocation.VISIBLE_CENTER, GeneralLocation.TOP_CENTER, Press.FINGER))
+        // Check that the bottom sheet is NOT in STATE_DRAGGING
+        .check(
+            (view, e) -> {
+              assertThat(view, is(ViewMatchers.isDisplayed()));
+              BottomSheetBehavior<?> behavior = BottomSheetBehavior.from(view);
+              assertThat(behavior.getState(), not(is(BottomSheetBehavior.STATE_DRAGGING)));
+            });
+    getBehavior().setDraggable(true);
+    Espresso.onView(ViewMatchers.withId(R.id.bottom_sheet))
+        // Drag (and not release)
+        .perform(
+            new DragAction(
+                GeneralLocation.VISIBLE_CENTER, GeneralLocation.TOP_CENTER, Press.FINGER))
+        // Check that the bottom sheet is in STATE_DRAGGING
+        .check(
+            (view, e) -> {
+              assertThat(view, is(ViewMatchers.isDisplayed()));
+              BottomSheetBehavior<?> behavior = BottomSheetBehavior.from(view);
+              assertThat(behavior.getState(), is(BottomSheetBehavior.STATE_DRAGGING));
+            });
   }
 
   @Test
@@ -568,7 +752,7 @@ public class BottomSheetBehaviorTest {
   @MediumTest
   public void testNestedScroll() throws Throwable {
     final ViewGroup bottomSheet = getBottomSheet();
-    final BottomSheetBehavior behavior = getBehavior();
+    final BottomSheetBehavior<?> behavior = getBehavior();
     final NestedScrollView scroll = new NestedScrollView(activityTestRule.getActivity());
     // Set up nested scrolling area
     activityTestRule.runOnUiThread(
@@ -652,7 +836,7 @@ public class BottomSheetBehaviorTest {
         .check(
             (view, e) -> {
               assertThat(view, is(ViewMatchers.isDisplayed()));
-              BottomSheetBehavior behavior = BottomSheetBehavior.from(view);
+              BottomSheetBehavior<?> behavior = BottomSheetBehavior.from(view);
               assertThat(behavior.getState(), is(BottomSheetBehavior.STATE_DRAGGING));
             })
         // Add a new view
@@ -766,6 +950,14 @@ public class BottomSheetBehaviorTest {
   }
 
   @Test
+  @MediumTest
+  public void testCalculateSlideOffset() throws Throwable {
+    checkSlideOffset(BottomSheetBehavior.STATE_EXPANDED, 1f);
+    checkSlideOffset(BottomSheetBehavior.STATE_COLLAPSED, 0f);
+    checkSlideOffset(BottomSheetBehavior.STATE_HIDDEN, -1f);
+  }
+
+  @Test
   @SmallTest
   public void testFindScrollingChildEnabled() {
     Context context = activityTestRule.getActivity();
@@ -779,6 +971,20 @@ public class BottomSheetBehaviorTest {
     assertThat(scrollingChild, is((View) enabledChild));
   }
 
+  @Test
+  @SmallTest
+  public void testWontFindScrollingChildInvisible() {
+    Context context = activityTestRule.getActivity();
+    FrameLayout parent = new FrameLayout(context);
+    NestedScrollView invisibleChild = new NestedScrollView(context);
+    invisibleChild.setNestedScrollingEnabled(true);
+    invisibleChild.setVisibility(View.INVISIBLE);
+    parent.addView(invisibleChild);
+
+    View scrollingChild = getBehavior().findScrollingChild(parent);
+    assertThat(scrollingChild, nullValue());
+  }
+
   private void checkSetState(final int state, Matcher<View> matcher) throws Throwable {
     registerIdlingResourceCallback();
     try {
@@ -787,6 +993,20 @@ public class BottomSheetBehaviorTest {
           .check(ViewAssertions.matches(matcher));
       assertThat(getBehavior().getState(), is(state));
       assertAccessibilityActions(getBehavior(), getBottomSheet());
+    } finally {
+      unregisterIdlingResourceCallback();
+    }
+  }
+
+  private void checkSlideOffset(final int state, float slideOffset)
+      throws Throwable {
+    registerIdlingResourceCallback();
+    try {
+      activityTestRule.runOnUiThread(() -> getBehavior().setState(state));
+      // An "always-passing" check to wait until UI thread is idle.
+      Espresso.onView(ViewMatchers.withId(R.id.bottom_sheet))
+          .check(ViewAssertions.matches(ViewMatchers.withId(R.id.bottom_sheet)));
+      assertThat(getBehavior().calculateSlideOffset(), is(slideOffset));
     } finally {
       unregisterIdlingResourceCallback();
     }
@@ -831,14 +1051,13 @@ public class BottomSheetBehaviorTest {
               || state == BottomSheetBehavior.STATE_HALF_EXPANDED;
       boolean hasDismissAction = state != BottomSheetBehavior.STATE_HIDDEN && behavior.isHideable();
       assertThat(
-          CoordinatorLayoutUtils.hasAction(
-              bottomSheet, AccessibilityNodeInfoCompat.ACTION_COLLAPSE),
+          AccessibilityUtils.hasAction(bottomSheet, AccessibilityNodeInfoCompat.ACTION_COLLAPSE),
           equalTo(hasCollapseAction));
       assertThat(
-          CoordinatorLayoutUtils.hasAction(bottomSheet, AccessibilityNodeInfoCompat.ACTION_EXPAND),
+          AccessibilityUtils.hasAction(bottomSheet, AccessibilityNodeInfoCompat.ACTION_EXPAND),
           equalTo(hasExpandAction));
       assertThat(
-          CoordinatorLayoutUtils.hasAction(bottomSheet, AccessibilityNodeInfoCompat.ACTION_DISMISS),
+          AccessibilityUtils.hasAction(bottomSheet, AccessibilityNodeInfoCompat.ACTION_DISMISS),
           equalTo(hasDismissAction));
     }
   }
@@ -847,7 +1066,7 @@ public class BottomSheetBehaviorTest {
     return activityTestRule.getActivity().mBottomSheet;
   }
 
-  private BottomSheetBehavior getBehavior() {
+  private BottomSheetBehavior<?> getBehavior() {
     return activityTestRule.getActivity().mBehavior;
   }
 

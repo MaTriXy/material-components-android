@@ -25,14 +25,14 @@ import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
+import android.util.AttributeSet;
+import android.view.View;
+import android.widget.FrameLayout;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import android.util.AttributeSet;
-import android.view.View;
-import android.widget.FrameLayout;
 
 /** @hide */
 @RestrictTo(LIBRARY_GROUP)
@@ -45,6 +45,8 @@ public class ScrimInsetsFrameLayout extends FrameLayout {
   private Rect tempRect = new Rect();
   private boolean drawTopInsetForeground = true;
   private boolean drawBottomInsetForeground = true;
+  private boolean drawLeftInsetForeground = true;
+  private boolean drawRightInsetForeground = true;
 
   public ScrimInsetsFrameLayout(@NonNull Context context) {
     this(context, null);
@@ -85,7 +87,7 @@ public class ScrimInsetsFrameLayout extends FrameLayout {
                 insets.getSystemWindowInsetBottom());
             onInsetsChanged(insets);
             setWillNotDraw(!insets.hasSystemWindowInsets() || insetForeground == null);
-            ViewCompat.postInvalidateOnAnimation(ScrimInsetsFrameLayout.this);
+            postInvalidateOnAnimation();
             return insets.consumeSystemWindowInsets();
           }
         });
@@ -102,6 +104,14 @@ public class ScrimInsetsFrameLayout extends FrameLayout {
 
   public void setDrawBottomInsetForeground(boolean drawBottomInsetForeground) {
     this.drawBottomInsetForeground = drawBottomInsetForeground;
+  }
+
+  public void setDrawLeftInsetForeground(boolean drawLeftInsetForeground) {
+    this.drawLeftInsetForeground = drawLeftInsetForeground;
+  }
+
+  public void setDrawRightInsetForeground(boolean drawRightInsetForeground) {
+    this.drawRightInsetForeground = drawRightInsetForeground;
   }
 
   @Override
@@ -129,14 +139,18 @@ public class ScrimInsetsFrameLayout extends FrameLayout {
       }
 
       // Left
-      tempRect.set(0, insets.top, insets.left, height - insets.bottom);
-      insetForeground.setBounds(tempRect);
-      insetForeground.draw(canvas);
+      if (drawLeftInsetForeground) {
+        tempRect.set(0, insets.top, insets.left, height - insets.bottom);
+        insetForeground.setBounds(tempRect);
+        insetForeground.draw(canvas);
+      }
 
       // Right
-      tempRect.set(width - insets.right, insets.top, width, height - insets.bottom);
-      insetForeground.setBounds(tempRect);
-      insetForeground.draw(canvas);
+      if (drawRightInsetForeground) {
+        tempRect.set(width - insets.right, insets.top, width, height - insets.bottom);
+        insetForeground.setBounds(tempRect);
+        insetForeground.draw(canvas);
+      }
 
       canvas.restoreToCount(sc);
     }

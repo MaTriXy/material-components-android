@@ -1,69 +1,67 @@
 buildscript {
-  ext.kotlinVersion = '1.3.21'
   repositories {
     google()
-    jcenter()
+    mavenCentral()
   }
   dependencies {
-    classpath 'com.android.tools.build:gradle:3.3.2'
-    classpath 'com.github.dcendents:android-maven-gradle-plugin:2.1'
-    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
+    classpath 'com.android.tools.build:gradle:7.4.2'
   }
 }
 
 allprojects {
   repositories {
     google()
-    jcenter()
+    mavenCentral()
     mavenLocal()
   }
 }
 
 ext {
-  compileSdkVersion = 29
-  minSdkVersion = 14
-  targetSdkVersion = 27
+  compileSdkVersion = 34
+  minSdkVersion = 21
+  targetSdkVersion = 33
 
   androidXVersions = [
-    annotation            : '1.0.1',
-    appCompat             : '1.1.0-rc01', // Needed for CSL + theme attr fixes
-    cardView              : '1.0.0',
-    coordinatorlayout     : '1.1.0-beta01', // Needed for NestedScrolling3 APIs
-    core                  : '1.1.0-rc03', // Needed for CSL + theme attr fixes
-    fragment              : '1.0.0',
-    lifecycle             : "2.0.0",
-    recyclerView          : '1.0.0',
-    recyclerViewSelection : '1.0.0',
-    transition            : '1.0.1',
-    vectorDrawable        : '1.1.0-rc01', // Needed for CSL + theme attr fixes
-    viewpager2            : '1.0.0-beta03', // Needed for TabLayout and MaterialCalendar
+    activity                     : '1.8.0',
+    annotation                   : '1.2.0',
+    appCompat                    : '1.6.1',
+    cardView                     : '1.0.0',
+    constraintlayout             : '2.0.1',
+    coordinatorlayout            : '1.1.0',
+    core                         : '1.6.0',
+    drawerlayout                 : '1.2.0',
+    experimental                 : '1.0.0',
+    fragment                     : '1.2.5',
+    lifecycle                    : '2.0.0',
+    recyclerView                 : '1.0.0',
+    recyclerViewSelection        : '1.0.0',
+    resourceInspectionAnnotation : '1.0.1',
+    resourceInspectionProcessor  : '1.0.1',
+    transition                   : '1.5.0',
+    vectorDrawable               : '1.1.0',
+    viewpager2                   : '1.0.0',
+    dynamicanimation             : '1.0.0',
+    graphicsShapes               : '1.0.1',
   ]
 
-  testRunnerVersion = '1.1.0'
+  errorproneVersion = '2.15.0'
+  testRunnerVersion = '1.4.0'
   espressoVersion = '3.1.0'
   mockitoCoreVersion = '2.25.0'
   truthVersion = '0.45'
+  robolectricVersion = '4.9'
 
   // Enforce the use of prebuilt dependencies in all sub-projects. This is
   // required for the doclava dependency.
   usePrebuilts = "true"
 
-  // Disable pre-dexing when gradle called with -PdisablePreDex;
-  preDexLibs = !project.hasProperty('disablePreDex')
-
   mavenRepoUrl = (project.hasProperty('mavenRepoUrl')
-    ? project.property('mavenRepoUrl') : 'file://localhost/tmp/myRepo/')
+    ? project.property('mavenRepoUrl') : '/tmp/myRepo/')
 
   // Current version of the library (could be in-development/unreleased).
-  mdcLibraryVersion = '1.1.0-alpha10'
+  mdcLibraryVersion = '1.13.0-alpha10'
   mdcLibraryPackage = "com.google.android.material"
   mdcLibraryDir = "com/google/android/material"
-}
-
-// lint every library
-task lint {
-  doLast {
-  }
 }
 
 task clean(type: Delete) {
@@ -90,16 +88,24 @@ private def getTransformedProjectPath(projectPath) {
  */
 def compatibility(name) {
   switch (name) {
+    case "activity":
+      return "androidx.activity:activity:${androidXVersions.activity}"
     case "annotation":
       return "androidx.annotation:annotation:${androidXVersions.annotation}"
     case "appcompat":
       return "androidx.appcompat:appcompat:${androidXVersions.appCompat}"
     case "cardview":
       return "androidx.cardview:cardview:${androidXVersions.cardView}"
+    case "constraintlayout":
+      return "androidx.constraintlayout:constraintlayout:${androidXVersions.constraintlayout}"
     case "coordinatorlayout":
       return "androidx.coordinatorlayout:coordinatorlayout:${androidXVersions.coordinatorlayout}"
     case "core":
       return "androidx.core:core:${androidXVersions.core}"
+    case "drawerlayout":
+      return "androidx.drawerlayout:drawerlayout:${androidXVersions.drawerlayout}"
+    case "dynamicanimation":
+      return "androidx.dynamicanimation:dynamicanimation:${androidXVersions.dynamicanimation}"
     case "fragment":
       return "androidx.fragment:fragment:${androidXVersions.fragment}"
     case "lifecycleRuntime":
@@ -112,8 +118,16 @@ def compatibility(name) {
       return "androidx.vectordrawable:vectordrawable:${androidXVersions.vectorDrawable}"
     case "recyclerViewSelection":
       return "androidx.recyclerview:recyclerview-selection:${androidXVersions.recyclerViewSelection}"
+    case "resourceInspectionAnnotation":
+      return "androidx.resourceinspection:resourceinspection-annotation:${androidXVersions.resourceInspectionAnnotation}"
+    case "resourceInspectionProcessor":
+      return "androidx.resourceinspection:resourceinspection-processor:${androidXVersions.resourceInspectionProcessor}"
     case "viewpager2":
       return "androidx.viewpager2:viewpager2:${androidXVersions.viewpager2}"
+    case "graphicsShapes":
+      return "androidx.graphics:graphics-shapes:${androidXVersions.graphicsShapes}"
+    case "experimental":
+      return "androidx.annotation:annotation-experimental:${androidXVersions.experimental}"
     default:
       throw new IllegalArgumentException("No mapping exists for name: $name.")
   }
@@ -147,6 +161,15 @@ def getArchivesBaseName(name) {
 }
 
 subprojects {
+    tasks.withType(Test) {
+        maxParallelForks = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
+        forkEvery = 80
+        maxHeapSize = "2048m"
+        minHeapSize = "1024m"
+    }
+}
+
+subprojects {
   version = rootProject.ext.mdcLibraryVersion
   group = 'com.google.android.material'
 
@@ -175,29 +198,24 @@ subprojects {
     }
 
     if (isAndroidLibrary || isAndroidApp || isAndroidTest) {
-      if (!isAndroidTest) {
-        rootProject.lint.dependsOn project.lint
-      }
-
-      // Disable pre-dexing when gradle called with -PdisablePreDex;
-      project.android.dexOptions.preDexLibraries = rootProject.ext.preDexLibs
-
       project.android {
         compileSdkVersion rootProject.ext.compileSdkVersion
 
         defaultConfig.minSdkVersion rootProject.ext.minSdkVersion
+        defaultConfig.targetSdkVersion rootProject.ext.targetSdkVersion
+
         // This disables the builds tools automatic vector -> PNG generation
         defaultConfig.generatedDensities = []
 
-        compileOptions.sourceCompatibility JavaVersion.VERSION_1_7
-        compileOptions.targetCompatibility JavaVersion.VERSION_1_7
+        compileOptions.sourceCompatibility JavaVersion.VERSION_1_8
+        compileOptions.targetCompatibility JavaVersion.VERSION_1_8
 
         aaptOptions.additionalParameters "--no-version-vectors"
 
-        lintOptions {
-          baseline file("baseline.xml")
-          disable 'IconLauncherShape', 'IconDuplicates', 'SwitchIntDef', 'PxUsage', 'PrivateResource', 'GradleDependency', 'GradleOverrides', 'VectorRaster'
-          warningsAsErrors true
+        android {
+          lint {
+            checkOnly 'NewApi'
+          }
         }
 
         if (isAndroidLibrary) {
@@ -227,59 +245,6 @@ subprojects {
               it.enabled = false
             }
           })
-
-          project.android {
-            task sourcesJar(type: Jar) {
-              classifier = 'sources'
-              from(android.sourceSets.main.java.srcDirs) {
-                // Needed because we have Java sources and resources in same directory
-                include '**/*.java'
-                includeEmptyDirs = false
-              }
-            }
-
-            artifacts {
-              archives sourcesJar
-            }
-          }
-
-          if (project.uploadArchives.repositories.hasProperty("mavenDeployer")) {
-            project.uploadArchives.repositories.mavenDeployer.pom {
-              project {
-                name 'Material Components for Android'
-                description 'Material Components for Android is a static library that you can add to your Android application in order to use APIs that provide implementations of the Material Design specification. Compatible on devices running API 14 or later.'
-                url 'http://developer.android.com/tools/extras/support-library.html'
-                inceptionYear '2015'
-                licenses {
-                  license {
-                    name 'The Apache Software License, Version 2.0'
-                    url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                    distribution 'repo'
-                  }
-                }
-                developers {
-                  developer {
-                    name 'The Android Open Source Project'
-                  }
-                }
-                scm {
-                  connection 'scm:git:https://github.com/material-components/material-components-android.git'
-                  url 'https://github.com/material-components/material-components-android'
-                }
-              }
-              // Adds a <type> tag for each dependency. This assumes that all dependencies except
-              // for "annotation" are aars, but it can break if in the future the artifactId
-              // changes or we depend on anything else that's not an aar.
-              // TODO(b/73783252): Remove this once Gradle automatically determines dependency types.
-              whenConfigured { pom ->
-                pom.dependencies.findAll { dependency ->
-                  if (dependency.artifactId != 'annotation' && dependency.artifactId != 'lifecycle-common-java8') {
-                    dependency.type = 'aar'
-                  }
-                }
-              }
-            }
-          }
         }
       }
     }

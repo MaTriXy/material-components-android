@@ -18,18 +18,16 @@ package com.google.android.material.appbar;
 
 import android.content.Context;
 import android.graphics.Rect;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.core.math.MathUtils;
-import androidx.core.view.GravityCompat;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.coordinatorlayout.widget.CoordinatorLayout.Behavior;
+import androidx.core.math.MathUtils;
+import androidx.core.view.WindowInsetsCompat;
 import java.util.List;
 
 /**
@@ -69,7 +67,7 @@ abstract class HeaderScrollingViewBehavior extends ViewOffsetBehavior<View> {
       if (header != null) {
         int availableHeight = View.MeasureSpec.getSize(parentHeightMeasureSpec);
         if (availableHeight > 0) {
-          if (ViewCompat.getFitsSystemWindows(header)) {
+          if (header.getFitsSystemWindows()) {
             final WindowInsetsCompat parentInsets = parent.getLastWindowInsets();
             if (parentInsets != null) {
               availableHeight += parentInsets.getSystemWindowInsetTop()
@@ -86,6 +84,7 @@ abstract class HeaderScrollingViewBehavior extends ViewOffsetBehavior<View> {
         if (shouldHeaderOverlapScrollingChild()) {
           child.setTranslationY(-headerHeight);
         } else {
+          child.setTranslationY(0);
           height -= headerHeight;
         }
         final int heightMeasureSpec =
@@ -124,9 +123,7 @@ abstract class HeaderScrollingViewBehavior extends ViewOffsetBehavior<View> {
           parent.getHeight() + header.getBottom() - parent.getPaddingBottom() - lp.bottomMargin);
 
       final WindowInsetsCompat parentInsets = parent.getLastWindowInsets();
-      if (parentInsets != null
-          && ViewCompat.getFitsSystemWindows(parent)
-          && !ViewCompat.getFitsSystemWindows(child)) {
+      if (parentInsets != null && parent.getFitsSystemWindows() && !child.getFitsSystemWindows()) {
         // If we're set to handle insets but this child isn't, then it has been measured as
         // if there are no insets. We need to lay it out to match horizontally.
         // Top and bottom and already handled in the logic above
@@ -135,7 +132,7 @@ abstract class HeaderScrollingViewBehavior extends ViewOffsetBehavior<View> {
       }
 
       final Rect out = tempRect2;
-      GravityCompat.apply(
+      Gravity.apply(
           resolveGravity(lp.gravity),
           child.getMeasuredWidth(),
           child.getMeasuredHeight(),
@@ -169,7 +166,7 @@ abstract class HeaderScrollingViewBehavior extends ViewOffsetBehavior<View> {
   }
 
   private static int resolveGravity(int gravity) {
-    return gravity == Gravity.NO_GRAVITY ? GravityCompat.START | Gravity.TOP : gravity;
+    return gravity == Gravity.NO_GRAVITY ? Gravity.START | Gravity.TOP : gravity;
   }
 
   @Nullable

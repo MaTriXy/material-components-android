@@ -22,23 +22,26 @@ import android.content.res.Resources;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.text.InputType;
+import android.text.TextUtils;
+import android.util.DisplayMetrics;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.EditText;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import androidx.annotation.RestrictTo.Scope;
 import androidx.core.util.Pair;
 import androidx.core.util.Preconditions;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.EditText;
-import com.google.android.material.internal.ViewUtils;
+import com.google.android.material.color.MaterialColors;
+import com.google.android.material.internal.ManufacturerUtils;
 import com.google.android.material.resources.MaterialAttributes;
 import com.google.android.material.textfield.TextInputLayout;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Locale;
 
 /**
  * A {@link DateSelector} that uses a {@link Pair} of {@link Long} objects to represent a selected
@@ -49,13 +52,16 @@ import java.util.Locale;
 @RestrictTo(Scope.LIBRARY_GROUP)
 public class RangeDateSelector implements DateSelector<Pair<Long, Long>> {
 
+  @Nullable private CharSequence error;
   private String invalidRangeStartError;
-  // TODO(b/137381488): "" is not considered an error
+  // "" is not considered an error
   private final String invalidRangeEndError = " ";
   @Nullable private Long selectedStartItem = null;
   @Nullable private Long selectedEndItem = null;
   @Nullable private Long proposedTextStart = null;
   @Nullable private Long proposedTextEnd = null;
+
+  @Nullable private SimpleDateFormat textInputFormat;
 
   @Override
   public void select(long selection) {
@@ -82,9 +88,9 @@ public class RangeDateSelector implements DateSelector<Pair<Long, Long>> {
       Preconditions.checkArgument(isValidRange(selection.first, selection.second));
     }
     selectedStartItem =
-        selection.first == null ? null : DateLongs.canonicalYearMonthDay(selection.first);
+        selection.first == null ? null : UtcDates.canonicalYearMonthDay(selection.first);
     selectedEndItem =
-        selection.second == null ? null : DateLongs.canonicalYearMonthDay(selection.second);
+        selection.second == null ? null : UtcDates.canonicalYearMonthDay(selection.second);
   }
 
   @Override
@@ -96,9 +102,6 @@ public class RangeDateSelector implements DateSelector<Pair<Long, Long>> {
   @NonNull
   @Override
   public Collection<Pair<Long, Long>> getSelectedRanges() {
-    if (selectedStartItem == null || selectedEndItem == null) {
-      return new ArrayList<>();
-    }
     ArrayList<Pair<Long, Long>> ranges = new ArrayList<>();
     Pair<Long, Long> range = new Pair<>(selectedStartItem, selectedEndItem);
     ranges.add(range);
@@ -121,10 +124,12 @@ public class RangeDateSelector implements DateSelector<Pair<Long, Long>> {
   @Override
   public int getDefaultThemeResId(@NonNull Context context) {
     Resources res = context.getResources();
-    int maximumDefaultFullscreenWidth =
-        res.getDimensionPixelSize(R.dimen.mtrl_calendar_maximum_default_fullscreen_width);
+    DisplayMetrics display = res.getDisplayMetrics();
+    int maximumDefaultFullscreenMinorAxis =
+        res.getDimensionPixelSize(R.dimen.mtrl_calendar_maximum_default_fullscreen_minor_axis);
+    int minorAxisPx = Math.min(display.widthPixels, display.heightPixels);
     int defaultThemeAttr =
-        res.getDisplayMetrics().widthPixels > maximumDefaultFullscreenWidth
+        minorAxisPx > maximumDefaultFullscreenMinorAxis
             ? R.attr.materialCalendarTheme
             : R.attr.materialCalendarFullscreenTheme;
     return MaterialAttributes.resolveOrThrow(
@@ -156,9 +161,42 @@ public class RangeDateSelector implements DateSelector<Pair<Long, Long>> {
         dateRangeStrings.second);
   }
 
+  @NonNull
+  @Override
+  public String getSelectionContentDescription(@NonNull Context context) {
+    Resources res = context.getResources();
+    Pair<String, String> dateRangeStrings =
+        DateStrings.getDateRangeString(selectedStartItem, selectedEndItem);
+    String startPlaceholder =
+        dateRangeStrings.first == null
+            ? res.getString(R.string.mtrl_picker_announce_current_selection_none)
+            : dateRangeStrings.first;
+    String endPlaceholder =
+        dateRangeStrings.second == null
+            ? res.getString(R.string.mtrl_picker_announce_current_selection_none)
+            : dateRangeStrings.second;
+    return res.getString(
+        R.string.mtrl_picker_announce_current_range_selection, startPlaceholder, endPlaceholder);
+  }
+
+  @Nullable
+  @Override
+  public String getError() {
+    return TextUtils.isEmpty(error) ? null : error.toString();
+  }
+
   @Override
   public int getDefaultTitleResId() {
     return R.string.mtrl_picker_range_header_title;
+  }
+
+  @Override
+  public void setTextInputFormat(@Nullable SimpleDateFormat format) {
+    if (format != null) {
+      format = (SimpleDateFormat) UtcDates.getNormalizedFormat(format);
+    }
+
+    this.textInputFormat = format;
   }
 
   @Override
@@ -176,12 +214,23 @@ public class RangeDateSelector implements DateSelector<Pair<Long, Long>> {
     final TextInputLayout endTextInput = root.findViewById(R.id.mtrl_picker_text_input_range_end);
     EditText startEditText = startTextInput.getEditText();
     EditText endEditText = endTextInput.getEditText();
+    Integer hintTextColor =
+        MaterialColors.getColorOrNull(root.getContext(), R.attr.colorOnSurfaceVariant);
+    if (hintTextColor != null) {
+      startEditText.setHintTextColor(hintTextColor);
+      endEditText.setHintTextColor(hintTextColor);
+    }
+    if (ManufacturerUtils.isDateInputKeyboardMissingSeparatorCharacters()) {
+      // Using the URI variation places the '/' and '.' in more prominent positions
+      startEditText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+      endEditText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+    }
 
-    String pattern = root.getResources().getString(R.string.mtrl_picker_text_input_date_format);
     invalidRangeStartError = root.getResources().getString(R.string.mtrl_picker_invalid_range);
 
-    SimpleDateFormat format = new SimpleDateFormat(pattern, Locale.getDefault());
-    format.setLenient(false);
+    boolean hasCustomFormat = textInputFormat != null;
+    SimpleDateFormat format =
+        hasCustomFormat ? textInputFormat : UtcDates.getDefaultTextInputFormat();
 
     if (selectedStartItem != null) {
       startEditText.setText(format.format(selectedStartItem));
@@ -192,8 +241,16 @@ public class RangeDateSelector implements DateSelector<Pair<Long, Long>> {
       proposedTextEnd = selectedEndItem;
     }
 
+    String formatHint =
+        hasCustomFormat
+            ? format.toPattern()
+            : UtcDates.getDefaultTextInputHint(root.getResources(), format);
+
+    startTextInput.setPlaceholderText(formatHint);
+    endTextInput.setPlaceholderText(formatHint);
+
     startEditText.addTextChangedListener(
-        new DateFormatTextWatcher(pattern, format, startTextInput, constraints) {
+        new DateFormatTextWatcher(formatHint, format, startTextInput, constraints) {
 
           @Override
           void onValidDate(@Nullable Long day) {
@@ -209,19 +266,22 @@ public class RangeDateSelector implements DateSelector<Pair<Long, Long>> {
         });
 
     endEditText.addTextChangedListener(
-        new DateFormatTextWatcher(pattern, format, endTextInput, constraints) {
+        new DateFormatTextWatcher(formatHint, format, endTextInput, constraints) {
+
+          @Override
           void onValidDate(@Nullable Long day) {
             proposedTextEnd = day;
             updateIfValidTextProposal(startTextInput, endTextInput, listener);
           }
 
+          @Override
           void onInvalidDate() {
             proposedTextEnd = null;
             updateIfValidTextProposal(startTextInput, endTextInput, listener);
           }
         });
 
-    ViewUtils.requestFocusAndShowKeyboard(startEditText);
+    DateSelector.showKeyboardWithAutoHideBehavior(startEditText, endEditText);
 
     return root;
   }
@@ -236,14 +296,25 @@ public class RangeDateSelector implements DateSelector<Pair<Long, Long>> {
       @NonNull OnSelectionChangedListener<Pair<Long, Long>> listener) {
     if (proposedTextStart == null || proposedTextEnd == null) {
       clearInvalidRange(startTextInput, endTextInput);
-      return;
-    }
-    if (isValidRange(proposedTextStart, proposedTextEnd)) {
+      listener.onIncompleteSelectionChanged();
+    } else if (isValidRange(proposedTextStart, proposedTextEnd)) {
       selectedStartItem = proposedTextStart;
       selectedEndItem = proposedTextEnd;
       listener.onSelectionChanged(getSelection());
     } else {
       setInvalidRange(startTextInput, endTextInput);
+      listener.onIncompleteSelectionChanged();
+    }
+    updateError(startTextInput, endTextInput);
+  }
+
+  private void updateError(@NonNull TextInputLayout start, @NonNull TextInputLayout end) {
+    if (!TextUtils.isEmpty(start.getError())) {
+      error = start.getError();
+    } else if (!TextUtils.isEmpty(end.getError())) {
+      error = end.getError();
+    } else {
+      error = null;
     }
   }
 

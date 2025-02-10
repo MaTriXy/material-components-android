@@ -20,6 +20,9 @@ import io.material.catalog.R;
 
 import android.content.Intent;
 import androidx.fragment.app.Fragment;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import com.google.common.collect.ImmutableList;
 import dagger.Provides;
 import dagger.android.ContributesAndroidInjector;
 import dagger.multibindings.IntoSet;
@@ -59,6 +62,13 @@ public class TopAppBarFragment extends DemoLandingFragment {
   public List<Demo> getAdditionalDemos() {
     List<Demo> additionalDemos = new ArrayList<>();
     additionalDemos.add(
+        new Demo(R.string.cat_topappbar_compress_effect_demo_title) {
+          @Override
+          public Fragment createFragment() {
+            return new TopAppBarCompressEffectFragment();
+          }
+        });
+    additionalDemos.add(
         new Demo(R.string.cat_topappbar_scrolling_title) {
           @Override
           public Fragment createFragment() {
@@ -73,15 +83,70 @@ public class TopAppBarFragment extends DemoLandingFragment {
           }
         });
     additionalDemos.add(
-        new Demo(R.string.cat_topappbar_collapsing_title) {
+        new Demo(R.string.cat_topappbar_preferences_demo_title) {
           @Override
           public Fragment createFragment() {
-            return new TopAppBarCollapsingDemoFragment();
+            return new TopAppBarPreferencesFragment();
           }
         });
+    additionalDemos.addAll(getCollapsingToolbarDemos());
     additionalDemos.add(getToolbarDemo());
     additionalDemos.addAll(getActionBarDemos());
     return additionalDemos;
+  }
+
+  @NonNull
+  protected List<Demo> getCollapsingToolbarDemos() {
+    return Arrays.asList(
+        new Demo(R.string.cat_topappbar_collapsing_medium_demo_title) {
+          @Nullable
+          @Override
+          public Fragment createFragment() {
+            return new TopAppBarCollapsingMediumDemoFragment();
+          }
+        },
+        new Demo(R.string.cat_topappbar_collapsing_medium_with_subtitle_demo_title) {
+          @Nullable
+          @Override
+          public Fragment createFragment() {
+            return new TopAppBarCollapsingMediumWithSubtitleDemoFragment();
+          }
+        },
+        new Demo(R.string.cat_topappbar_collapsing_large_demo_title) {
+          @Nullable
+          @Override
+          public Fragment createFragment() {
+            return new TopAppBarCollapsingLargeDemoFragment();
+          }
+        },
+        new Demo(R.string.cat_topappbar_collapsing_large_with_subtitle_demo_title) {
+          @Nullable
+          @Override
+          public Fragment createFragment() {
+            return new TopAppBarCollapsingLargeWithSubtitleDemoFragment();
+          }
+        },
+        new Demo(R.string.cat_topappbar_collapsing_multiline_demo_title) {
+          @Nullable
+          @Override
+          public Fragment createFragment() {
+            return new TopAppBarCollapsingMultilineDemoFragment();
+          }
+        },
+        new Demo(R.string.cat_topappbar_collapsing_with_filled_action_demo_title) {
+          @Nullable
+          @Override
+          public Fragment createFragment() {
+            return new TopAppBarCollapsingFilledActionDemoFragment();
+          }
+        },
+        new Demo(R.string.cat_topappbar_collapsing_with_toggleable_action_demo_title) {
+          @Nullable
+          @Override
+          public Fragment createFragment() {
+            return new TopAppBarCollapsingToggleableActionDemoFragment();
+          }
+        });
   }
 
   protected Demo getToolbarDemo() {
@@ -94,17 +159,11 @@ public class TopAppBarFragment extends DemoLandingFragment {
   }
 
   protected List<Demo> getActionBarDemos() {
-    return Arrays.asList(
+    return ImmutableList.of(
         new Demo(R.string.cat_topappbar_action_bar_title) {
           @Override
           public Intent createActivityIntent() {
             return new Intent(getContext(), TopAppBarActionBarDemoActivity.class);
-          }
-        },
-        new Demo(R.string.cat_topappbar_dark_action_bar_title) {
-          @Override
-          public Intent createActivityIntent() {
-            return new Intent(getContext(), TopAppBarDarkActionBarDemoActivity.class);
           }
         });
   }

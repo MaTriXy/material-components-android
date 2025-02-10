@@ -18,7 +18,6 @@ package com.google.android.material.chip;
 
 import com.google.android.material.R;
 
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
@@ -42,13 +41,20 @@ import android.graphics.drawable.Drawable.Callback;
 import android.graphics.drawable.RippleDrawable;
 import android.graphics.drawable.ShapeDrawable;
 import android.graphics.drawable.shapes.OvalShape;
+import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
+import androidx.appcompat.content.res.AppCompatResources;
+import android.text.TextUtils;
+import android.text.TextUtils.TruncateAt;
+import android.util.AttributeSet;
+import android.view.View;
 import androidx.annotation.AnimatorRes;
 import androidx.annotation.AttrRes;
 import androidx.annotation.BoolRes;
 import androidx.annotation.ColorInt;
 import androidx.annotation.ColorRes;
 import androidx.annotation.DimenRes;
+import androidx.annotation.Dimension;
 import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -56,18 +62,10 @@ import androidx.annotation.Px;
 import androidx.annotation.StringRes;
 import androidx.annotation.StyleRes;
 import androidx.annotation.XmlRes;
-import com.google.android.material.shape.MaterialShapeDrawable;
-import com.google.android.material.shape.ShapeAppearanceModel;
 import androidx.core.graphics.ColorUtils;
 import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.core.graphics.drawable.TintAwareDrawable;
 import androidx.core.text.BidiFormatter;
-import androidx.core.view.ViewCompat;
-import androidx.appcompat.content.res.AppCompatResources;
-import android.text.TextUtils;
-import android.text.TextUtils.TruncateAt;
-import android.util.AttributeSet;
-import android.view.View;
 import com.google.android.material.animation.MotionSpec;
 import com.google.android.material.canvas.CanvasCompat;
 import com.google.android.material.color.MaterialColors;
@@ -75,9 +73,12 @@ import com.google.android.material.drawable.DrawableUtils;
 import com.google.android.material.internal.TextDrawableHelper;
 import com.google.android.material.internal.TextDrawableHelper.TextDrawableDelegate;
 import com.google.android.material.internal.ThemeEnforcement;
+import com.google.android.material.internal.ViewUtils;
 import com.google.android.material.resources.MaterialResources;
 import com.google.android.material.resources.TextAppearance;
 import com.google.android.material.ripple.RippleUtils;
+import com.google.android.material.shape.MaterialShapeDrawable;
+import com.google.android.material.shape.ShapeAppearanceModel;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
 
@@ -100,12 +101,12 @@ import java.util.Arrays;
  *   <li>{@link android.R.attr#checkable android:checkable} - If true, the chip can be toggled. If
  *       false, the chip acts like a button.
  *   <li>{@link android.R.attr#text android:text} - Sets the text of the chip.
- *   <li>{@link R.attr#chipIcon app:chipIcon} - Sets the icon of the chip, or use @null to display
+ *   <li>{@code app:chipIcon} - Sets the icon of the chip, or use @null to display no icon. Usually
+ *       on the left.
+ *   <li>{@code app:checkedIcon} - Sets a custom icon to use when checked, or use @null to display
  *       no icon. Usually on the left.
- *   <li>{@link R.attr#checkedIcon app:checkedIcon} - Sets a custom icon to use when checked, or
- *       use @null to display no icon. Usually on the left.
- *   <li>{@link R.attr#closeIcon app:closeIcon} - Sets a custom icon that the user can click to
- *       close, or use @null to display no icon. Usually on the right.
+ *   <li>{@code app:closeIcon} - Sets a custom icon that the user can click to close, or use @null
+ *       to display no icon. Usually on the right.
  *   <li>{@link android.R.attr#ellipsize} - Does not support {@link
  *       android.text.TextUtils.TruncateAt#MARQUEE} because chip text should not scroll.
  * </ul>
@@ -150,9 +151,14 @@ import java.util.Arrays;
  *             chipIconSize                  *dynamic*              closeIconSize
  * </pre>
  *
- * <p>ChipDrawable contains three child drawables: {@link #chipIcon}, {@link #checkedIcon}, and
- * {@link #closeIcon}. chipIcon and checkedIcon inherit the state of this drawable, but closeIcon
- * contains its own state that you can set with {@link #setCloseIconState(int[])}.
+ * <p>ChipDrawable contains three child drawables: {@code chipIcon}, {@code checkedIcon}, and {@code
+ * closeIcon}. chipIcon and checkedIcon inherit the state of this drawable, but closeIcon contains
+ * its own state that you can set with {@link #setCloseIconState(int[])}.
+ *
+ * <p>For more information, see the <a
+ * href="https://github.com/material-components/material-components-android/blob/master/docs/components/Chip.md">component
+ * developer guidance</a> and <a href="https://material.io/components/chips/overview">design
+ * guidelines</a>.
  *
  * @see Chip
  */
@@ -162,6 +168,7 @@ public class ChipDrawable extends MaterialShapeDrawable
   private static final boolean DEBUG = false;
   private static final int[] DEFAULT_STATE = new int[] {android.R.attr.state_enabled};
   private static final String NAMESPACE_APP = "http://schemas.android.com/apk/res-auto";
+  private static final int MAX_CHIP_ICON_HEIGHT = 24; // dp
 
   private static final ShapeDrawable closeIconRippleMask = new ShapeDrawable(new OvalShape());
 
@@ -169,7 +176,7 @@ public class ChipDrawable extends MaterialShapeDrawable
   @Nullable private ColorStateList chipSurfaceColor;
   @Nullable private ColorStateList chipBackgroundColor;
   private float chipMinHeight;
-  private float chipCornerRadius;
+  private float chipCornerRadius = -1;
   @Nullable private ColorStateList chipStrokeColor;
   private float chipStrokeWidth;
   @Nullable private ColorStateList rippleColor;
@@ -182,6 +189,7 @@ public class ChipDrawable extends MaterialShapeDrawable
   @Nullable private Drawable chipIcon;
   @Nullable private ColorStateList chipIconTint;
   private float chipIconSize;
+  private boolean hasChipIconTint;
 
   // Close icon
   private boolean closeIconVisible;
@@ -195,6 +203,7 @@ public class ChipDrawable extends MaterialShapeDrawable
   private boolean checkable;
   private boolean checkedIconVisible;
   @Nullable private Drawable checkedIcon;
+  @Nullable private ColorStateList checkedIconTint;
 
   // Animations
   @Nullable private MotionSpec showMotionSpec;
@@ -321,10 +330,7 @@ public class ChipDrawable extends MaterialShapeDrawable
     setCloseIconState(DEFAULT_STATE);
     shouldDrawText = true;
 
-    if (RippleUtils.USE_FRAMEWORK_RIPPLE) {
-      //noinspection NewApi
-      closeIconRippleMask.setTint(Color.WHITE);
-    }
+    closeIconRippleMask.setTint(Color.WHITE);
   }
 
   private void loadFromAttributes(
@@ -348,8 +354,20 @@ public class ChipDrawable extends MaterialShapeDrawable
     setRippleColor(MaterialResources.getColorStateList(context, a, R.styleable.Chip_rippleColor));
 
     setText(a.getText(R.styleable.Chip_android_text));
-    setTextAppearance(
-        MaterialResources.getTextAppearance(context, a, R.styleable.Chip_android_textAppearance));
+    TextAppearance textAppearance =
+        MaterialResources.getTextAppearance(context, a, R.styleable.Chip_android_textAppearance);
+    float textSize = a.getDimension(
+        R.styleable.Chip_android_textSize, textAppearance.getTextSize());
+    textAppearance.setTextSize(textSize);
+
+    if (VERSION.SDK_INT < VERSION_CODES.M) {
+      // This is necessary to work around a bug that doesn't support themed color referenced in
+      // ColorStateList for API level < 23.
+      textAppearance.setTextColor(
+          MaterialResources.getColorStateList(context, a, R.styleable.Chip_android_textColor));
+    }
+
+    setTextAppearance(textAppearance);
 
     int ellipsize = a.getInt(R.styleable.Chip_android_ellipsize, 0);
     // Convert to supported TextUtils.TruncateAt values
@@ -378,8 +396,11 @@ public class ChipDrawable extends MaterialShapeDrawable
       setChipIconVisible(a.getBoolean(R.styleable.Chip_chipIconEnabled, false));
     }
     setChipIcon(MaterialResources.getDrawable(context, a, R.styleable.Chip_chipIcon));
-    setChipIconTint(MaterialResources.getColorStateList(context, a, R.styleable.Chip_chipIconTint));
-    setChipIconSize(a.getDimension(R.styleable.Chip_chipIconSize, 0f));
+    if (a.hasValue(R.styleable.Chip_chipIconTint)) {
+      setChipIconTint(
+          MaterialResources.getColorStateList(context, a, R.styleable.Chip_chipIconTint));
+    }
+    setChipIconSize(a.getDimension(R.styleable.Chip_chipIconSize, -1f));
 
     setCloseIconVisible(a.getBoolean(R.styleable.Chip_closeIconVisible, false));
     // If the user explicitly sets the deprecated attribute (closeIconEnabled) but NOT the
@@ -406,6 +427,10 @@ public class ChipDrawable extends MaterialShapeDrawable
       setCheckedIconVisible(a.getBoolean(R.styleable.Chip_checkedIconEnabled, false));
     }
     setCheckedIcon(MaterialResources.getDrawable(context, a, R.styleable.Chip_checkedIcon));
+    if (a.hasValue(R.styleable.Chip_checkedIconTint)) {
+      setCheckedIconTint(
+          MaterialResources.getColorStateList(context, a, R.styleable.Chip_checkedIconTint));
+    }
 
     setShowMotionSpec(MotionSpec.createFromAttribute(context, a, R.styleable.Chip_showMotionSpec));
     setHideMotionSpec(MotionSpec.createFromAttribute(context, a, R.styleable.Chip_hideMotionSpec));
@@ -511,9 +536,38 @@ public class ChipDrawable extends MaterialShapeDrawable
   /** Returns the width of the chip icon plus padding, which only apply if the chip icon exists. */
   float calculateChipIconWidth() {
     if (showsChipIcon() || (showsCheckedIcon())) {
-      return iconStartPadding + chipIconSize + iconEndPadding;
+      return iconStartPadding + getCurrentChipIconWidth() + iconEndPadding;
     }
     return 0f;
+  }
+
+  /**
+   * Return the chip's leading icon width. If chipIconSize > 0, return chipIconSize, else, return
+   * the current icon drawable width.
+   */
+  private float getCurrentChipIconWidth() {
+    Drawable iconDrawable = currentChecked ? checkedIcon : chipIcon;
+    if (chipIconSize <= 0 && iconDrawable != null) {
+      return iconDrawable.getIntrinsicWidth();
+    }
+    return chipIconSize;
+  }
+
+  /**
+   * Return the chip's leading icon height. If chipIconSize > 0, return chipIconSize, else, return
+   * the current icon drawable height up to MAX_CHIP_ICON_HEIGHT
+   */
+  private float getCurrentChipIconHeight() {
+    Drawable icon = currentChecked ? checkedIcon : chipIcon;
+    if (chipIconSize <= 0 && icon != null) {
+      float maxChipIconHeight = (float) Math.ceil(ViewUtils.dpToPx(context, MAX_CHIP_ICON_HEIGHT));
+      if (icon.getIntrinsicHeight() <= maxChipIconHeight) {
+        return icon.getIntrinsicHeight();
+      } else {
+        return maxChipIconHeight;
+      }
+    }
+    return chipIconSize;
   }
 
   /**
@@ -631,7 +685,7 @@ public class ChipDrawable extends MaterialShapeDrawable
     if (!isShapeThemingEnabled) {
       canvas.drawRoundRect(rectF, getChipCornerRadius(), getChipCornerRadius(), chipPaint);
     } else {
-      getPathForSize(bounds, shapePath);
+      calculatePathForSize(new RectF(bounds), shapePath);
       super.drawShape(canvas, chipPaint, shapePath, getBoundsAsRectF());
     }
   }
@@ -712,13 +766,9 @@ public class ChipDrawable extends MaterialShapeDrawable
 
       closeIcon.setBounds(0, 0, (int) rectF.width(), (int) rectF.height());
 
-      if (RippleUtils.USE_FRAMEWORK_RIPPLE) {
-        closeIconRipple.setBounds(closeIcon.getBounds());
-        closeIconRipple.jumpToCurrentState();
-        closeIconRipple.draw(canvas);
-      } else {
-        closeIcon.draw(canvas);
-      }
+      closeIconRipple.setBounds(closeIcon.getBounds());
+      closeIconRipple.jumpToCurrentState();
+      closeIconRipple.draw(canvas);
 
       canvas.translate(-tx, -ty);
     }
@@ -770,17 +820,19 @@ public class ChipDrawable extends MaterialShapeDrawable
 
     if (showsChipIcon() || showsCheckedIcon()) {
       float offsetFromStart = chipStartPadding + iconStartPadding;
+      float chipWidth = getCurrentChipIconWidth();
 
-      if (DrawableCompat.getLayoutDirection(this) == ViewCompat.LAYOUT_DIRECTION_LTR) {
+      if (DrawableCompat.getLayoutDirection(this) == View.LAYOUT_DIRECTION_LTR) {
         outBounds.left = bounds.left + offsetFromStart;
-        outBounds.right = outBounds.left + chipIconSize;
+        outBounds.right = outBounds.left + chipWidth;
       } else {
         outBounds.right = bounds.right - offsetFromStart;
-        outBounds.left = outBounds.right - chipIconSize;
+        outBounds.left = outBounds.right - chipWidth;
       }
 
-      outBounds.top = bounds.exactCenterY() - chipIconSize / 2f;
-      outBounds.bottom = outBounds.top + chipIconSize;
+      float chipHeight = getCurrentChipIconHeight();
+      outBounds.top = bounds.exactCenterY() - chipHeight / 2f;
+      outBounds.bottom = outBounds.top + chipHeight;
     }
   }
 
@@ -793,7 +845,7 @@ public class ChipDrawable extends MaterialShapeDrawable
     if (text != null) {
       float offsetFromStart = chipStartPadding + calculateChipIconWidth() + textStartPadding;
 
-      if (DrawableCompat.getLayoutDirection(this) == ViewCompat.LAYOUT_DIRECTION_LTR) {
+      if (DrawableCompat.getLayoutDirection(this) == View.LAYOUT_DIRECTION_LTR) {
         pointF.x = bounds.left + offsetFromStart;
         align = Align.LEFT;
       } else {
@@ -835,7 +887,7 @@ public class ChipDrawable extends MaterialShapeDrawable
       float offsetFromStart = chipStartPadding + calculateChipIconWidth() + textStartPadding;
       float offsetFromEnd = chipEndPadding + calculateCloseIconWidth() + textEndPadding;
 
-      if (DrawableCompat.getLayoutDirection(this) == ViewCompat.LAYOUT_DIRECTION_LTR) {
+      if (DrawableCompat.getLayoutDirection(this) == View.LAYOUT_DIRECTION_LTR) {
         outBounds.left = bounds.left + offsetFromStart;
         outBounds.right = bounds.right - offsetFromEnd;
       } else {
@@ -860,7 +912,7 @@ public class ChipDrawable extends MaterialShapeDrawable
     if (showsCloseIcon()) {
       float offsetFromEnd = chipEndPadding + closeIconEndPadding;
 
-      if (DrawableCompat.getLayoutDirection(this) == ViewCompat.LAYOUT_DIRECTION_LTR) {
+      if (DrawableCompat.getLayoutDirection(this) == View.LAYOUT_DIRECTION_LTR) {
         outBounds.right = bounds.right - offsetFromEnd;
         outBounds.left = outBounds.right - closeIconSize;
       } else {
@@ -884,7 +936,7 @@ public class ChipDrawable extends MaterialShapeDrawable
               + closeIconStartPadding
               + textEndPadding;
 
-      if (DrawableCompat.getLayoutDirection(this) == ViewCompat.LAYOUT_DIRECTION_LTR) {
+      if (DrawableCompat.getLayoutDirection(this) == View.LAYOUT_DIRECTION_LTR) {
         outBounds.right = bounds.right - offsetFromEnd;
       } else {
         outBounds.left = bounds.left + offsetFromEnd;
@@ -903,7 +955,7 @@ public class ChipDrawable extends MaterialShapeDrawable
               + closeIconStartPadding
               + textEndPadding;
 
-      if (DrawableCompat.getLayoutDirection(this) == ViewCompat.LAYOUT_DIRECTION_LTR) {
+      if (DrawableCompat.getLayoutDirection(this) == View.LAYOUT_DIRECTION_LTR) {
         outBounds.right = bounds.right;
         outBounds.left = outBounds.right - offsetFromEnd;
       } else {
@@ -981,6 +1033,7 @@ public class ChipDrawable extends MaterialShapeDrawable
         chipSurfaceColor != null
             ? chipSurfaceColor.getColorForState(chipState, currentChipSurfaceColor)
             : 0;
+    newChipSurfaceColor = compositeElevationOverlayIfNeeded(newChipSurfaceColor);
     if (currentChipSurfaceColor != newChipSurfaceColor) {
       currentChipSurfaceColor = newChipSurfaceColor;
       invalidate = true;
@@ -990,6 +1043,7 @@ public class ChipDrawable extends MaterialShapeDrawable
         chipBackgroundColor != null
             ? chipBackgroundColor.getColorForState(chipState, currentChipBackgroundColor)
             : 0;
+    newChipBackgroundColor = compositeElevationOverlayIfNeeded(newChipBackgroundColor);
     if (currentChipBackgroundColor != newChipBackgroundColor) {
       currentChipBackgroundColor = newChipBackgroundColor;
       invalidate = true;
@@ -1028,10 +1082,10 @@ public class ChipDrawable extends MaterialShapeDrawable
 
     int newTextColor =
         textDrawableHelper.getTextAppearance() != null
-                && textDrawableHelper.getTextAppearance().textColor != null
+                && textDrawableHelper.getTextAppearance().getTextColor() != null
             ? textDrawableHelper
-                .getTextAppearance()
-                .textColor
+            .getTextAppearance()
+            .getTextColor()
                 .getColorForState(chipState, currentTextColor)
             : 0;
     if (currentTextColor != newTextColor) {
@@ -1075,8 +1129,7 @@ public class ChipDrawable extends MaterialShapeDrawable
           closeIconState, 0, closeIconMergedState, chipState.length, closeIconState.length);
       invalidate |= closeIcon.setState(closeIconMergedState);
     }
-    //noinspection NewApi
-    if (RippleUtils.USE_FRAMEWORK_RIPPLE && isStateful(closeIconRipple)) {
+    if (isStateful(closeIconRipple)) {
       invalidate |= closeIconRipple.setState(closeIconState);
     }
 
@@ -1099,8 +1152,8 @@ public class ChipDrawable extends MaterialShapeDrawable
 
   private static boolean isStateful(@Nullable TextAppearance textAppearance) {
     return textAppearance != null
-        && textAppearance.textColor != null
-        && textAppearance.textColor.isStateful();
+        && textAppearance.getTextColor() != null
+        && textAppearance.getTextColor().isStateful();
   }
 
   @Override
@@ -1217,7 +1270,6 @@ public class ChipDrawable extends MaterialShapeDrawable
   }
 
   @Override
-  @TargetApi(VERSION_CODES.LOLLIPOP)
   public void getOutline(@NonNull Outline outline) {
     if (isShapeThemingEnabled) {
       super.getOutline(outline);
@@ -1265,25 +1317,26 @@ public class ChipDrawable extends MaterialShapeDrawable
 
   /** Note: This should not change the size of the drawable. */
   private void applyChildDrawable(@Nullable Drawable drawable) {
-    if (drawable != null) {
-      drawable.setCallback(this);
-      DrawableCompat.setLayoutDirection(drawable, DrawableCompat.getLayoutDirection(this));
-      drawable.setLevel(getLevel());
-      drawable.setVisible(isVisible(), false);
+    if (drawable == null) {
+      return;
+    }
+    drawable.setCallback(this);
+    DrawableCompat.setLayoutDirection(drawable, DrawableCompat.getLayoutDirection(this));
+    drawable.setLevel(getLevel());
+    drawable.setVisible(isVisible(), false);
 
-      if (drawable == closeIcon) {
-        if (drawable.isStateful()) {
-          drawable.setState(getCloseIconState());
-        }
-        DrawableCompat.setTintList(drawable, closeIconTint);
-      } else {
-        if (drawable.isStateful()) {
-          drawable.setState(getState());
-        }
-        if (drawable == chipIcon) {
-          DrawableCompat.setTintList(chipIcon, chipIconTint);
-        }
+    if (drawable == closeIcon) {
+      if (drawable.isStateful()) {
+        drawable.setState(getCloseIconState());
       }
+      drawable.setTintList(closeIconTint);
+      return;
+    }
+    if (drawable == chipIcon && hasChipIconTint) {
+      chipIcon.setTintList(chipIconTint);
+    }
+    if (drawable.isStateful()) {
+      drawable.setState(getState());
     }
   }
 
@@ -1320,6 +1373,35 @@ public class ChipDrawable extends MaterialShapeDrawable
       }
     }
     return false;
+  }
+
+  public void setTextSize(@Dimension float size) {
+    TextAppearance textAppearance = getTextAppearance();
+    if (textAppearance != null) {
+      textAppearance.setTextSize(size);
+      textDrawableHelper.getTextPaint().setTextSize(size);
+      onTextSizeChange();
+    }
+  }
+
+  public void setTextColor(@ColorInt int color) {
+    setTextColor(ColorStateList.valueOf(color));
+  }
+
+  public void setTextColor(@Nullable ColorStateList color) {
+    TextAppearance textAppearance = getTextAppearance();
+    if (textAppearance != null) {
+      textAppearance.setTextColor(color);
+      invalidateSelf();
+    }
+  }
+
+  boolean refreshCloseIconFocus(boolean closeIconFocused) {
+    boolean changed = false;
+    if (closeIcon != null) {
+      changed = setCloseIconState(closeIconFocused ? new int[] {android.R.attr.state_pressed, android.R.attr.state_enabled} : DEFAULT_STATE);
+    }
+    return changed;
   }
 
   /** Delegate interface to be implemented by Views that own a ChipDrawable. */
@@ -1378,7 +1460,7 @@ public class ChipDrawable extends MaterialShapeDrawable
   /**
    * Sets this chip's minimum height using a resource id.
    *
-   * @param id The resource id of this chip's mininum height.
+   * @param id The resource id of this chip's minimum height.
    * @attr ref com.google.android.material.R.styleable#Chip_chipMinHeight
    */
   public void setChipMinHeightResource(@DimenRes int id) {
@@ -1388,7 +1470,7 @@ public class ChipDrawable extends MaterialShapeDrawable
   /**
    * Sets this chip's minimum height.
    *
-   * @param chipMinHeight This chip's mininum height.
+   * @param chipMinHeight This chip's minimum height.
    * @attr ref com.google.android.material.R.styleable#Chip_chipMinHeight
    */
   public void setChipMinHeight(float chipMinHeight) {
@@ -1406,13 +1488,11 @@ public class ChipDrawable extends MaterialShapeDrawable
    * @attr ref com.google.android.material.R.styleable#Chip_chipCornerRadius
    */
   public float getChipCornerRadius() {
-    return isShapeThemingEnabled
-        ? getShapeAppearanceModel().getTopLeftCorner().getCornerSize()
-        : chipCornerRadius;
+    return isShapeThemingEnabled ? getTopLeftCornerResolvedSize() : chipCornerRadius;
   }
 
   /**
-   * @deprecated call {@link ShapeAppearanceModel#withCornerRadius()} or call {@link
+   * @deprecated call {@link ShapeAppearanceModel#withCornerSize(float)} or call {@link
    *     ShapeAppearanceModel#toBuilder()} on the {@link #getShapeAppearanceModel()}, modify the
    *     shape using the builder and then call {@link
    *     #setShapeAppearanceModel(ShapeAppearanceModel)}.
@@ -1423,7 +1503,7 @@ public class ChipDrawable extends MaterialShapeDrawable
   }
 
   /**
-   * @deprecated call {@link ShapeAppearanceModel#withCornerRadius()} or call {@link
+   * @deprecated call {@link ShapeAppearanceModel#withCornerSize(float)} or call {@link
    *     ShapeAppearanceModel#toBuilder()} on the {@link #getShapeAppearanceModel()}, modify the
    *     shape using the builder and then call {@link
    *     #setShapeAppearanceModel(ShapeAppearanceModel)}.
@@ -1433,7 +1513,7 @@ public class ChipDrawable extends MaterialShapeDrawable
     if (this.chipCornerRadius != chipCornerRadius) {
       this.chipCornerRadius = chipCornerRadius;
 
-      setShapeAppearanceModel(getShapeAppearanceModel().withCornerRadius(chipCornerRadius));
+      setShapeAppearanceModel(getShapeAppearanceModel().withCornerSize(chipCornerRadius));
     }
   }
 
@@ -1686,25 +1766,46 @@ public class ChipDrawable extends MaterialShapeDrawable
    * @attr ref com.google.android.material.R.styleable#Chip_chipIconTint
    */
   public void setChipIconTint(@Nullable ColorStateList chipIconTint) {
+    hasChipIconTint = true;
     if (this.chipIconTint != chipIconTint) {
       this.chipIconTint = chipIconTint;
-
       if (showsChipIcon()) {
-        DrawableCompat.setTintList(chipIcon, chipIconTint);
+        chipIcon.setTintList(chipIconTint);
       }
 
       onStateChange(getState());
     }
   }
 
+  /**
+   * Returns this chip's icon size. If a non-positive value is returned, the icon drawable's width
+   * and height (up to 24dp) will be used to measure its bounds instead.
+   *
+   * @see #setChipIconSize(float)
+   * @attr ref com.google.android.material.R.styleable#Chip_chipIconTint
+   */
   public float getChipIconSize() {
     return chipIconSize;
   }
 
+  /**
+   * Sets this chip icon's size using a resource id. If the value is zero (@null) or negative, the
+   * icon drawable's width and height (up to 24dp) will be used instead.
+   *
+   * @param id The resource id of this chip's icon size.
+   * @attr ref com.google.android.material.R.styleable#Chip_chipIconSize
+   */
   public void setChipIconSizeResource(@DimenRes int id) {
     setChipIconSize(context.getResources().getDimension(id));
   }
 
+  /**
+   * Sets this chip icon's size. If the value is zero or negative, the icon drawable's width and
+   * height (up to 24dp) will be used instead.
+   *
+   * @param chipIconSize This chip's icon size.
+   * @attr ref com.google.android.material.R.styleable#Chip_chipIconSize
+   */
   public void setChipIconSize(float chipIconSize) {
     if (this.chipIconSize != chipIconSize) {
       float oldChipIconWidth = calculateChipIconWidth();
@@ -1778,9 +1879,7 @@ public class ChipDrawable extends MaterialShapeDrawable
     if (oldCloseIcon != closeIcon) {
       float oldCloseIconWidth = calculateCloseIconWidth();
       this.closeIcon = closeIcon != null ? DrawableCompat.wrap(closeIcon).mutate() : null;
-      if (RippleUtils.USE_FRAMEWORK_RIPPLE) {
-        updateFrameworkCloseIconRipple();
-      }
+      updateFrameworkCloseIconRipple();
       float newCloseIconWidth = calculateCloseIconWidth();
 
       unapplyChildDrawable(oldCloseIcon);
@@ -1795,7 +1894,6 @@ public class ChipDrawable extends MaterialShapeDrawable
     }
   }
 
-  @TargetApi(VERSION_CODES.LOLLIPOP)
   private void updateFrameworkCloseIconRipple() {
     closeIconRipple =
         new RippleDrawable(
@@ -1820,7 +1918,7 @@ public class ChipDrawable extends MaterialShapeDrawable
       this.closeIconTint = closeIconTint;
 
       if (showsCloseIcon()) {
-        DrawableCompat.setTintList(closeIcon, closeIconTint);
+        closeIcon.setTintList(closeIconTint);
       }
 
       onStateChange(getState());
@@ -1971,6 +2069,41 @@ public class ChipDrawable extends MaterialShapeDrawable
       if (oldChipIconWidth != newChipIconWidth) {
         onSizeChange();
       }
+    }
+  }
+
+  /** Returns the {@link android.content.res.ColorStateList} used to tint the checked icon. */
+  @Nullable
+  public ColorStateList getCheckedIconTint() {
+    return checkedIconTint;
+  }
+
+  /**
+   * Sets the checked icon's color tint using a resource ID.
+   *
+   * @param id Resource id of a {@link android.content.res.ColorStateList} to tint the checked icon.
+   * @attr ref com.google.android.material.R.styleable#Chip_checkedIconTint
+   */
+  public void setCheckedIconTintResource(@ColorRes int id) {
+    setCheckedIconTint(AppCompatResources.getColorStateList(context, id));
+  }
+
+  /**
+   * Sets the checked icon's color tint using the specified {@link
+   * android.content.res.ColorStateList}.
+   *
+   * @param checkedIconTint ColorStateList to tint the checked icon.
+   * @attr ref com.google.android.material.R.styleable#Chip_checkedIconTint
+   */
+  public void setCheckedIconTint(@Nullable ColorStateList checkedIconTint) {
+    if (this.checkedIconTint != checkedIconTint) {
+      this.checkedIconTint = checkedIconTint;
+
+      if (canShowCheckedIcon()) {
+        checkedIcon.setTintList(checkedIconTint);
+      }
+
+      onStateChange(getState());
     }
   }
 

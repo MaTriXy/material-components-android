@@ -20,19 +20,17 @@ import com.google.android.material.R;
 
 import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
 
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
-import androidx.annotation.RestrictTo;
 import androidx.appcompat.widget.LinearLayoutCompat;
 import android.util.AttributeSet;
 import android.view.Gravity;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 
 /** @hide */
 @RestrictTo(LIBRARY_GROUP)
@@ -124,7 +122,6 @@ public class ForegroundLinearLayout extends LinearLayoutCompat {
     return super.verifyDrawable(who) || (who == foreground);
   }
 
-  @RequiresApi(11)
   @Override
   public void jumpDrawablesToCurrentState() {
     super.jumpDrawablesToCurrentState();
@@ -157,6 +154,7 @@ public class ForegroundLinearLayout extends LinearLayoutCompat {
       }
 
       foreground = drawable;
+      foregroundBoundsChanged = true;
 
       if (drawable != null) {
         setWillNotDraw(false);
@@ -235,8 +233,6 @@ public class ForegroundLinearLayout extends LinearLayoutCompat {
     }
   }
 
-  @TargetApi(21)
-  @RequiresApi(21)
   @Override
   public void drawableHotspotChanged(float x, float y) {
     super.drawableHotspotChanged(x, y);

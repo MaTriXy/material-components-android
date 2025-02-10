@@ -18,11 +18,11 @@ package com.google.android.material.testutils;
 
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 
-import androidx.annotation.ColorInt;
-import com.google.android.material.appbar.CollapsingToolbarLayout;
 import android.view.View;
+import androidx.annotation.ColorInt;
 import androidx.test.espresso.UiController;
 import androidx.test.espresso.ViewAction;
+import com.google.android.material.appbar.CollapsingToolbarLayout;
 import org.hamcrest.Matcher;
 
 public class CollapsingToolbarLayoutActions {

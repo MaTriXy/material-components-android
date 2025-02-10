@@ -19,12 +19,6 @@ package io.material.catalog.bottomappbar;
 import io.material.catalog.R;
 
 import android.os.Bundle;
-import androidx.annotation.LayoutRes;
-import androidx.annotation.Nullable;
-import com.google.android.material.shape.CutCornerTreatment;
-import com.google.android.material.shape.MaterialShapeDrawable;
-import com.google.android.material.shape.ShapeAppearanceModel;
-import com.google.android.material.snackbar.Snackbar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import android.view.LayoutInflater;
@@ -33,26 +27,63 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.ToggleButton;
+import android.view.accessibility.AccessibilityEvent;
+import androidx.activity.BackEventCompat;
+import androidx.activity.OnBackPressedCallback;
+import androidx.annotation.LayoutRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import com.google.android.material.bottomappbar.BottomAppBar;
 import com.google.android.material.bottomappbar.BottomAppBarTopEdgeTreatment;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetBehavior.BottomSheetCallback;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.navigation.NavigationView;
+import com.google.android.material.shape.CutCornerTreatment;
+import com.google.android.material.shape.MaterialShapeDrawable;
+import com.google.android.material.shape.ShapeAppearanceModel;
+import com.google.android.material.snackbar.Snackbar;
 import io.material.catalog.feature.DemoFragment;
-import io.material.catalog.feature.OnBackPressedHandler;
-import io.material.catalog.themeswitcher.ThemeSwitcherHelper;
+import io.material.catalog.feature.DemoUtils;
+import io.material.catalog.preferences.CatalogPreferencesHelper;
+import java.util.List;
 
 /** A fragment that displays the main Bottom App Bar demos for the Catalog app. */
-public class BottomAppBarMainDemoFragment extends DemoFragment implements OnBackPressedHandler {
+public class BottomAppBarMainDemoFragment extends DemoFragment {
+
+  private final OnBackPressedCallback bottomDrawerOnBackPressedCallback =
+      new OnBackPressedCallback(/* enabled= */ false) {
+        @Override
+        public void handleOnBackStarted(@NonNull BackEventCompat backEvent) {
+          bottomDrawerBehavior.startBackProgress(backEvent);
+        }
+
+        @Override
+        public void handleOnBackProgressed(@NonNull BackEventCompat backEvent) {
+          bottomDrawerBehavior.updateBackProgress(backEvent);
+        }
+
+        @Override
+        public void handleOnBackPressed() {
+          bottomDrawerBehavior.handleBackInvoked();
+        }
+
+        @Override
+        public void handleOnBackCancelled() {
+          bottomDrawerBehavior.cancelBackProgress();
+        }
+      };
 
   protected BottomAppBar bar;
+  protected View barNavView;
   protected CoordinatorLayout coordinatorLayout;
   protected FloatingActionButton fab;
 
-  @Nullable private ThemeSwitcherHelper themeSwitcherHelper;
+  @Nullable private CatalogPreferencesHelper catalogPreferencesHelper;
   private BottomSheetBehavior<View> bottomDrawerBehavior;
 
   @Override
@@ -60,14 +91,14 @@ public class BottomAppBarMainDemoFragment extends DemoFragment implements OnBack
     super.onCreate(bundle);
     setHasOptionsMenu(true);
 
-    // The theme switcher helper is used in an adhoc way with the toolbar since the BottomAppBar is
+    // The preferences helper is used in an adhoc way with the toolbar since the BottomAppBar is
     // set as the action bar.
-    themeSwitcherHelper = new ThemeSwitcherHelper(getFragmentManager());
+    catalogPreferencesHelper = new CatalogPreferencesHelper(getParentFragmentManager());
   }
 
   @Override
   public void onCreateOptionsMenu(Menu menu, MenuInflater menuInflater) {
-    menuInflater.inflate(R.menu.demo_primary, menu);
+    menuInflater.inflate(R.menu.demo_primary_alternate, menu);
   }
 
   @Override
@@ -88,13 +119,15 @@ public class BottomAppBarMainDemoFragment extends DemoFragment implements OnBack
 
     Toolbar toolbar = view.findViewById(R.id.toolbar);
     toolbar.setTitle(getDefaultDemoTitle());
-    themeSwitcherHelper.onCreateOptionsMenu(toolbar.getMenu(), getActivity().getMenuInflater());
-    toolbar.setOnMenuItemClickListener(themeSwitcherHelper::onOptionsItemSelected);
+    catalogPreferencesHelper.onCreateOptionsMenu(
+        toolbar.getMenu(), getActivity().getMenuInflater());
+    toolbar.setOnMenuItemClickListener(catalogPreferencesHelper::onOptionsItemSelected);
     toolbar.setNavigationOnClickListener(v -> getActivity().onBackPressed());
 
     coordinatorLayout = view.findViewById(R.id.coordinator_layout);
     bar = view.findViewById(R.id.bar);
     ((AppCompatActivity) getActivity()).setSupportActionBar(bar);
+    barNavView = bar.getChildAt(0);
 
     setUpBottomDrawer(view);
 
@@ -107,34 +140,40 @@ public class BottomAppBarMainDemoFragment extends DemoFragment implements OnBack
           return false;
         });
 
-    Button centerButton = view.findViewById(R.id.center);
-    Button endButton = view.findViewById(R.id.end);
-    ToggleButton attachToggle = view.findViewById(R.id.attach_toggle);
-    attachToggle.setChecked(fab.getVisibility() == View.VISIBLE);
-    centerButton.setOnClickListener(
-        v -> bar.setFabAlignmentMode(BottomAppBar.FAB_ALIGNMENT_MODE_CENTER));
-    endButton.setOnClickListener(v -> bar.setFabAlignmentMode(BottomAppBar.FAB_ALIGNMENT_MODE_END));
-    attachToggle.setOnCheckedChangeListener(
-        (buttonView, isChecked) -> {
-          if (isChecked) {
-            fab.show();
-          } else {
-            fab.hide();
-          }
-        });
-
+    setUpDemoControls(view);
     setUpBottomAppBarShapeAppearance();
 
     return view;
   }
 
-  @Override
-  public boolean onBackPressed() {
-    if (bottomDrawerBehavior.getState() != BottomSheetBehavior.STATE_HIDDEN) {
-      bottomDrawerBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
-      return true;
+  private void setUpDemoControls(@NonNull View view) {
+    // Set up generic settings for toggle button groups.
+    List<MaterialButtonToggleGroup> toggleButtonGroups =
+        DemoUtils.findViewsWithType(view, MaterialButtonToggleGroup.class);
+
+    for (MaterialButtonToggleGroup toggleGroup : toggleButtonGroups) {
+      toggleGroup.setSingleSelection(true);
+      toggleGroup.setSelectionRequired(true);
     }
-    return false;
+
+    // Set up FAB visibility mode toggle buttons.
+    MaterialButton showFabButton = view.findViewById(R.id.show_fab_button);
+    MaterialButton hideFabButton = view.findViewById(R.id.hide_fab_button);
+
+    if (fab.getVisibility() == View.VISIBLE) {
+      showFabButton.setChecked(true);
+    } else {
+      hideFabButton.setChecked(true);
+    }
+
+    showFabButton.setOnClickListener(v -> fab.show());
+    hideFabButton.setOnClickListener(v -> fab.hide());
+
+    // Set up hide on scroll switch.
+    MaterialSwitch barScrollSwitch = view.findViewById(R.id.bar_scroll_switch);
+    barScrollSwitch.setChecked(bar.getHideOnScroll());
+    barScrollSwitch.setOnCheckedChangeListener(
+        (buttonView, isChecked) -> bar.setHideOnScroll(isChecked));
   }
 
   @Override
@@ -143,7 +182,7 @@ public class BottomAppBarMainDemoFragment extends DemoFragment implements OnBack
   }
 
   private void setUpBottomAppBarShapeAppearance() {
-    ShapeAppearanceModel fabShapeAppearanceModel = fab.getShapeAppearance();
+    ShapeAppearanceModel fabShapeAppearanceModel = fab.getShapeAppearanceModel();
     boolean cutCornersFab =
         fabShapeAppearanceModel.getBottomLeftCorner() instanceof CutCornerTreatment
             && fabShapeAppearanceModel.getBottomRightCorner() instanceof CutCornerTreatment;
@@ -167,12 +206,48 @@ public class BottomAppBarMainDemoFragment extends DemoFragment implements OnBack
   protected void setUpBottomDrawer(View view) {
     View bottomDrawer = coordinatorLayout.findViewById(R.id.bottom_drawer);
     bottomDrawerBehavior = BottomSheetBehavior.from(bottomDrawer);
+    bottomDrawerBehavior.setUpdateImportantForAccessibilityOnSiblings(true);
     bottomDrawerBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+    bottomDrawer.post(() -> updateBackHandlingEnabled(bottomDrawerBehavior.getState()));
+    bottomDrawerBehavior.addBottomSheetCallback(
+        new BottomSheetCallback() {
+          @Override
+          public void onStateChanged(@NonNull View bottomSheet, int newState) {
+            updateBackHandlingEnabled(newState);
+
+            if (newState == BottomSheetBehavior.STATE_HIDDEN) {
+              barNavView.sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_FOCUSED);
+            }
+          }
+
+          @Override
+          public void onSlide(@NonNull View bottomSheet, float slideOffset) {}
+        });
+
+    requireActivity()
+        .getOnBackPressedDispatcher()
+        .addCallback(this, bottomDrawerOnBackPressedCallback);
 
     bar.setNavigationOnClickListener(
         v -> bottomDrawerBehavior.setState(BottomSheetBehavior.STATE_HALF_EXPANDED));
-    bar.setNavigationIcon(R.drawable.ic_drawer_menu_24px);
-    bar.replaceMenu(R.menu.demo_primary);
+  }
+
+  private void updateBackHandlingEnabled(int state) {
+    switch (state) {
+      case BottomSheetBehavior.STATE_EXPANDED:
+      case BottomSheetBehavior.STATE_HALF_EXPANDED:
+      case BottomSheetBehavior.STATE_COLLAPSED:
+        bottomDrawerOnBackPressedCallback.setEnabled(true);
+        break;
+      case BottomSheetBehavior.STATE_HIDDEN:
+        bottomDrawerOnBackPressedCallback.setEnabled(false);
+        break;
+      case BottomSheetBehavior.STATE_DRAGGING:
+      case BottomSheetBehavior.STATE_SETTLING:
+      default:
+        // Do nothing, only change callback enabled for "stable" states.
+        break;
+    }
   }
 
   private void showSnackbar(CharSequence text) {

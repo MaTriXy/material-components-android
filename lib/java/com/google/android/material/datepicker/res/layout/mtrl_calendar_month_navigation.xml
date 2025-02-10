@@ -24,43 +24,46 @@
   android:paddingBottom="@dimen/mtrl_calendar_navigation_bottom_padding"
   android:orientation="horizontal">
 
-  <com.google.android.material.button.MaterialButton
-    android:id="@+id/month_navigation_fragment_toggle"
-    android:layout_width="wrap_content"
-    android:layout_height="@dimen/mtrl_calendar_navigation_height"
-    android:layout_gravity="start"
-    android:gravity="center_vertical|start"
-    android:insetBottom="0dp"
-    android:insetTop="0dp"
-    app:icon="@drawable/ic_menu_arrow_down_black_24dp"
-    app:iconGravity="textEnd"
-    app:iconPadding="4dp"/>
-
-  <View
+  <FrameLayout
     android:layout_width="0dp"
-    android:layout_height="@dimen/mtrl_calendar_navigation_height"
-    android:layout_weight="1"/>
+    android:layout_height="match_parent"
+    android:layout_weight="1">
+
+    <com.google.android.material.button.MaterialButton
+      style="?attr/materialCalendarYearNavigationButton"
+      android:id="@+id/month_navigation_fragment_toggle"
+      android:layout_width="wrap_content"
+      android:layout_height="@dimen/mtrl_calendar_navigation_height"
+      android:layout_gravity="start"
+      android:gravity="center_vertical|start"
+      android:insetBottom="0dp"
+      android:insetTop="0dp"
+      app:icon="@drawable/material_ic_menu_arrow_down_black_24dp"
+      app:iconGravity="textEnd"
+      app:iconPadding="4dp"/>
+
+  </FrameLayout>
 
   <com.google.android.material.button.MaterialButton
+    style="?attr/materialCalendarMonthNavigationButton"
     android:id="@+id/month_navigation_previous"
     android:layout_width="@dimen/mtrl_min_touch_target_size"
     android:layout_height="@dimen/mtrl_calendar_navigation_height"
-    android:layout_gravity="end"
     android:contentDescription="@string/mtrl_picker_a11y_prev_month"
     android:gravity="center"
     android:insetBottom="0dp"
     android:insetTop="0dp"
-    app:icon="@drawable/ic_keyboard_arrow_left_black_24dp"/>
+    app:icon="@drawable/material_ic_keyboard_arrow_previous_black_24dp"/>
 
   <com.google.android.material.button.MaterialButton
+    style="?attr/materialCalendarMonthNavigationButton"
     android:id="@+id/month_navigation_next"
     android:layout_width="@dimen/mtrl_min_touch_target_size"
     android:layout_height="@dimen/mtrl_calendar_navigation_height"
-    android:layout_gravity="end"
     android:contentDescription="@string/mtrl_picker_a11y_next_month"
     android:gravity="center"
     android:insetBottom="0dp"
     android:insetTop="0dp"
-    app:icon="@drawable/ic_keyboard_arrow_right_black_24dp"/>
+    app:icon="@drawable/material_ic_keyboard_arrow_next_black_24dp"/>
 
 </LinearLayout>

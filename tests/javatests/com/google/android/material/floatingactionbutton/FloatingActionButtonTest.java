@@ -46,6 +46,7 @@ import static com.google.android.material.testutils.TestUtilsMatchers.withFabCon
 import static com.google.android.material.testutils.TestUtilsMatchers.withFabContentHeight;
 import static com.google.android.material.testutils.TestUtilsMatchers.withFabCustomSize;
 import static org.hamcrest.Matchers.not;
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -54,9 +55,9 @@ import android.app.Activity;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Rect;
-import androidx.core.content.ContextCompat;
 import android.view.Gravity;
 import android.view.View;
+import androidx.core.content.ContextCompat;
 import androidx.test.espresso.action.GeneralSwipeAction;
 import androidx.test.espresso.action.Press;
 import androidx.test.espresso.action.Swipe;
@@ -308,5 +309,13 @@ public class FloatingActionButtonTest {
     onView(withId(R.id.fab_standard))
         .perform(setCustomSize(20))
         .check(matches(withFabCustomSize(20)));
+  }
+
+  @Test
+  @SmallTest
+  public void testA11yClassName() {
+    FloatingActionButton fab = activityTestRule.getActivity().findViewById(R.id.fab_standard);
+    assertEquals(
+        FloatingActionButton.ACCESSIBIILTY_FAB_ROLE, fab.getAccessibilityClassName().toString());
   }
 }

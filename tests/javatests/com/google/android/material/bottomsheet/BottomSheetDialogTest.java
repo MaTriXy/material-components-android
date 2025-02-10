@@ -25,7 +25,7 @@ import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
@@ -196,7 +196,7 @@ public class BottomSheetDialogTest {
     final BottomSheetBehavior.BottomSheetCallback callback =
         mock(BottomSheetBehavior.BottomSheetCallback.class);
     BottomSheetBehavior.from(dialog.findViewById(R.id.design_bottom_sheet))
-        .setBottomSheetCallback(callback);
+        .addBottomSheetCallback(callback);
     // Show the same dialog again.
     activityTestRule.runOnUiThread(() -> dialog.show());
     verify(callback, timeout(3000))
@@ -233,7 +233,7 @@ public class BottomSheetDialogTest {
 
       @Override
       public void perform(UiController uiController, View view) {
-        BottomSheetBehavior behavior = BottomSheetBehavior.from(view);
+        BottomSheetBehavior<?> behavior = BottomSheetBehavior.from(view);
         behavior.setPeekHeight(view.getHeight() + 100);
       }
     };

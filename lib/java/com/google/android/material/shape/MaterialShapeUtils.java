@@ -17,8 +17,8 @@
 package com.google.android.material.shape;
 
 import android.graphics.drawable.Drawable;
-import androidx.annotation.NonNull;
 import android.view.View;
+import androidx.annotation.NonNull;
 import com.google.android.material.internal.ViewUtils;
 
 /** Utility methods for {@link MaterialShapeDrawable} and related classes. */
@@ -27,12 +27,12 @@ public class MaterialShapeUtils {
   private MaterialShapeUtils() {}
 
   @NonNull
-  static CornerTreatment createCornerTreatment(@CornerFamily int cornerFamily, int cornerSize) {
+  static CornerTreatment createCornerTreatment(@CornerFamily int cornerFamily) {
     switch (cornerFamily) {
       case CornerFamily.ROUNDED:
-        return new RoundedCornerTreatment(cornerSize);
+        return new RoundedCornerTreatment();
       case CornerFamily.CUT:
-        return new CutCornerTreatment(cornerSize);
+        return new CutCornerTreatment();
       default:
         return createDefaultCornerTreatment();
     }
@@ -40,7 +40,7 @@ public class MaterialShapeUtils {
 
   @NonNull
   static CornerTreatment createDefaultCornerTreatment() {
-    return new RoundedCornerTreatment(0);
+    return new RoundedCornerTreatment();
   }
 
   @NonNull

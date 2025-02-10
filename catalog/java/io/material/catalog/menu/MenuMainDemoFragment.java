@@ -25,11 +25,9 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.graphics.drawable.InsetDrawable;
+import android.os.Build.VERSION;
+import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
-import androidx.annotation.LayoutRes;
-import androidx.annotation.MenuRes;
-import androidx.annotation.Nullable;
-import com.google.android.material.snackbar.Snackbar;
 import androidx.appcompat.view.menu.MenuBuilder;
 import androidx.appcompat.widget.ListPopupWindow;
 import androidx.appcompat.widget.PopupMenu;
@@ -47,6 +45,11 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.TextView;
+import androidx.annotation.LayoutRes;
+import androidx.annotation.MenuRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import com.google.android.material.snackbar.Snackbar;
 import io.material.catalog.feature.DemoFragment;
 
 /** A fragment that displays the main menu demo for the Catalog app. */
@@ -54,7 +57,22 @@ public class MenuMainDemoFragment extends DemoFragment {
 
   private static final int ICON_MARGIN = 8;
   private static final String CLIP_DATA_LABEL = "Sample text to copy";
+  private static final String KEY_POPUP_ITEM_LAYOUT = "popup_item_layout";
   @LayoutRes private int popupItemLayout;
+
+  @Override
+  public void onCreate(@Nullable Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    if (savedInstanceState != null) {
+      popupItemLayout = savedInstanceState.getInt(KEY_POPUP_ITEM_LAYOUT);
+    }
+  }
+
+  @Override
+  public void onSaveInstanceState(@NonNull Bundle outState) {
+    super.onSaveInstanceState(outState);
+    outState.putInt(KEY_POPUP_ITEM_LAYOUT, popupItemLayout);
+  }
 
   @Override
   public void onCreateOptionsMenu(Menu menu, MenuInflater menuInflater) {
@@ -93,6 +111,7 @@ public class MenuMainDemoFragment extends DemoFragment {
       MenuBuilder menuBuilder = (MenuBuilder) popup.getMenu();
       //noinspection RestrictedApi
       menuBuilder.setOptionalIconsVisible(true);
+      //noinspection RestrictedApi
       for (MenuItem item : menuBuilder.getVisibleItems()) {
         int iconMarginPx =
             (int)
@@ -100,7 +119,17 @@ public class MenuMainDemoFragment extends DemoFragment {
                     TypedValue.COMPLEX_UNIT_DIP, ICON_MARGIN, getResources().getDisplayMetrics());
 
         if (item.getIcon() != null) {
-          item.setIcon(new InsetDrawable(item.getIcon(), iconMarginPx, 0, iconMarginPx, 0));
+          if (VERSION.SDK_INT > VERSION_CODES.LOLLIPOP) {
+            item.setIcon(new InsetDrawable(item.getIcon(), iconMarginPx, 0, iconMarginPx, 0));
+          } else {
+            item.setIcon(
+                new InsetDrawable(item.getIcon(), iconMarginPx, 0, iconMarginPx, 0) {
+                  @Override
+                  public int getIntrinsicWidth() {
+                    return getIntrinsicHeight() + iconMarginPx + iconMarginPx;
+                  }
+                });
+          }
         }
       }
     }
@@ -152,6 +181,7 @@ public class MenuMainDemoFragment extends DemoFragment {
             getResources().getStringArray(R.array.cat_list_popup_window_content));
     listPopupWindow.setAdapter(adapter);
     listPopupWindow.setAnchorView(v);
+    listPopupWindow.setModal(true);
     listPopupWindow.setOnItemClickListener(
         (parent, view, position, id) -> {
           Snackbar.make(

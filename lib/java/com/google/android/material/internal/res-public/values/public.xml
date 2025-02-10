@@ -16,7 +16,16 @@
 -->
 <resources>
   <public name="enforceMaterialTheme" type="attr"/>
+  <public name="enforceTextAppearance" type="attr"/>
   <public name="insetForeground" type="attr"/>
+  <public name="paddingBottomSystemWindowInsets" type="attr"/>
+  <public name="paddingLeftSystemWindowInsets" type="attr"/>
+  <public name="paddingRightSystemWindowInsets" type="attr"/>
+  <public name="paddingStartSystemWindowInsets" type="attr"/>
+  <public name="paddingTopSystemWindowInsets" type="attr"/>
+  <public name="marginLeftSystemWindowInsets" type="attr"/>
+  <public name="marginRightSystemWindowInsets" type="attr"/>
+  <public name="marginTopSystemWindowInsets" type="attr"/>
+  <public name="marginBottomSystemWindowInsets" type="attr"/>
   <public name="Widget.Design.ScrimInsetsFrameLayout" type="style"/>
-  <public name="materialThemeOverlay" type="attr"/>
 </resources>

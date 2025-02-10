@@ -19,7 +19,6 @@ package io.material.catalog.topappbar;
 import io.material.catalog.R;
 
 import android.os.Bundle;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import android.view.LayoutInflater;
@@ -28,11 +27,25 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import androidx.annotation.Nullable;
+import com.google.android.material.appbar.AppBarLayout;
+import com.google.android.material.badge.BadgeDrawable;
+import com.google.android.material.badge.BadgeUtils;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.materialswitch.MaterialSwitch;
 import io.material.catalog.feature.DemoFragment;
 import io.material.catalog.feature.DemoUtils;
 
 /** A fragment that displays the main Top App Bar demo for the Catalog app. */
 public class TopAppBarMainDemoFragment extends DemoFragment {
+
+  private AppBarLayout appBarLayout;
+  private Toolbar toolbar;
+  private BadgeDrawable badgeDrawable;
+  private MaterialSwitch editMenuToggle;
+  private MaterialSwitch liftOnScrollToggle;
+  private MaterialSwitch liftToggle;
+  private MaterialButton incrementBadgeNumber;
 
   @Override
   public void onCreate(@Nullable Bundle bundle) {
@@ -45,10 +58,39 @@ public class TopAppBarMainDemoFragment extends DemoFragment {
       LayoutInflater layoutInflater, @Nullable ViewGroup viewGroup, @Nullable Bundle bundle) {
     View view = layoutInflater.inflate(R.layout.cat_topappbar_fragment, viewGroup, false);
 
-    Toolbar toolbar = view.findViewById(R.id.toolbar);
+    appBarLayout = view.findViewById(R.id.appbarlayout);
+    toolbar = view.findViewById(R.id.toolbar);
     AppCompatActivity activity = (AppCompatActivity) getActivity();
     activity.setSupportActionBar(toolbar);
 
+    editMenuToggle = view.findViewById(R.id.cat_topappbar_switch_edit_menu);
+    editMenuToggle.setOnCheckedChangeListener(
+        (buttonView, isChecked) -> {
+          BadgeUtils.detachBadgeDrawable(badgeDrawable, toolbar, R.id.cat_topappbar_item_favorite);
+          toolbar.getMenu().findItem(R.id.cat_topappbar_item_edit).setVisible(isChecked);
+          BadgeUtils.attachBadgeDrawable(badgeDrawable, toolbar, R.id.cat_topappbar_item_favorite);
+        });
+
+    liftOnScrollToggle = view.findViewById(R.id.cat_topappbar_switch_lift_on_scroll);
+    liftOnScrollToggle.setOnCheckedChangeListener(
+        (buttonView, isChecked) -> {
+          appBarLayout.setLiftOnScroll(isChecked);
+          liftToggle.setEnabled(!isChecked);
+          if (!isChecked) {
+            appBarLayout.setLifted(liftToggle.isChecked());
+          }
+        });
+
+    liftToggle = view.findViewById(R.id.cat_topappbar_switch_lifted);
+    liftToggle.setOnCheckedChangeListener(
+        (buttonView, isChecked) -> appBarLayout.setLifted(isChecked));
+
+    incrementBadgeNumber = view.findViewById(R.id.cat_topappbar_button_increment_badge);
+    incrementBadgeNumber.setOnClickListener(
+        v -> {
+          badgeDrawable.setNumber(badgeDrawable.getNumber() + 1);
+          badgeDrawable.setVisible(true);
+        });
     return view;
   }
 
@@ -56,10 +98,17 @@ public class TopAppBarMainDemoFragment extends DemoFragment {
   public void onCreateOptionsMenu(Menu menu, MenuInflater menuInflater) {
     menuInflater.inflate(R.menu.cat_topappbar_menu, menu);
     super.onCreateOptionsMenu(menu, menuInflater);
+    badgeDrawable = BadgeDrawable.create(requireContext());
+    badgeDrawable.setNumber(1);
+    BadgeUtils.attachBadgeDrawable(badgeDrawable, toolbar, R.id.cat_topappbar_item_favorite);
   }
 
   @Override
   public boolean onOptionsItemSelected(MenuItem item) {
+    if (item.getItemId() == R.id.cat_topappbar_item_favorite) {
+      badgeDrawable.clearNumber();
+      badgeDrawable.setVisible(false);
+    }
     return DemoUtils.showSnackbar(getActivity(), item) || super.onOptionsItemSelected(item);
   }
 

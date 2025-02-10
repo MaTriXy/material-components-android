@@ -16,9 +16,9 @@
 package com.google.android.material.transformation;
 
 import android.content.Context;
+import android.util.AttributeSet;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import android.util.AttributeSet;
 import com.google.android.material.circularreveal.CircularRevealFrameLayout;
 import com.google.android.material.expandable.ExpandableWidget;
 
@@ -31,7 +31,11 @@ import com.google.android.material.expandable.ExpandableWidget;
  *
  * <p>If this layout needs to support shadows on pre-L devices, use {@link TransformationChildCard}
  * instead.
+ *
+ * @deprecated Use {@link com.google.android.material.transition.MaterialContainerTransform}
+ *     instead.
  */
+@Deprecated
 public class TransformationChildLayout extends CircularRevealFrameLayout {
 
   public TransformationChildLayout(@NonNull Context context) {

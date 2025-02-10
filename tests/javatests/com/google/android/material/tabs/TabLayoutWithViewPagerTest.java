@@ -21,30 +21,27 @@ import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
 import static androidx.test.espresso.matcher.ViewMatchers.isAssignableFrom;
 import static androidx.test.espresso.matcher.ViewMatchers.isCompletelyDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.isDescendantOfA;
-import static androidx.test.espresso.matcher.ViewMatchers.withClassName;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withParent;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static com.google.android.material.testutils.TabLayoutActions.setupWithViewPager;
+import static com.google.android.material.testutils.TabLayoutActions.showBadgeOnTab;
 import static com.google.android.material.testutils.ViewPagerActions.setAdapter;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.not;
-import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 
 import android.content.res.Resources;
 import android.graphics.Color;
-import android.os.Build.VERSION;
-import android.os.Build.VERSION_CODES;
-import androidx.annotation.DimenRes;
-import androidx.annotation.LayoutRes;
 import android.util.Pair;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.TextView;
+import androidx.annotation.DimenRes;
+import androidx.annotation.LayoutRes;
 import androidx.test.espresso.UiController;
 import androidx.test.espresso.ViewAction;
 import androidx.test.filters.LargeTest;
@@ -83,6 +80,10 @@ public class TabLayoutWithViewPagerTest {
 
     public void add(String title, Q content) {
       entries.add(new Pair<>(title, content));
+    }
+
+    public void remove(int index) {
+      entries.remove(index);
     }
 
     @Override
@@ -246,9 +247,38 @@ public class TabLayoutWithViewPagerTest {
     };
   }
 
+  private static <Q> ViewAction removeItemAtIndexFromPager(final int index) {
+    return new ViewAction() {
+      @Override
+      public Matcher<View> getConstraints() {
+        return isAssignableFrom(ViewPager.class);
+      }
+
+      @Override
+      public String getDescription() {
+        return "Remove item at specified index and notify on content change";
+      }
+
+      @Override
+      public void perform(UiController uiController, View view) {
+        uiController.loopMainThreadUntilIdle();
+
+        final ViewPager viewPager = (ViewPager) view;
+        @SuppressWarnings("unchecked") // no way to avoid this cast
+        final BasePagerAdapter<Q> viewPagerAdapter = (BasePagerAdapter<Q>) viewPager.getAdapter();
+        viewPagerAdapter.remove(index);
+        viewPagerAdapter.notifyDataSetChanged();
+
+        uiController.loopMainThreadUntilIdle();
+      }
+    };
+  }
+
   @Before
   public void setUp() throws Exception {
     final TabLayoutWithViewPagerActivity activity = activityTestRule.getActivity();
+    activity.setTheme(R.style.Theme_MaterialComponents_Light);
+
     tabLayout = activity.findViewById(R.id.tabs);
     viewPager = activity.findViewById(R.id.tabs_viewpager);
 
@@ -349,6 +379,36 @@ public class TabLayoutWithViewPagerTest {
     assertEquals("Selected tab", viewPager.getCurrentItem(), tabLayout.getSelectedTabPosition());
 
     verifyViewPagerSelection();
+  }
+
+    @Test
+  @SmallTest
+  public void testBadge() {
+    setupTabLayoutWithViewPager();
+    onView(withId(R.id.tabs)).perform(showBadgeOnTab(tabLayout.getTabCount() - 1, 1));
+    final int itemCount = viewPager.getAdapter().getCount();
+    assertEquals("Matching item count", itemCount, tabLayout.getTabCount());
+    assertEquals(
+        "Matching badge number",
+        1,
+        tabLayout.getTabAt(tabLayout.getTabCount() - 1).getBadge().getNumber());
+  }
+
+  @Test
+  @SmallTest
+  public void testBadgeWithAdapterContentChange() {
+    setupTabLayoutWithViewPager();
+    onView(withId(R.id.tabs)).perform(showBadgeOnTab(tabLayout.getTabCount() - 1, 1));
+    try {
+      final int itemCount = viewPager.getAdapter().getCount();
+      // Remove the last entry from our adapter
+      onView(withId(R.id.tabs_viewpager)).perform(removeItemAtIndexFromPager(itemCount - 1));
+    } catch (NullPointerException e) {
+      // App should not crash.
+      throw new AssertionError(
+          "Removing a tab from the view pager should not throw, but it did!", e);
+    }
+    assertNull("No badge is displayed", tabLayout.getTabAt(tabLayout.getTabCount() - 1).getBadge());
   }
 
   @Test
@@ -580,12 +640,6 @@ public class TabLayoutWithViewPagerTest {
                 isDescendantOfA(withId(R.id.tabs)),
                 not(withParent(isAssignableFrom(HorizontalScrollView.class))),
                 hasDescendant(withText(tabTitle)));
-        if (VERSION.SDK_INT < VERSION_CODES.JELLY_BEAN_MR2) {
-          // Additional criteria is needed for Pre API-18 devices because an extra container
-          // FrameLayout was added for badging support.
-          tabMatcher = allOf(tabMatcher, not(withClassName(is(FrameLayout.class.getName()))));
-        }
-
         if (minTabWidth >= 0) {
           onView(tabMatcher).check(matches(TestUtilsMatchers.isNotNarrowerThan(minTabWidth)));
         }

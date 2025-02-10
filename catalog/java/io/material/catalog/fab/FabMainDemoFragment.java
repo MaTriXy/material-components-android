@@ -19,16 +19,15 @@ package io.material.catalog.fab;
 import io.material.catalog.R;
 
 import android.os.Bundle;
-import androidx.annotation.LayoutRes;
-import androidx.annotation.Nullable;
-import com.google.android.material.snackbar.Snackbar;
-import androidx.core.view.ViewCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.Button;
+import androidx.annotation.LayoutRes;
+import androidx.annotation.Nullable;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
 import io.material.catalog.feature.DemoFragment;
 import io.material.catalog.feature.DemoUtils;
 import java.util.List;
@@ -46,6 +45,7 @@ public class FabMainDemoFragment extends DemoFragment {
 
     ViewGroup content = view.findViewById(R.id.content);
     View.inflate(getContext(), getFabsContent(), content);
+    View.inflate(getContext(), getThemeFabLayoutResId(), content);
 
     List<FloatingActionButton> fabs = DemoUtils.findViewsWithType(view, FloatingActionButton.class);
 
@@ -80,7 +80,7 @@ public class FabMainDemoFragment extends DemoFragment {
 
           for (FloatingActionButton fab : fabs) {
             fab.setRotation(0);
-            ViewCompat.animate(fab)
+            fab.animate()
                 .rotation(360)
                 .withLayer()
                 .setDuration(1000)
@@ -94,6 +94,11 @@ public class FabMainDemoFragment extends DemoFragment {
 
   @LayoutRes
   protected int getFabsContent() {
-    return R.layout.mtrl_fabs;
+    return R.layout.m3_fabs;
+  }
+
+  @LayoutRes
+  protected int getThemeFabLayoutResId() {
+    return R.layout.m3_theme_fab;
   }
 }

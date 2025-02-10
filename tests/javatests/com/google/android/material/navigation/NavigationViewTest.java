@@ -15,6 +15,7 @@
  */
 package com.google.android.material.navigation;
 
+import static android.os.Build.VERSION_CODES.LOLLIPOP;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
@@ -49,10 +50,12 @@ import static com.google.android.material.testutils.TestUtilsMatchers.withBackgr
 import static com.google.android.material.testutils.TestUtilsMatchers.withStartDrawableFilledWith;
 import static com.google.android.material.testutils.TestUtilsMatchers.withTextColor;
 import static com.google.android.material.testutils.TestUtilsMatchers.withTextSize;
+import static com.google.android.material.testutils.TestUtilsMatchers.withTypefaceStyle;
 import static org.hamcrest.core.AllOf.allOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -60,12 +63,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import android.content.res.Resources;
+import android.graphics.Typeface;
 import android.os.Build;
+import android.os.Build.VERSION;
 import android.os.Parcelable;
-import androidx.annotation.ColorInt;
-import androidx.annotation.IdRes;
-import androidx.core.content.res.ResourcesCompat;
-import androidx.core.view.GravityCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.appcompat.widget.SwitchCompat;
 import android.util.SparseArray;
@@ -74,11 +75,20 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
+import androidx.annotation.ColorInt;
+import androidx.annotation.IdRes;
+import androidx.core.content.res.ResourcesCompat;
+import androidx.core.view.GravityCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat.CollectionInfoCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat.CollectionItemInfoCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.test.espresso.matcher.ViewMatchers.Visibility;
 import androidx.test.filters.MediumTest;
 import androidx.test.rule.ActivityTestRule;
 import androidx.test.runner.AndroidJUnit4;
+import com.google.android.material.internal.NavigationMenuView;
 import com.google.android.material.testapp.NavigationViewActivity;
 import com.google.android.material.testapp.R;
 import com.google.android.material.testapp.custom.NavigationTestView;
@@ -135,7 +145,7 @@ public class NavigationViewTest {
     final Menu menu = navigationView.getMenu();
     assertNotNull("Menu should not be null", menu);
     assertEquals(
-        "Should have matching number of items", MENU_CONTENT_ITEM_IDS.length + 1, menu.size());
+        "Should have matching number of items", MENU_CONTENT_ITEM_IDS.length + 2, menu.size());
     for (int i = 0; i < MENU_CONTENT_ITEM_IDS.length; i++) {
       final MenuItem currItem = menu.getItem(i);
       assertEquals("ID for Item #" + i, MENU_CONTENT_ITEM_IDS[i], currItem.getItemId());
@@ -185,16 +195,20 @@ public class NavigationViewTest {
     }
 
     // Set a new text appearance on our NavigationView
-    onView(withId(R.id.start_drawer)).perform(setItemTextAppearance(R.style.TextSmallStyle));
+    onView(withId(R.id.start_drawer))
+        .perform(setItemTextAppearance(R.style.TextSmallStyle, /* isActiveBold= */ false));
 
     // And check that all the menu items have the new style
     final int newTextSize = res.getDimensionPixelSize(R.dimen.text_small_size);
     for (int i = 0; i < MENU_CONTENT_ITEM_IDS.length; i++) {
-      onView(
-              allOf(
-                  withText(menuStringContent.get(MENU_CONTENT_ITEM_IDS[i])),
-                  isDescendantOfA(withId(R.id.start_drawer))))
-          .check(matches(withTextSize(newTextSize)));
+      Matcher<View> menuItemMatcher =
+          allOf(
+              withText(menuStringContent.get(MENU_CONTENT_ITEM_IDS[i])),
+              isDescendantOfA(withId(R.id.start_drawer)));
+      onView(menuItemMatcher).check(matches(withTextSize(newTextSize)));
+      if (VERSION.SDK_INT >= LOLLIPOP) {
+        onView(menuItemMatcher).check(matches(withTypefaceStyle(Typeface.NORMAL)));
+      }
     }
   }
 
@@ -249,7 +263,7 @@ public class NavigationViewTest {
       // direct child of RecyclerView which is expected to have the background set
       // on it. If the internal implementation of NavigationView changes, the second
       // Matcher below will need to be tweaked.
-      Matcher menuItemMatcher =
+      Matcher<View> menuItemMatcher =
           allOf(
               hasDescendant(withText(menuStringContent.get(MENU_CONTENT_ITEM_IDS[i]))),
               isChildOfA(isAssignableFrom(RecyclerView.class)),
@@ -265,7 +279,7 @@ public class NavigationViewTest {
     // And check that all the menu items have the new fill
     final @ColorInt int newFillColorBlue = ResourcesCompat.getColor(res, R.color.test_blue, null);
     for (int i = 0; i < MENU_CONTENT_ITEM_IDS.length; i++) {
-      Matcher menuItemMatcher =
+      Matcher<View> menuItemMatcher =
           allOf(
               hasDescendant(withText(menuStringContent.get(MENU_CONTENT_ITEM_IDS[i]))),
               isChildOfA(isAssignableFrom(RecyclerView.class)),
@@ -283,7 +297,7 @@ public class NavigationViewTest {
     // And check that all the menu items have the new fill
     final @ColorInt int newFillColorGreen = ResourcesCompat.getColor(res, R.color.test_green, null);
     for (int i = 0; i < MENU_CONTENT_ITEM_IDS.length; i++) {
-      Matcher menuItemMatcher =
+      Matcher<View> menuItemMatcher =
           allOf(
               hasDescendant(withText(menuStringContent.get(MENU_CONTENT_ITEM_IDS[i]))),
               isChildOfA(isAssignableFrom(RecyclerView.class)),
@@ -572,10 +586,12 @@ public class NavigationViewTest {
           expectedToBeChecked ? checkedItemForeground : uncheckedItemForeground;
       final @ColorInt int expectedItemBackground =
           expectedToBeChecked ? checkedItemBackground : uncheckedItemBackground;
+      final int expectedItemTypefaceStyle =
+          expectedToBeChecked ? Typeface.BOLD : Typeface.NORMAL;
 
       // For the background fill check we need to select a view that has its background
       // set by the current implementation (see disclaimer in testBackground)
-      Matcher menuItemMatcher =
+      Matcher<View> menuItemMatcher =
           allOf(
               hasDescendant(withText(menuStringContent.get(MENU_CONTENT_ITEM_IDS[i]))),
               isChildOfA(isAssignableFrom(RecyclerView.class)),
@@ -583,11 +599,16 @@ public class NavigationViewTest {
       onView(menuItemMatcher).check(matches(withBackgroundFill(expectedItemBackground)));
 
       // And for the foreground color check we need to select a view with the text content
-      Matcher menuItemTextMatcher =
+      Matcher<View> menuItemTextMatcher =
           allOf(
               withText(menuStringContent.get(MENU_CONTENT_ITEM_IDS[i])),
               isDescendantOfA(withId(R.id.start_drawer)));
       onView(menuItemTextMatcher).check(matches(withTextColor(expectedItemForeground)));
+
+      // Check typeface style
+      if (VERSION.SDK_INT >= LOLLIPOP) {
+        onView(menuItemTextMatcher).check(matches(withTypefaceStyle(expectedItemTypefaceStyle)));
+      }
     }
   }
 
@@ -684,7 +705,7 @@ public class NavigationViewTest {
     // details of the NavigationMenu, while conditions 3 and 4 aim to be as generic as
     // possible and to not rely on the internal details of the current layout implementation
     // of an individual menu item in NavigationMenu.
-    Matcher menuItemMatcher =
+    Matcher<View> menuItemMatcher =
         allOf(
             isDescendantOfA(withId(R.id.start_drawer)),
             isChildOfA(isAssignableFrom(RecyclerView.class)),
@@ -698,7 +719,7 @@ public class NavigationViewTest {
 
     // Check that the full custom view is displayed without title and icon.
     final Resources res = activityTestRule.getActivity().getResources();
-    Matcher customItemMatcher =
+    Matcher<View> customItemMatcher =
         allOf(
             isDescendantOfA(withId(R.id.start_drawer)),
             isChildOfA(isAssignableFrom(RecyclerView.class)),
@@ -706,5 +727,52 @@ public class NavigationViewTest {
             hasDescendant(
                 allOf(isAssignableFrom(TextView.class), withEffectiveVisibility(Visibility.GONE))));
     onView(customItemMatcher).perform(click());
+  }
+
+  @Test
+  public void testAccessibility() throws Throwable {
+    // Open our drawer
+    onView(withId(R.id.drawer_layout)).perform(openDrawer(GravityCompat.START));
+
+    // Add header
+    onView(withId(R.id.start_drawer))
+        .perform(inflateHeaderView(R.layout.design_navigation_view_header1));
+
+    final NavigationViewActivity activity = activityTestRule.getActivity();
+    NavigationMenuView navigationMenuView = activity.findViewById(R.id.design_navigation_view);
+    AccessibilityNodeInfoCompat nodeInfo = AccessibilityNodeInfoCompat.obtain();
+    ViewCompat.onInitializeAccessibilityNodeInfo(navigationMenuView, nodeInfo);
+
+    CollectionInfoCompat collectionInfo = nodeInfo.getCollectionInfo();
+    assertEquals(7, collectionInfo.getRowCount());
+    assertEquals(1, collectionInfo.getColumnCount());
+
+    activityTestRule.runOnUiThread(
+        () -> {
+          AccessibilityNodeInfoCompat headerNodeInfo = AccessibilityNodeInfoCompat.obtain();
+          ViewCompat.onInitializeAccessibilityNodeInfo(
+              navigationMenuView.getChildAt(0), headerNodeInfo);
+          CollectionItemInfoCompat headerCollectionItemInfo =
+              headerNodeInfo.getCollectionItemInfo();
+          assertNull(headerCollectionItemInfo);
+          verifyItemInfo(navigationMenuView.getChildAt(1), 0, false);
+          verifyItemInfo(navigationMenuView.getChildAt(2), 1, false);
+          verifyItemInfo(navigationMenuView.getChildAt(3), 2, false);
+          verifyItemInfo(navigationMenuView.getChildAt(4), 3, false);
+          // index 5 = separator
+          verifyItemInfo(navigationMenuView.getChildAt(6), 4, true);
+          verifyItemInfo(navigationMenuView.getChildAt(7), 5, false);
+          verifyItemInfo(navigationMenuView.getChildAt(8), 6, false);
+        });
+  }
+
+  private void verifyItemInfo(View view, int rowIndex, boolean isHeader) {
+    AccessibilityNodeInfoCompat nodeInfo = AccessibilityNodeInfoCompat.obtain();
+    ViewCompat.onInitializeAccessibilityNodeInfo(view, nodeInfo);
+
+    CollectionItemInfoCompat itemInfo = nodeInfo.getCollectionItemInfo();
+    assertEquals(rowIndex, itemInfo.getRowIndex());
+    assertEquals(1, itemInfo.getColumnIndex());
+    assertEquals(isHeader, nodeInfo.isHeading());
   }
 }
